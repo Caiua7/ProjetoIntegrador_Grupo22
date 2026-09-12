@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Quadro do projeto
+    url: https://github.com/users/felipecorsopretoni/projects/2
+    about: Sprints, épicos e andamento das tarefas.
+  - name: Planejamento de produto
+    url: https://github.com/Caiua7/ProjetoIntegrador_Grupo22/blob/main/PI6-planejamento-produto.md
+    about: Personas, requisitos, modelo de cálculo, backlog e planejamento das sprints.
