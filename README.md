@@ -132,10 +132,7 @@ Sprints, épicos e andamento das tarefas no [quadro do projeto](https://github.c
 
 ## Documentos
 
-| Arquivo | Conteúdo |
-| :--- | :--- |
-| `Time_X.docx` | Documentação de projeto completa: requisitos, regras de negócio, modelo de dados, arquitetura, IA, testes e gestão |
-| `PI6-planejamento-produto.md` | Planejamento de produto e backlog (versão anterior do escopo, sob revisão) |
+A documentação de projeto e o planejamento de produto são mantidos fora do repositório, ainda em revisão.
 
 ---
 
