@@ -1,4 +1,4 @@
-# Pricing Intelligence
+# NeoPrice
 
 > Plataforma web multissetorial de formação de preço, com recomendação de markup assistida por Inteligência Artificial e geração automática de proposta comercial.
 
@@ -11,7 +11,7 @@ Disciplina 12563 · Grupo 22 · Professora orientadora: Sílvia C. de Matos Soar
 
 O preço é a variável de maior alavancagem sobre o resultado de uma organização e, ainda assim, na maior parte das empresas de médio porte ele é definido em planilhas isoladas: sem trabalho colaborativo, sem controle de versão, sem trilha de auditoria e com a margem herdada de convenção histórica, sem relação verificável com o que o mercado pratica.
 
-O Pricing Intelligence ataca três lacunas ao mesmo tempo:
+O NeoPrice ataca três lacunas ao mesmo tempo:
 
 1. **Governança** — o cálculo vira um motor determinístico, versionado e auditável, e não uma fórmula de célula.
 2. **Inteligência de mercado** — preço público coletado, estruturado e casado com o portfólio, ancorando a decisão de margem em evidência.
