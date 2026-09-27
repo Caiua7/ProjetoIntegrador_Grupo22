@@ -1,0 +1,1939 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark light">
+<title>NeoPrice — Protótipo</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;450;500;600;700&display=swap">
+<style>
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+img{max-width:100%}
+[hidden]{display:none !important}
+</style>
+</head>
+<body>
+<style>
+/* ==========================================================================
+   NeoPrice — TEMA
+   Só tokens. Dois temas: escuro (padrão da marca) e claro.
+   ========================================================================== */
+:root{
+  --fundo:#06070B;
+  --sup-1:#0E1018;
+  --sup-2:#161A25;
+  --sup-3:#1F2532;
+  --linha:rgba(255,255,255,.075);
+  --linha-2:rgba(255,255,255,.15);
+
+  --marca:#5B7CFA;
+  --marca-claro:#7D98FF;
+  --marca-escuro:#2B3A80;
+  --marca-fraca:rgba(91,124,250,.16);
+  --marca-tinta:#060A1C;
+
+  --txt-1:#F4F6FB;
+  --txt-2:#A5AABD;
+  --txt-3:#6F7689;
+
+  --ok:#2FD08A;
+  --atencao:#F5B544;
+  --erro:#FF6B6B;
+  --revisao:#A98BFF;
+
+  --ok-fraco:rgba(47,208,138,.14);
+  --atencao-fraco:rgba(245,181,68,.14);
+  --erro-fraco:rgba(255,107,107,.13);
+  --revisao-fraco:rgba(169,139,255,.15);
+
+  --r-gg:26px;
+  --r-g:20px;
+  --r-m:14px;
+  --r-p:11px;
+
+  --elev-1:0 1px 2px rgba(0,0,0,.4);
+  --elev-2:0 6px 22px rgba(0,0,0,.45);
+  --elev-3:0 18px 46px rgba(0,0,0,.6);
+
+  --nav-larg:250px;
+  --gap:16px;
+
+  --fonte:"IBM Plex Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Consolas,"Liberation Mono",monospace;
+}
+
+/* Tema claro: por preferência do sistema, desde que não haja escolha explícita
+   pelo escuro. O fundo desce de branco puro e herda o azul da marca, para os
+   degraus de superfície continuarem perceptíveis. */
+@media (prefers-color-scheme: light){
+  :root:not([data-theme="dark"]){
+    --fundo:#EAEDF5;
+    --sup-1:#FFFFFF;
+    --sup-2:#F3F5FA;
+    --sup-3:#E4E8F3;
+    --linha:rgba(12,20,45,.10);
+    --linha-2:rgba(12,20,45,.20);
+
+    --marca:#3A55D9;
+    --marca-claro:#2E46BE;
+    --marca-escuro:#1E2E7A;
+    --marca-fraca:rgba(58,85,217,.13);
+    --marca-tinta:#FFFFFF;
+
+    --txt-1:#0A0E1A;
+    --txt-2:#454C61;
+    --txt-3:#737B92;
+
+    --ok:#0E9B66;
+    --atencao:#A9760B;
+    --erro:#CE3B3B;
+    --revisao:#6741D9;
+
+    --ok-fraco:rgba(14,155,102,.14);
+    --atencao-fraco:rgba(169,118,11,.15);
+    --erro-fraco:rgba(206,59,59,.12);
+    --revisao-fraco:rgba(103,65,217,.13);
+
+    --elev-1:0 1px 2px rgba(14,24,60,.07);
+    --elev-2:0 8px 24px rgba(14,24,60,.10);
+    --elev-3:0 20px 50px rgba(14,24,60,.16);
+  }
+}
+/* Escolha explícita pelo claro vence um sistema no escuro. */
+:root[data-theme="light"]{
+  --fundo:#EAEDF5;
+  --sup-1:#FFFFFF;
+  --sup-2:#F3F5FA;
+  --sup-3:#E4E8F3;
+  --linha:rgba(12,20,45,.10);
+  --linha-2:rgba(12,20,45,.20);
+
+  --marca:#3A55D9;
+  --marca-claro:#2E46BE;
+  --marca-escuro:#1E2E7A;
+  --marca-fraca:rgba(58,85,217,.13);
+  --marca-tinta:#FFFFFF;
+
+  --txt-1:#0A0E1A;
+  --txt-2:#454C61;
+  --txt-3:#737B92;
+
+  --ok:#0E9B66;
+  --atencao:#A9760B;
+  --erro:#CE3B3B;
+  --revisao:#6741D9;
+
+  --ok-fraco:rgba(14,155,102,.14);
+  --atencao-fraco:rgba(169,118,11,.15);
+  --erro-fraco:rgba(206,59,59,.12);
+  --revisao-fraco:rgba(103,65,217,.13);
+
+  --elev-1:0 1px 2px rgba(14,24,60,.07);
+  --elev-2:0 8px 24px rgba(14,24,60,.10);
+  --elev-3:0 20px 50px rgba(14,24,60,.16);
+}
+
+/* ==========================================================================
+   PRIMITIVAS
+   ========================================================================== */
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  background:var(--fundo);color:var(--txt-1);
+  font-family:var(--fonte);font-size:15px;line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+}
+img{max-width:100%;display:block}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+a{color:inherit;text-decoration:none}
+svg{display:block;flex:0 0 auto}
+:focus-visible{outline:2px solid var(--marca);outline-offset:2px;border-radius:6px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+
+.card{background:var(--sup-1);border:1px solid var(--linha);
+  border-radius:var(--r-g);padding:18px;box-shadow:var(--elev-1)}
+.card-h{display:flex;align-items:center;gap:10px;margin-bottom:16px}
+.card-h > svg{color:var(--marca)}
+.card-h h2{font-size:15px;font-weight:600;margin:0;flex:1;letter-spacing:-.01em}
+.card-h .aux{color:var(--txt-3);font-size:12px;font-weight:500}
+
+.grid{display:grid;gap:var(--gap)}
+.g2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.g3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.g4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.split{display:grid;gap:var(--gap);grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);align-items:start}
+
+/* Indicador. Só o painel usa; não vira moldura de tudo. */
+.kpi{background:var(--sup-1);border:1px solid var(--linha);border-radius:var(--r-g);
+  padding:18px;box-shadow:var(--elev-1);display:flex;flex-direction:column;min-width:0}
+.kpi .rot{font-size:11px;color:var(--txt-3);font-weight:600;letter-spacing:.07em;text-transform:uppercase}
+.kpi .val{font-family:var(--mono);font-variant-numeric:tabular-nums;
+  font-size:27px;font-weight:600;letter-spacing:-.03em;line-height:1.15;margin-top:9px}
+.kpi .nota{font-size:12.5px;color:var(--txt-2);margin-top:5px}
+.kpi.destaque{background:linear-gradient(150deg,var(--marca-fraca),transparent 62%),var(--sup-1);
+  border-color:color-mix(in srgb,var(--marca) 34%,transparent)}
+.kpi.destaque .val{color:var(--marca)}
+
+.tag{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:99px;
+  font-size:11.5px;font-weight:600;white-space:nowrap}
+.tag i{width:6px;height:6px;border-radius:99px;background:currentColor;flex:0 0 6px}
+.t-ok{background:var(--ok-fraco);color:var(--ok)}
+.t-atencao{background:var(--atencao-fraco);color:var(--atencao)}
+.t-erro{background:var(--erro-fraco);color:var(--erro)}
+.t-revisao{background:var(--revisao-fraco);color:var(--revisao)}
+.t-neutro{background:var(--sup-2);color:var(--txt-2)}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  padding:11px 18px;border-radius:99px;font-size:13.5px;font-weight:600;
+  background:var(--sup-2);border:1px solid var(--linha);color:var(--txt-1);
+  transition:background .14s,border-color .14s,transform .1s;white-space:nowrap}
+.btn:hover{background:var(--sup-3)}
+.btn:active{transform:scale(.98)}
+.btn.primario{background:var(--marca);border-color:var(--marca);color:var(--marca-tinta);
+  box-shadow:0 4px 14px color-mix(in srgb,var(--marca) 30%,transparent)}
+.btn.primario:hover{background:var(--marca-claro);border-color:var(--marca-claro)}
+.btn.p{padding:7px 14px;font-size:12.5px;gap:6px}
+
+.campo{min-width:0}
+.campo label{display:block;font-size:11.5px;font-weight:600;color:var(--txt-3);
+  margin-bottom:6px;letter-spacing:.04em;text-transform:uppercase}
+.valor-campo{padding:10px 13px;border-radius:var(--r-p);background:var(--sup-2);
+  border:1px solid var(--linha);font-size:13.5px;font-weight:500;
+  display:flex;align-items:center;justify-content:space-between;gap:8px}
+.valor-campo svg{color:var(--txt-3)}
+
+.filtros{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:var(--gap)}
+.f{display:inline-flex;align-items:center;gap:7px;padding:7px 14px;border-radius:99px;
+  font-size:12.5px;font-weight:600;color:var(--txt-2);background:var(--sup-2);
+  border:1px solid var(--linha);transition:color .14s,background .14s}
+.f:hover{color:var(--txt-1)}
+.f.on{background:var(--marca-fraca);border-color:var(--marca);color:var(--marca)}
+.f .n{font-family:var(--mono);font-size:11.5px;opacity:.75}
+
+.rolagem{overflow-x:auto}
+.tb{width:100%;border-collapse:collapse;font-size:13.5px;min-width:720px}
+.tb thead th{text-align:left;font-size:10.5px;color:var(--txt-3);font-weight:600;
+  letter-spacing:.08em;text-transform:uppercase;padding:0 12px 10px;white-space:nowrap}
+.tb thead th.dir{text-align:right}
+.tb tbody tr{border-top:1px solid var(--linha);transition:background .12s}
+.tb tbody tr:hover{background:var(--sup-2)}
+.tb td{padding:13px 12px;vertical-align:middle}
+.tb td.dir{text-align:right;white-space:nowrap}
+.tb td.tit{font-weight:600}
+.tb td.tit .sub{display:block;font-weight:400;font-size:12.5px;color:var(--txt-3);margin-top:3px}
+
+.lista{display:flex;flex-direction:column;gap:10px}
+.item{display:flex;align-items:center;gap:13px;padding:13px 14px;border-radius:var(--r-m);
+  background:var(--sup-2);border:1px solid transparent;transition:border-color .14s}
+.item:hover{border-color:var(--linha-2)}
+.item .tt{font-weight:600;font-size:14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.item .sb{font-size:12.5px;color:var(--txt-3);margin-top:3px}
+.item .dir{margin-left:auto;text-align:right;flex:0 0 auto}
+.marca-item{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;
+  background:var(--sup-3);color:var(--txt-2);flex:0 0 auto}
+
+/* ==========================================================================
+   CASCA
+   ========================================================================== */
+.app{display:flex;min-height:100vh}
+.menu{position:sticky;top:0;height:100vh;flex:0 0 var(--nav-larg);overflow:hidden;
+  background:var(--sup-1);border-right:1px solid var(--linha);
+  display:flex;flex-direction:column}
+.logo{padding:20px 18px 16px;display:flex;align-items:center;gap:11px}
+.selo{width:36px;height:36px;border-radius:11px;display:grid;place-items:center;flex:0 0 auto;
+  background:linear-gradient(145deg,var(--marca),var(--marca-escuro));color:#fff;
+  box-shadow:var(--elev-1)}
+.logo .nm{font-weight:700;font-size:15.5px;letter-spacing:-.02em;line-height:1.2}
+.logo .nm small{display:block;color:var(--txt-3);font-weight:500;font-size:11px;
+  margin-top:1px;letter-spacing:.02em}
+
+.nav{flex:1;min-height:0;overflow-y:auto;padding:2px 12px 8px;
+  scrollbar-width:none;display:flex;flex-direction:column}
+.nav::-webkit-scrollbar{width:0;display:none}
+.nav-grupo{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--txt-3);font-weight:600;padding:16px 10px 6px}
+.nav-grupo:first-child{padding-top:2px}
+.nav-item{display:flex;align-items:center;gap:12px;width:100%;padding:10px 13px;
+  border-radius:var(--r-m);color:var(--txt-2);font-size:14px;font-weight:500;
+  text-align:left;transition:background .14s,color .14s}
+.nav-item + .nav-item{margin-top:1px}
+.nav-item:hover{background:var(--sup-2);color:var(--txt-1)}
+.nav-item.on{background:var(--marca);color:var(--marca-tinta);font-weight:600;
+  box-shadow:0 5px 16px color-mix(in srgb,var(--marca) 28%,transparent)}
+.nav-item .rot{flex:1;min-width:0}
+.nav-item .qt{font-family:var(--mono);font-size:11px;opacity:.8}
+.nav-pe{padding:12px 18px;border-top:1px solid var(--linha);
+  font-size:11.5px;color:var(--txt-3);line-height:1.6}
+
+.principal{flex:1;min-width:0;display:flex;flex-direction:column}
+.topo{display:flex;align-items:flex-start;gap:14px;padding:26px 34px 18px}
+.topo h1{font-size:27px;font-weight:700;margin:0;letter-spacing:-.035em;line-height:1.2}
+.topo h1 .leve{font-weight:400;color:var(--txt-3)}
+.topo .sub{color:var(--txt-3);font-size:12.5px;margin-top:3px}
+.topo-acoes{display:flex;gap:10px;align-items:center;margin-left:auto;flex:0 0 auto}
+.ico-btn{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;
+  background:var(--sup-1);border:1px solid var(--linha);position:relative;
+  color:var(--txt-2);box-shadow:var(--elev-1);transition:color .14s,background .14s}
+.ico-btn:hover{color:var(--txt-1);background:var(--sup-2)}
+.ico-btn .ponto{position:absolute;top:8px;right:8px;width:8px;height:8px;border-radius:99px;
+  background:var(--erro);border:2px solid var(--sup-1)}
+.perfil{width:40px;height:40px;border-radius:50%;flex:0 0 auto;
+  background:linear-gradient(140deg,var(--marca),var(--marca-escuro));color:#fff;
+  display:grid;place-items:center;font-weight:700;font-size:13.5px;box-shadow:var(--elev-1)}
+
+.conteudo{padding:6px 34px 44px;max-width:1560px;width:100%;margin:0 auto}
+.tela{display:none}
+.tela.ativa{display:block;animation:aparece .22s ease}
+@keyframes aparece{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+/* ==========================================================================
+   MEMÓRIA DE CÁLCULO — a peça própria desta plataforma
+   ========================================================================== */
+.memoria{display:flex;flex-direction:column;gap:2px;font-size:13px}
+.mem-l{display:flex;align-items:baseline;gap:10px;padding:7px 0}
+.mem-l .nome{color:var(--txt-2);min-width:0}
+.mem-l .pt{flex:1;border-bottom:1px dotted var(--linha-2);min-width:12px;transform:translateY(-3px)}
+.mem-l .v{font-family:var(--mono);font-variant-numeric:tabular-nums;font-weight:500;white-space:nowrap}
+.mem-l.somatorio{border-top:1px solid var(--linha);margin-top:6px;padding-top:11px;font-weight:600}
+.mem-l.somatorio .nome{color:var(--txt-1)}
+.mem-l.forte{background:var(--marca-fraca);margin:8px -10px 0;padding:11px 10px;
+  border-radius:var(--r-p);font-weight:600}
+.mem-l.forte .nome{color:var(--txt-1)}
+.mem-l.forte .v{color:var(--marca);font-size:15px}
+.mem-l.negativo .v{color:var(--erro)}
+.mem-grupo{font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--txt-3);
+  font-weight:600;padding:14px 0 4px}
+.mem-grupo:first-child{padding-top:0}
+
+.formula{font-family:var(--mono);font-size:11.5px;color:var(--txt-3);line-height:1.7;
+  background:var(--sup-2);border:1px solid var(--linha);border-radius:var(--r-p);
+  padding:11px 13px;margin-top:12px;overflow-x:auto;white-space:pre}
+
+/* barra de margem contra a política */
+.barra{height:7px;border-radius:99px;background:var(--sup-3);overflow:hidden;margin-top:10px;position:relative}
+.barra > span{display:block;height:100%;border-radius:99px;background:var(--marca)}
+.barra .piso{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--atencao);border-radius:2px}
+
+/* gráfico de barras */
+.gr{display:flex;flex-direction:column;gap:13px}
+.gr-l{display:grid;grid-template-columns:minmax(96px,auto) 1fr minmax(58px,auto);
+  gap:12px;align-items:center;font-size:12.5px}
+.gr-l .nm{color:var(--txt-2)}
+.gr-l .tr{height:10px;border-radius:99px;background:var(--sup-2);overflow:hidden}
+.gr-l .tr > span{display:block;height:100%;border-radius:99px}
+.gr-l .vl{font-family:var(--mono);font-variant-numeric:tabular-nums;text-align:right;font-weight:500}
+
+.nota-rodape{color:var(--txt-3);font-size:12px;margin-top:14px;line-height:1.6}
+
+
+/* ==========================================================================
+   CAMPOS EDITÁVEIS, ABAS, MATRIZ, DOCUMENTO E LOGIN
+   ========================================================================== */
+.inp{width:100%;padding:10px 13px;border-radius:var(--r-p);font-size:13.5px;font-family:inherit;
+  background:var(--sup-2);border:1px solid var(--linha);color:var(--txt-1);transition:border-color .14s}
+.inp::placeholder{color:var(--txt-3)}
+.inp:focus{outline:none;border-color:var(--marca);box-shadow:0 0 0 3px var(--marca-fraca)}
+select.inp{appearance:none;cursor:pointer;
+  background-image:linear-gradient(45deg,transparent 50%,currentColor 50%),
+    linear-gradient(135deg,currentColor 50%,transparent 50%);
+  background-position:calc(100% - 16px) 50%,calc(100% - 11px) 50%;
+  background-size:5px 5px,5px 5px;background-repeat:no-repeat;padding-right:34px}
+textarea.inp{resize:vertical;min-height:78px;line-height:1.6}
+
+.chave{width:44px;height:25px;border-radius:99px;background:var(--sup-3);flex:0 0 auto;
+  border:1px solid var(--linha);position:relative;cursor:pointer;transition:background .16s,border-color .16s}
+.chave::after{content:"";position:absolute;top:2px;left:2px;width:19px;height:19px;border-radius:99px;
+  background:var(--txt-3);transition:left .16s,background .16s}
+.chave.on{background:var(--marca-fraca);border-color:var(--marca)}
+.chave.on::after{left:21px;background:var(--marca)}
+.linha-chave{display:flex;align-items:flex-start;gap:13px;padding:13px 0}
+.linha-chave + .linha-chave{border-top:1px solid var(--linha)}
+.linha-chave .tx{flex:1;min-width:0}
+.linha-chave .tx b{font-size:13.5px;font-weight:600;display:block}
+.linha-chave .tx span{font-size:12.5px;color:var(--txt-3);display:block;margin-top:2px;line-height:1.5}
+
+.abas{display:flex;gap:2px;border-bottom:1px solid var(--linha);margin-bottom:var(--gap);overflow-x:auto;
+  scrollbar-width:none}
+.abas::-webkit-scrollbar{display:none}
+.aba{padding:10px 15px;font-size:13.5px;font-weight:600;color:var(--txt-3);white-space:nowrap;
+  border-bottom:2px solid transparent;margin-bottom:-1px;transition:color .14s,border-color .14s}
+.aba:hover{color:var(--txt-1)}
+.aba.on{color:var(--marca);border-bottom-color:var(--marca)}
+
+/* matriz de sensibilidade: cor encoda a margem, não enfeita */
+.matriz{border-collapse:separate;border-spacing:3px;font-size:12.5px;width:100%;min-width:560px}
+.matriz th{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--txt-3);
+  font-weight:600;padding:6px 4px;white-space:nowrap}
+.matriz td{padding:11px 8px;text-align:center;border-radius:9px;font-family:var(--mono);
+  font-variant-numeric:tabular-nums;font-weight:500}
+.matriz td.eixo{background:var(--sup-2);color:var(--txt-2);font-weight:600}
+.m-alto{background:var(--ok-fraco);color:var(--ok)}
+.m-medio{background:var(--sup-2);color:var(--txt-1)}
+.m-baixo{background:var(--atencao-fraco);color:var(--atencao)}
+.m-critico{background:var(--erro-fraco);color:var(--erro)}
+.m-atual{outline:2px solid var(--marca);outline-offset:-2px}
+
+/* prévia da proposta: folha clara em qualquer tema, porque é um PDF */
+.folha{background:#FFFFFF;color:#12151F;border-radius:var(--r-m);padding:30px;
+  box-shadow:var(--elev-2);font-size:12.5px;line-height:1.6;overflow-x:auto}
+.folha h3{margin:0;font-size:19px;letter-spacing:-.02em;color:#12151F}
+.folha .cab{display:flex;justify-content:space-between;gap:18px;align-items:flex-start;
+  border-bottom:2px solid #12151F;padding-bottom:14px;margin-bottom:18px;flex-wrap:wrap}
+.folha .rot{font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:#6C7488;font-weight:600}
+.folha table{width:100%;border-collapse:collapse;margin:14px 0;font-size:12px;min-width:420px}
+.folha th{text-align:left;font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;
+  color:#6C7488;border-bottom:1px solid #D5DAE5;padding:0 8px 7px}
+.folha td{padding:9px 8px;border-bottom:1px solid #EDF0F5}
+.folha .dir{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
+.folha .total{font-weight:700;font-size:14px;background:#F3F5FA}
+
+.delta{font-family:var(--mono);font-variant-numeric:tabular-nums;font-weight:600;font-size:12.5px}
+.d-sobe{color:var(--ok)}
+.d-desce{color:var(--erro)}
+
+.login{min-height:100vh;display:grid;place-items:center;padding:24px;background:var(--fundo)}
+.login-cx{width:100%;max-width:392px}
+.login .card{padding:30px}
+.login-marca{display:flex;align-items:center;gap:12px;margin-bottom:26px}
+.login h2{font-size:21px;margin:0 0 6px;letter-spacing:-.03em}
+.login .ajuda{color:var(--txt-3);font-size:13px;margin:0 0 22px;line-height:1.55}
+.login .campo + .campo{margin-top:14px}
+
+
+/* O hambúrguer só existe quando o menu vira gaveta. A regra base precisa vir
+   ANTES da media query: mesma especificidade, quem vem depois vence. */
+#btn-gaveta{display:none}
+
+/* ==========================================================================
+   TELAS ESTREITAS
+   Encolhe o respiro antes de encolher a fonte: texto menor é mais caro de
+   ler do que espaço menor.
+   ========================================================================== */
+@media (max-width:1180px){
+  .split{grid-template-columns:minmax(0,1fr)}
+  .split > div[style*="sticky"]{position:static !important}
+}
+@media (max-width:1000px){
+  .g4{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .g3{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .conteudo,.topo{padding-left:22px;padding-right:22px}
+}
+
+/* A partir daqui o menu vira gaveta. */
+@media (max-width:860px){
+  /* fora do fluxo, flex-basis nao vale mais: a largura precisa ser explicita */
+  .menu{position:fixed;left:0;top:0;z-index:60;width:var(--nav-larg);max-width:84vw;
+    transform:translateX(-100%);box-shadow:var(--elev-3);transition:transform .22s ease}
+  body.gaveta .menu{transform:none}
+  #btn-gaveta{display:grid}
+  .topo{padding:18px 18px 14px;gap:11px}
+  .topo h1{font-size:21px}
+  .topo .sub{font-size:12px}
+  .conteudo{padding:4px 18px 36px}
+  .g4,.g3,.g2{grid-template-columns:minmax(0,1fr)}
+}
+
+/* Celular de verdade. */
+@media (max-width:560px){
+  .topo{padding:14px 16px 12px;flex-wrap:wrap}
+  .topo h1{font-size:19px;letter-spacing:-.03em}
+  .topo-acoes{gap:8px}
+  .ico-btn,.perfil{width:36px;height:36px}
+  .conteudo{padding:4px 16px 32px}
+
+  .card,.kpi{padding:15px;border-radius:var(--r-m)}
+  .card-h{margin-bottom:13px;flex-wrap:wrap;gap:8px}
+  .kpi .val{font-size:23px}
+
+  .btn{padding:10px 15px;font-size:13px}
+  .btn.p{padding:7px 12px;font-size:12px}
+
+  /* As etiquetas quebram em linha e o seletor de cliente fica com a linha
+     inteira. Rolagem horizontal aqui esconderia filtro atrás da borda. */
+  .filtros{flex-wrap:wrap;gap:5px}
+  .filtros .inp{margin-left:0 !important;width:100% !important;order:-1}
+  .f{padding:6px 12px;font-size:12px}
+
+  .aba{padding:9px 12px;font-size:12.5px}
+
+  /* item de lista empilha o lado direito em vez de espremer */
+  .item{flex-wrap:wrap;padding:12px}
+  .item .dir{margin-left:47px;width:calc(100% - 47px);text-align:left;margin-top:8px}
+
+  .mem-l{font-size:12.5px;gap:8px}
+  .mem-l.forte{margin-left:-8px;margin-right:-8px;padding-left:8px;padding-right:8px}
+  .formula{font-size:10.5px}
+
+  .gr-l{grid-template-columns:minmax(72px,auto) 1fr minmax(46px,auto);gap:9px;font-size:12px}
+
+  .folha{padding:18px;border-radius:var(--r-p)}
+  .folha h3{font-size:17px}
+  .folha .cab{gap:12px}
+
+  .linha-chave{gap:11px}
+  .login{padding:18px}
+  .login .card{padding:22px}
+
+  .nav-item{padding:11px 13px}
+}
+
+/* Véu atrás da gaveta: fora dela, tocar em qualquer lugar fecha. */
+.veu{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:55;
+  opacity:0;pointer-events:none;transition:opacity .2s}
+body.gaveta .veu{opacity:1;pointer-events:auto}
+@media (min-width:861px){.veu{display:none}}
+
+[hidden]{display:none !important}
+</style>
+
+<div class="login" id="tela-login" hidden>
+  <div class="login-cx">
+    <div class="login-marca">
+      <div class="selo" id="selo-login"></div>
+      <div>
+        <div style="font-weight:700;font-size:17px;letter-spacing:-.025em;line-height:1.2">NeoPrice</div>
+        <div style="color:var(--txt-3);font-size:11.5px;margin-top:1px">Formação de preço industrial</div>
+      </div>
+    </div>
+    <section class="card">
+      <h2>Entrar</h2>
+      <p class="ajuda">Use o e-mail corporativo. O acesso é concedido pelo administrador
+      e a sessão expira depois de 8 horas sem uso.</p>
+      <div class="campo">
+        <label for="lg-email">E-mail corporativo</label>
+        <input class="inp" id="lg-email" type="email" value="rafael.costa@neoprice.ind.br">
+      </div>
+      <div class="campo">
+        <label for="lg-senha">Senha</label>
+        <input class="inp" id="lg-senha" type="password" value="senha-de-exemplo">
+      </div>
+      <button class="btn primario" id="btn-entrar" style="width:100%;margin-top:20px">Entrar</button>
+      <button class="btn" id="btn-esqueci"
+        style="width:100%;margin-top:10px;background:transparent;border-color:transparent;color:var(--txt-3)">
+        Esqueci minha senha</button>
+    </section>
+    <p style="text-align:center;color:var(--txt-3);font-size:11.5px;margin-top:18px">
+      Grupo 22 · Projeto Integrador VI</p>
+  </div>
+</div>
+
+<div class="veu" id="veu" aria-hidden="true"></div>
+
+<div class="app" id="app">
+  <aside class="menu" id="menu">
+    <div class="logo">
+      <div class="selo" id="selo"></div>
+      <div class="nm">NeoPrice<small>Grupo 22 · PI VI</small></div>
+    </div>
+    <nav class="nav" id="nav"></nav>
+    <div class="nav-pe">
+      <div>Rafael Costa · Analista de Pricing</div>
+      <div>Carteira Sudeste · 42 clientes</div>
+      <button class="btn p" id="btn-sair"
+        style="width:100%;margin-top:11px;background:transparent;justify-content:flex-start">
+        Sair</button>
+    </div>
+  </aside>
+
+  <main class="principal">
+    <header class="topo">
+      <button class="ico-btn" id="btn-gaveta" aria-label="Abrir menu"></button>
+      <div style="min-width:0">
+        <h1 id="titulo">Painel</h1>
+        <div class="sub" id="subtitulo">Terça, 15 de setembro de 2026</div>
+      </div>
+      <div class="topo-acoes">
+        <button class="ico-btn" id="btn-tema" aria-label="Alternar tema"></button>
+        <button class="ico-btn" aria-label="Notificações">
+          <span class="ponto"></span>
+        </button>
+        <div class="perfil">RC</div>
+      </div>
+    </header>
+    <div class="conteudo" id="conteudo"></div>
+  </main>
+</div>
+
+<script>
+/* ==========================================================================
+   ÍCONES — set próprio, stroke, currentColor. Sem emoji em lugar nenhum.
+   ========================================================================== */
+const ICONES = {
+  painel:      '<path d="M4 4h6v7H4zM14 4h6v4h-6zM14 12h6v8h-6zM4 15h6v5H4z"/>',
+  precificacao:'<path d="M4 5.5h16v13l-2.7-1.6-2.6 1.6-2.7-1.6-2.7 1.6L6.7 17 4 18.5z"/><path d="M8 9.5h8M8 13h5"/>',
+  cenario:     '<path d="M3.5 6.5A2 2 0 0 1 5.5 4.5h6l2 2.5h5a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z"/><path d="M8 14.5h8M8 11h4"/>',
+  aprovacao:   '<path d="M5 4.5h11l3.5 3.5v11.5a1.5 1.5 0 0 1-1.5 1.5H5a1.5 1.5 0 0 1-1.5-1.5v-13A1.5 1.5 0 0 1 5 4.5z"/><path d="m8.5 13 2.5 2.5 4.5-5"/>',
+  cotacao:     '<path d="M3.5 7.5 12 3l8.5 4.5v9L12 21l-8.5-4.5z"/><path d="M3.5 7.5 12 12l8.5-4.5M12 12v9"/>',
+  tributo:     '<path d="M4.5 20.5h15"/><path d="M6.5 20.5V9.5M11 20.5V9.5M17.5 20.5V9.5"/><path d="M3.5 9.5 12 3.5l8.5 6z"/>',
+  auditoria:   '<path d="M12 3.5a8.5 8.5 0 1 0 8.5 8.5"/><path d="M12 7.5V12l3.5 2"/><path d="M16.5 3.5h4.5V8"/>',
+  ajustes:     '<circle cx="12" cy="12" r="3"/><path d="M12 2.6v2.6M12 18.8v2.6M21.4 12h-2.6M5.2 12H2.6M18.6 5.4l-1.8 1.8M7.2 16.8l-1.8 1.8M18.6 18.6l-1.8-1.8M7.2 7.2 5.4 5.4"/>',
+  formula:     '<path d="M5 20.5c2.5 0 2.5-17 5-17"/><path d="M4.5 10.5h7"/><path d="m14 10.5 6 9M20 10.5l-6 9"/>',
+  balanca:     '<path d="M12 4.5v15M7 19.5h10"/><path d="M4 8.5h16"/><path d="M6.5 8.5 4 14h5zM17.5 8.5 15 14h5z"/>',
+  fabrica:     '<path d="M3.5 20.5v-9l5 3v-3l5 3v-3l5 3v6z"/><path d="M18.5 11.5v-8h-3v8"/>',
+  busca:       '<circle cx="10.8" cy="10.8" r="6.3"/><path d="m15.4 15.4 5.1 5.1"/>',
+  sino:        '<path d="M6.5 10a5.5 5.5 0 0 1 11 0c0 4 1.5 5.5 1.5 5.5H5s1.5-1.5 1.5-5.5z"/><path d="M10.2 19a2 2 0 0 0 3.6 0"/>',
+  menu:        '<path d="M4 7h16M4 12h16M4 17h16"/>',
+  mais:        '<path d="M12 5.5v13M5.5 12h13"/>',
+  confere:     '<path d="m4.5 12.5 5 5 10-10.5"/>',
+  fecha:       '<path d="m6 6 12 12M18 6 6 18"/>',
+  alerta:      '<path d="M12 4.2 21 19.5H3z"/><path d="M12 10v4M12 17h.01"/>',
+  relogio:     '<circle cx="12" cy="12" r="8.2"/><path d="M12 7.2V12l3.2 2.2"/>',
+  seta:        '<path d="m9 5.5 6.5 6.5L9 18.5"/>',
+  sobe:        '<path d="M12 19V5M6 11l6-6 6 6"/>',
+  desce:       '<path d="M12 5v14M6 13l6 6 6-6"/>',
+  sol:         '<circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.2 5.2l1.6 1.6M17.2 17.2l1.6 1.6M18.8 5.2l-1.6 1.6M6.8 17.2l-1.6 1.6"/>',
+  lua:         '<path d="M20 14.2A8.2 8.2 0 0 1 9.8 4a8.4 8.4 0 1 0 10.2 10.2z"/>',
+  cliente:     '<circle cx="12" cy="8" r="3.4"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/>',
+  caixa:       '<rect x="3.5" y="7" width="17" height="12.5" rx="2"/><path d="M3.5 11h17M8 7V4.5h8V7"/>',
+  documento:   '<path d="M6 3.5h7l5 5v12a1.5 1.5 0 0 1-1.5 1.5h-10A1.5 1.5 0 0 1 5 20.5v-15A1.5 1.5 0 0 1 6.5 4z"/><path d="M13 3.5V9h5"/><path d="M8.5 13.5h7M8.5 17h5"/>',
+  importar:    '<path d="M12 15V4m0 11-3.5-3.5M12 15l3.5-3.5"/><path d="M4 16v3a1.5 1.5 0 0 0 1.5 1.5h13A1.5 1.5 0 0 0 20 19v-3"/>',
+  inverso:     '<path d="M7 4.5 3.5 8 7 11.5"/><path d="M3.5 8h13a4 4 0 0 1 0 8H14"/><path d="m17 12.5 3.5 3.5L17 19.5"/>',
+  comparar:    '<rect x="3.5" y="5" width="7" height="14" rx="1.5"/><rect x="13.5" y="5" width="7" height="14" rx="1.5"/><path d="M7 9.5v5M17 9.5v2"/>',
+  exportar:    '<path d="M12 4v11m0-11 3.5 3.5M12 4 8.5 7.5"/><path d="M4 16v3a1.5 1.5 0 0 0 1.5 1.5h13A1.5 1.5 0 0 0 20 19v-3"/>',
+  usuarios:    '<circle cx="9" cy="8.5" r="3"/><path d="M3.5 19.5a5.5 5.5 0 0 1 11 0"/><circle cx="17" cy="9.5" r="2.2"/><path d="M15.5 14.5a4.4 4.4 0 0 1 5 4.3"/>',
+  metadados:   '<rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M3.5 9.5h17M9 9.5v10"/><path d="M12.5 13h5M12.5 16h3"/>',
+  breakeven:   '<path d="M3.5 20.5h17"/><path d="m4.5 17 6-7 4 3.5 5-7.5"/><path d="M4.5 7.5 20 17"/>',
+  sensibilidade:'<path d="M3.5 20.5h17"/><path d="M12 20.5V4"/><path d="M7 20.5v-6M17 20.5v-9"/>',
+  sair:        '<path d="M9.5 4.5h-4A1.5 1.5 0 0 0 4 6v12a1.5 1.5 0 0 0 1.5 1.5h4"/><path d="M14 8.5 17.5 12 14 15.5"/><path d="M17.5 12H8"/>',
+  versao:      '<circle cx="7" cy="6.5" r="2.5"/><circle cx="7" cy="17.5" r="2.5"/><circle cx="17" cy="12" r="2.5"/><path d="M7 9v6M9.5 6.5h3a2 2 0 0 1 2 2v1.5M9.5 17.5h3a2 2 0 0 0 2-2V14"/>'
+};
+/* Marca do NeoPrice: etiqueta de preço. A balança dizia "equilíbrio", que é
+   vago; a etiqueta diz "preço", que é exatamente o que o produto forma. */
+function Marca(tam = 20){
+  return `<svg width="${tam}" height="${tam}" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M11.3 3.2H4.8a1.6 1.6 0 0 0-1.6 1.6v6.5a1.6 1.6 0 0 0 .47 1.13l7.9 7.9a1.6 1.6 0 0 0 2.26 0l6.5-6.5a1.6 1.6 0 0 0 0-2.26l-7.9-7.9a1.6 1.6 0 0 0-1.13-.47z"/>
+    <circle cx="7.9" cy="7.9" r="1.45"/>
+  </svg>`;
+}
+
+function Ico(nome, tam = 18){
+  const d = ICONES[nome] || ICONES.painel;
+  return `<svg width="${tam}" height="${tam}" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+}
+
+/* ==========================================================================
+   FORMATO
+   ========================================================================== */
+const brl = v => v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+const pct = v => v.toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1}) + '%';
+const n2  = v => v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+const n1  = v => v.toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1});
+/* Insumo de alta potência entra em grama: com 2 casas, 0,004 kg vira "0,00 kg"
+   e a formulação passa a mentir. */
+const n3  = v => v.toLocaleString('pt-BR',{minimumFractionDigits:3,maximumFractionDigits:3});
+
+/* ==========================================================================
+   DADOS — nutrição esportiva, o beachhead de validação do planejamento
+   ========================================================================== */
+/* Cada linha guarda preço bruto, ROL e MaCo unitários. ROB, receita líquida e
+   MaCo absoluta são DERIVADAS do volume, nunca digitadas — era daí que vinha a
+   divergência entre a listagem e o cenário aberto. */
+const BASE = [
+  {cod:'PRC-2026-0148', cliente:'Nutrafit Distribuidora', uf:'SP', produto:'WPC 80 — pote 600 g',
+   ncm:'2106.90.30', modalidade:'Full Service Nacional', versao:3,
+   volume:42000, preco:57.94, rol:41.02, macoUn:11.67, status:'aprovacao', quando:'há 2 h'},
+  {cod:'PRC-2026-0147', cliente:'Corpore Suplementos', uf:'MG', produto:'Creatina mono 300 g',
+   ncm:'2106.90.30', modalidade:'Full Service Nacional', versao:2,
+   volume:18000, preco:39.80, rol:28.18, macoUn:5.41, status:'aprovacao', quando:'há 5 h'},
+  {cod:'PRC-2026-0146', cliente:'Atlas Nutrition LLC', uf:'EX', produto:'Whey isolado 900 g',
+   ncm:'2106.90.30', modalidade:'Full Service Exportação', versao:1,
+   volume:26000, preco:112.50, rol:112.50, macoUn:38.36, status:'aprovado', quando:'ontem'},
+  {cod:'PRC-2026-0145', cliente:'Vita Prime Indústria', uf:'PR', produto:'Pré-treino 300 g — marca própria',
+   ncm:'2106.90.30', modalidade:'Industrialização por Encomenda', versao:4,
+   volume:12000, preco:41.20, rol:29.17, macoUn:4.32, status:'reprovado', quando:'ontem'},
+  {cod:'PRC-2026-0144', cliente:'Nutrafit Distribuidora', uf:'SP', produto:'BCAA 2:1:1 — 250 g',
+   ncm:'2106.90.30', modalidade:'Full Service Nacional', versao:1,
+   volume:9000, preco:48.30, rol:34.20, macoUn:9.13, status:'rascunho', quando:'há 3 dias'},
+  {cod:'PRC-2026-0143', cliente:'Corpore Suplementos', uf:'MG', produto:'Hipercalórico 3 kg',
+   ncm:'2106.90.30', modalidade:'Full Service Nacional', versao:2,
+   volume:15000, preco:98.40, rol:69.67, macoUn:15.95, status:'aprovado', quando:'há 4 dias'},
+  {cod:'PRC-2026-0142', cliente:'Forma Natural', uf:'RJ', produto:'Colágeno verisol 300 g',
+   ncm:'2106.90.30', modalidade:'Full Service Nacional', versao:1,
+   volume:8500, preco:63.70, rol:45.10, macoUn:14.21, status:'aprovado', quando:'há 6 dias'}
+];
+
+const PRECIFICACOES = BASE.map(p => ({
+  ...p,
+  rob:     p.volume * p.preco,
+  robLiq:  p.volume * p.rol,
+  macoAbs: p.volume * p.macoUn,
+  maco:    p.macoUn / p.rol * 100,
+}));
+
+const APROVADAS = PRECIFICACOES.filter(p => p.status === 'aprovado')
+  .reduce((a, p) => ({rob: a.rob + p.rob, maco: a.maco + p.macoAbs}), {rob: 0, maco: 0});
+
+const ESTADO_TAG = {
+  rascunho:  ['t-neutro','Em preenchimento'],
+  aprovacao: ['t-revisao','Em aprovação'],
+  aprovado:  ['t-ok','Aprovado'],
+  reprovado: ['t-erro','Reprovado']
+};
+const tagDe = s => `<span class="tag ${ESTADO_TAG[s][0]}"><i></i>${ESTADO_TAG[s][1]}</span>`;
+
+/* Formulação do cenário aberto: WPC 80 pote 600 g, lote de 42 mil unidades */
+const FORMULACAO = [
+  {mp:'Whey protein concentrado 80%', forn:'Glanbia Nutritionals', qtd:0.462, un:'kg',
+   preco:52.40, moeda:'USD 9,35', descarte:1.5, origem:'fabricante', custo:24.57},
+  {mp:'Cacau alcalino 10/12',          forn:'Barry Callebaut',      qtd:0.048, un:'kg',
+   preco:38.90, moeda:'BRL',      descarte:2.0, origem:'fabricante', custo:1.90},
+  {mp:'Sucralose 25%',                 forn:'Tate & Lyle',          qtd:0.004, un:'kg',
+   preco:214.00,moeda:'USD 38,20',descarte:0.5, origem:'fabricante', custo:0.86},
+  {mp:'Blend de enzimas digestivas',   forn:'Amano Enzyme',         qtd:0.002, un:'kg',
+   preco:486.00,moeda:'USD 86,80',descarte:0.5, origem:'fabricante', custo:0.97},
+  {mp:'Pote PET 1200 ml + tampa',      forn:'Embalplast',           qtd:1,     un:'un',
+   preco:3.18, moeda:'BRL',       descarte:3.0, origem:'cliente',    custo:0.00},
+  {mp:'Rótulo BOPP adesivo',           forn:'Etiqprint',            qtd:1,     un:'un',
+   preco:0.42, moeda:'BRL',       descarte:4.0, origem:'fabricante', custo:0.44}
+];
+
+/* Memória de cálculo do cenário v3 — cadeia da seção 2.3 do planejamento */
+const CALC = {
+  custoMP:28.30, custoEmb:0.44, custoPerda:0.66, custoMOD:1.94, custoGGF:1.12,
+  custoTotal:32.46, encargo:0.71, prazo:45, taxa:1.2,
+  comissao:3.0, frete:2.4, margem:30.0,
+  pis:1.65, cofins:7.60, icms:12.00, ipi:0.00, icmsInt:18.00, fcp:2.00, mva:41.34,
+  d:0.5081, pbSemIpi:52.18, pbComIpi:52.18, pb:57.94,
+  rol:41.02, maco:11.67, macoPct:28.4, politica:24.0,
+  rob:2433480, robLiq:1722840, macoAbs:490140
+};
+</script>
+
+<script>
+/* ==========================================================================
+   TELAS
+   ========================================================================== */
+const TELAS = {};
+
+/* ---------------------------------------------------------------- PAINEL */
+TELAS.painel = () => `
+  <div class="grid g4" style="margin-bottom:var(--gap)">
+    <div class="kpi destaque">
+      <div class="rot">MaCo média — setembro</div>
+      <div class="val">${pct(26.8)}</div>
+      <div class="nota">Política mínima: ${pct(24)} · 3 cenários abaixo</div>
+    </div>
+    <div class="kpi">
+      <div class="rot">Cenários no mês</div>
+      <div class="val">34</div>
+      <div class="nota">6 a mais que agosto</div>
+    </div>
+    <div class="kpi">
+      <div class="rot">Aguardando aprovação</div>
+      <div class="val">7</div>
+      <div class="nota">Mais antigo parado há 3 dias</div>
+    </div>
+    <div class="kpi">
+      <div class="rot">ROB aprovada — trimestre</div>
+      <div class="val">${brl(APROVADAS.rob)}</div>
+      <div class="nota">MaCo absoluta de ${brl(APROVADAS.maco)}</div>
+    </div>
+  </div>
+
+  <div class="split">
+    <div style="display:flex;flex-direction:column;gap:var(--gap)">
+      <section class="card">
+        <div class="card-h">${Ico('relogio')}<h2>Aguardando você</h2>
+          <span class="aux">4 itens</span></div>
+        <div class="lista">
+          ${[
+            ['alerta','erro','Cotação de WPC 80 vence em 2 dias','Glanbia · faixa 15–50 t · R$ 52,40/kg','Renovar'],
+            ['alerta','atencao','PRC-2026-0147 está 4,8 p.p. abaixo da política','Corpore Suplementos · MaCo 19,2% · piso 24,0%','Revisar'],
+            ['aprovacao','revisao','PRC-2026-0148 submetida para aprovação','Nutrafit · aguarda Marcos Tavares desde hoje','Acompanhar'],
+            ['cotacao','neutro','Câmbio USD desatualizado há 6 dias','Última carga em 09/09 · R$ 5,6040','Atualizar']
+          ].map(([ic,cor,tt,sb,ac]) => `
+            <div class="item">
+              <div class="marca-item" style="color:var(--${cor==='neutro'?'txt-2':cor});background:var(--${cor==='neutro'?'sup-3':cor+'-fraco'})">${Ico(ic,17)}</div>
+              <div style="min-width:0">
+                <div class="tt">${tt}</div>
+                <div class="sb">${sb}</div>
+              </div>
+              <div class="dir"><button class="btn p">${ac}</button></div>
+            </div>`).join('')}
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-h">${Ico('precificacao')}<h2>Cenários recentes</h2>
+          <button class="btn p" data-ir="precificacoes">Ver todas ${Ico('seta',14)}</button></div>
+        <div class="rolagem">
+          <table class="tb">
+            <thead><tr>
+              <th>Código</th><th>Cliente</th><th>Produto</th>
+              <th class="dir">MaCo</th><th class="dir">ROB</th><th>Status</th>
+            </tr></thead>
+            <tbody>
+              ${PRECIFICACOES.slice(0,5).map(p => `
+                <tr>
+                  <td class="num" style="font-size:12.5px;color:var(--txt-2)">${p.cod}</td>
+                  <td class="tit">${p.cliente}<span class="sub">${p.uf} · ${p.modalidade}</span></td>
+                  <td style="color:var(--txt-2)">${p.produto}</td>
+                  <td class="dir num" style="color:${p.maco < 24 ? 'var(--atencao)' : 'inherit'}">${pct(p.maco)}</td>
+                  <td class="dir num">${brl(p.rob)}</td>
+                  <td>${tagDe(p.status)}</td>
+                </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:var(--gap)">
+      <section class="card">
+        <div class="card-h">${Ico('balanca')}<h2>MaCo por modalidade</h2></div>
+        <div class="gr">
+          ${[['Exportação',34.1,'var(--ok)'],['Full Service',26.8,'var(--marca)'],
+             ['Industrialização',16.4,'var(--atencao)']].map(([nm,v,cor]) => `
+            <div class="gr-l">
+              <span class="nm">${nm}</span>
+              <span class="tr"><span style="width:${v/40*100}%;background:${cor}"></span></span>
+              <span class="vl">${pct(v)}</span>
+            </div>`).join('')}
+        </div>
+        <p class="nota-rodape">Escala de 0 a 40%. A industrialização por encomenda opera
+        abaixo do piso porque o material vem do cliente e o preço remunera só a conversão.</p>
+      </section>
+
+      <section class="card">
+        <div class="card-h">${Ico('cotacao')}<h2>Insumos em alerta</h2></div>
+        <div class="lista">
+          ${[['WPC 80','+8,4% em 30 dias','erro','sobe'],
+             ['Creatina micronizada','+3,1% em 30 dias','atencao','sobe'],
+             ['Cacau alcalino','−2,2% em 30 dias','ok','desce']].map(([nm,v,cor,ic]) => `
+            <div class="item">
+              <div class="marca-item" style="color:var(--${cor});background:var(--${cor}-fraco)">${Ico(ic,16)}</div>
+              <div style="min-width:0">
+                <div class="tt" style="font-size:13.5px">${nm}</div>
+                <div class="sb">${v}</div>
+              </div>
+            </div>`).join('')}
+        </div>
+        <p class="nota-rodape">Desvio medido contra o preço médio dos últimos 90 dias,
+        com o limite de 5% configurado nos parâmetros globais.</p>
+      </section>
+    </div>
+  </div>`;
+
+/* -------------------------------------------------------- PRECIFICAÇÕES */
+TELAS.precificacoes = () => `
+  <div class="filtros">
+    ${[['Todas',7,true],['Em preenchimento',1],['Em aprovação',2],['Aprovadas',3],['Reprovadas',1]]
+      .map(([r,n,on]) => `<button class="f${on?' on':''}">${r}<span class="n">${n}</span></button>`).join('')}
+    <select class="inp" style="width:auto;margin-left:auto">
+      <option>Todos os clientes</option>
+      <option>Nutrafit Distribuidora</option>
+      <option>Corpore Suplementos</option>
+      <option>Atlas Nutrition LLC</option>
+      <option>Vita Prime Indústria</option>
+      <option>Forma Natural</option>
+    </select>
+  </div>
+  <section class="card">
+    <div class="card-h">${Ico('precificacao')}<h2>Precificações</h2>
+      <span class="aux">Carteira Sudeste</span>
+      <button class="btn primario p">${Ico('mais',15)}Nova</button></div>
+    <div class="rolagem">
+      <table class="tb">
+        <thead><tr>
+          <th>Código</th><th>Cliente e modalidade</th><th>Produto</th>
+          <th class="dir">Volume</th><th class="dir">MaCo</th><th class="dir">ROB</th>
+          <th>Status</th><th class="dir">Atualizada</th>
+        </tr></thead>
+        <tbody>
+          ${PRECIFICACOES.map(p => `
+            <tr${p.cod === 'PRC-2026-0148' ? ' style="cursor:pointer" data-ir="cenario"' : ''}>
+              <td class="num" style="font-size:12.5px;color:var(--txt-2)">${p.cod}
+                <span class="tag t-neutro" style="margin-left:6px;font-size:10px;padding:2px 7px">v${p.versao}</span></td>
+              <td class="tit">${p.cliente}<span class="sub">${p.uf} · ${p.modalidade}</span></td>
+              <td style="color:var(--txt-2)">${p.produto}<span class="sub" style="display:block;font-size:12px;color:var(--txt-3);margin-top:3px">NCM ${p.ncm}</span></td>
+              <td class="dir num">${p.volume.toLocaleString('pt-BR')}</td>
+              <td class="dir num" style="color:${p.maco < 24 ? 'var(--atencao)' : 'inherit'};font-weight:600">${pct(p.maco)}</td>
+              <td class="dir num">${brl(p.rob)}</td>
+              <td>${tagDe(p.status)}</td>
+              <td class="dir" style="color:var(--txt-3);font-size:12.5px">${p.quando}</td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+    <p class="nota-rodape">Clique em PRC-2026-0148 para abrir o cenário.
+    MaCo em âmbar indica margem abaixo da política de 24%.</p>
+  </section>`;
+
+/* ------------------------------------------------------------- CENÁRIO */
+TELAS.cenario = () => `
+  <div class="split">
+    <div style="display:flex;flex-direction:column;gap:var(--gap)">
+
+      <section class="card">
+        <div class="card-h">${Ico('cliente')}<h2>Cabeçalho comercial e fiscal</h2>
+          ${tagDe('aprovacao')}</div>
+        <div class="grid g3" style="gap:13px">
+          ${[['Cliente','Nutrafit Distribuidora'],['Produto','WPC 80 — pote 600 g'],
+             ['Modalidade','Full Service Nacional'],['UF de destino','SP'],
+             ['Regime do cliente','Lucro Real'],['Frete','CIF — 2,4%'],
+             ['Prazo médio','45 dias'],['Volume negociado','42.000 un'],
+             ['NCM','2106.90.30']].map(([r,v]) => `
+            <div class="campo">
+              <label>${r}</label>
+              <div class="valor-campo"><span>${v}</span>${Ico('seta',14)}</div>
+            </div>`).join('')}
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-h">${Ico('formula')}<h2>Formulação</h2>
+          <span class="aux">Nível único · 6 itens</span>
+          <button class="btn p">${Ico('mais',15)}Adicionar insumo</button></div>
+        <div class="rolagem">
+          <table class="tb">
+            <thead><tr>
+              <th>Insumo e fornecedor</th><th class="dir">Qtd</th><th class="dir">Preço</th>
+              <th class="dir">Descarte</th><th>Origem</th><th class="dir">Custo un.</th>
+            </tr></thead>
+            <tbody>
+              ${FORMULACAO.map(f => `
+                <tr>
+                  <td class="tit">${f.mp}<span class="sub">${f.forn}</span></td>
+                  <td class="dir num">${f.un === 'un' ? f.qtd : n3(f.qtd)} ${f.un}</td>
+                  <td class="dir num">${brl(f.preco)}
+                    ${f.moeda !== 'BRL' ? `<span class="sub" style="display:block;font-size:11px;color:var(--txt-3)">${f.moeda}</span>` : ''}</td>
+                  <td class="dir num">${n1(f.descarte)}%</td>
+                  <td>${f.origem === 'cliente'
+                    ? '<span class="tag t-atencao"><i></i>Cliente</span>'
+                    : '<span class="tag t-neutro"><i></i>Fabricante</span>'}</td>
+                  <td class="dir num" style="font-weight:600">${f.origem === 'cliente' ? '—' : brl(f.custo)}</td>
+                </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+        <div class="linha-chave" style="margin-top:6px;border-top:1px solid var(--linha)">
+          <button class="chave" role="switch" aria-checked="false" aria-label="Isenção de mão de obra"></button>
+          <div class="tx">
+            <b>Isenção de mão de obra</b>
+            <span>Aplicável: há material fornecido pelo cliente e a UF de destino é SP.
+            Ligada, deduz ${brl(1.94)} do custo e leva a MaCo para 31,2%.</span>
+          </div>
+        </div>
+        <p class="nota-rodape">O pote é fornecido pelo cliente: sai do custo e da base de perda.
+        A isenção só fica disponível quando as duas condições da regra são verdadeiras — em destino
+        fora de SP a chave aparece travada.</p>
+      </section>
+
+      <section class="card">
+        <div class="card-h">${Ico('versao')}<h2>Versões</h2>
+          <span class="aux">Histórico imutável</span></div>
+        <div class="lista">
+          ${[['v3','Margem ajustada de 32% para 30% após contraproposta','28,4%','hoje, 09:42','Rafael Costa',true],
+             ['v2','Volume revisado de 30 mil para 42 mil unidades','26,1%','ontem, 16:20','Rafael Costa',false],
+             ['v1','Cenário inicial a partir da cotação de agosto','24,8%','11/09, 10:05','Rafael Costa',false]]
+            .map(([v,desc,maco,quando,quem,atual]) => `
+            <div class="item"${atual ? ' style="border-color:var(--marca)"' : ''}>
+              <div class="marca-item" style="${atual?'color:var(--marca-tinta);background:var(--marca)':''}">
+                <span class="num" style="font-size:12px;font-weight:600">${v}</span></div>
+              <div style="min-width:0">
+                <div class="tt" style="font-size:13.5px">${desc}
+                  ${atual ? '<span class="tag t-revisao" style="font-size:10px;padding:2px 8px"><i></i>Vigente</span>' : ''}</div>
+                <div class="sb">${quando} · ${quem}</div>
+              </div>
+              <div class="dir">
+                <div class="num" style="font-weight:600">${maco}</div>
+                <div style="font-size:11.5px;color:var(--txt-3)">MaCo</div>
+              </div>
+            </div>`).join('')}
+        </div>
+      </section>
+    </div>
+
+    <!-- ================= MEMÓRIA DE CÁLCULO ================= -->
+    <div style="display:flex;flex-direction:column;gap:var(--gap);position:sticky;top:18px">
+      <section class="card">
+        <div class="card-h">${Ico('balanca')}<h2>Resultado unitário</h2>
+          <span class="aux">v3</span></div>
+
+        <div class="memoria">
+          <div class="mem-grupo">Composição de custo</div>
+          ${[['Matéria-prima',CALC.custoMP],['Embalagem',CALC.custoEmb],
+             ['Perda de processo',CALC.custoPerda],['Mão de obra direta',CALC.custoMOD],
+             ['Gastos gerais',CALC.custoGGF]].map(([nm,v]) => `
+            <div class="mem-l"><span class="nome">${nm}</span><span class="pt"></span>
+              <span class="v">${brl(v)}</span></div>`).join('')}
+          <div class="mem-l somatorio"><span class="nome">Custo total</span><span class="pt"></span>
+            <span class="v">${brl(CALC.custoTotal)}</span></div>
+
+          <div class="mem-grupo">Encargo financeiro</div>
+          <div class="mem-l"><span class="nome">${CALC.prazo} dias a ${n2(CALC.taxa)}% a.m.</span>
+            <span class="pt"></span><span class="v">${brl(CALC.encargo)}</span></div>
+
+          <div class="mem-grupo">Formação de preço</div>
+          <div class="mem-l"><span class="nome">Denominador D</span><span class="pt"></span>
+            <span class="v">${n2(CALC.d*100)}%</span></div>
+          <div class="mem-l"><span class="nome">Preço bruto sem IPI</span><span class="pt"></span>
+            <span class="v">${brl(CALC.pbSemIpi)}</span></div>
+          <div class="mem-l"><span class="nome">IPI (${n2(CALC.ipi)}%)</span><span class="pt"></span>
+            <span class="v">${brl(0)}</span></div>
+          <div class="mem-l"><span class="nome">ICMS-ST · MVA ${n2(CALC.mva)}% + FCP ${n2(CALC.fcp)}%</span>
+            <span class="pt"></span><span class="v">${brl(CALC.pb - CALC.pbComIpi)}</span></div>
+          <div class="mem-l forte"><span class="nome">Preço bruto</span><span class="pt"></span>
+            <span class="v">${brl(CALC.pb)}</span></div>
+
+          <div class="mem-grupo">Rentabilidade</div>
+          <div class="mem-l"><span class="nome">Receita operacional líquida</span><span class="pt"></span>
+            <span class="v">${brl(CALC.rol)}</span></div>
+          <div class="mem-l negativo"><span class="nome">Comissão (${n2(CALC.comissao)}%) e frete (${n2(CALC.frete)}%)</span>
+            <span class="pt"></span><span class="v">−${brl(2.85)}</span></div>
+          <div class="mem-l somatorio"><span class="nome">Margem de contribuição</span><span class="pt"></span>
+            <span class="v">${brl(CALC.maco)}</span></div>
+        </div>
+
+        <div class="formula">D = 1 − [Com + Frete + m×(1−[PIS′+COFINS′+ICMS])
+       + PIS′ + COFINS′ + ICMS]
+PIS′ = PIS×(1−ICMS)   COFINS′ = COFINS×(1−ICMS)</div>
+      </section>
+
+      <section class="card">
+        <div class="card-h">${Ico('precificacao')}<h2>Margem contra a política</h2></div>
+        <div style="display:flex;align-items:baseline;gap:10px">
+          <span class="num" style="font-size:32px;font-weight:600;letter-spacing:-.03em;color:var(--marca)">${pct(CALC.macoPct)}</span>
+          <span style="color:var(--txt-3);font-size:12.5px">piso de ${pct(CALC.politica)}</span>
+        </div>
+        <div class="barra">
+          <span style="width:${CALC.macoPct/40*100}%"></span>
+          <span class="piso" style="left:${CALC.politica/40*100}%"></span>
+        </div>
+        <p class="nota-rodape">4,4 p.p. acima do piso. A marca âmbar é a política de margem
+        do grupo de clientes.</p>
+      </section>
+
+      <section class="card">
+        <div class="card-h">${Ico('caixa')}<h2>No volume negociado</h2>
+          <span class="aux">42.000 un</span></div>
+        <p style="color:var(--txt-3);font-size:12px;margin:-4px 0 12px;line-height:1.55">
+          A MaCo de 28,4% é sobre a receita líquida; sobre a bruta a margem cai, porque
+          a ROB carrega os tributos.</p>
+        <div class="memoria">
+          <div class="mem-l"><span class="nome">Receita operacional bruta</span><span class="pt"></span>
+            <span class="v">${brl(CALC.rob)}</span></div>
+          <div class="mem-l"><span class="nome">Receita líquida</span><span class="pt"></span>
+            <span class="v">${brl(CALC.robLiq)}</span></div>
+          <div class="mem-l"><span class="nome">Margem bruta sobre a ROB</span><span class="pt"></span>
+            <span class="v">${pct(CALC.macoAbs / CALC.rob * 100)}</span></div>
+          <div class="mem-l forte"><span class="nome">MaCo absoluta</span><span class="pt"></span>
+            <span class="v">${brl(CALC.macoAbs)}</span></div>
+        </div>
+        <div class="item" style="margin-top:16px">
+          <div class="marca-item" style="color:var(--revisao);background:var(--revisao-fraco)">${Ico('relogio',16)}</div>
+          <div style="min-width:0">
+            <div class="tt" style="font-size:13px">Submetida hoje às 09:47</div>
+            <div class="sb">Aguarda decisão de Marcos Tavares</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap">
+          <button class="btn primario" style="flex:1" data-ir="aprovacoes">${Ico('aprovacao',15)}Ver na fila</button>
+          <button class="btn" style="flex:0 0 auto" data-ir="proposta" title="Gerar proposta">${Ico('documento',15)}</button>
+          <button class="btn" style="flex:0 0 auto" title="Duplicar cenário">${Ico('versao',15)}</button>
+        </div>
+      </section>
+    </div>
+  </div>`;
+
+/* ---------------------------------------------------------- APROVAÇÕES */
+TELAS.aprovacoes = () => `
+  <div class="filtros">
+    ${[['Todas',7,true],['Abaixo da política',3],['Acima de R$ 300 mil',2],['Paradas há 2 dias',1]]
+      .map(([r,n,on]) => `<button class="f${on?' on':''}">${r}<span class="n">${n}</span></button>`).join('')}
+  </div>
+  <div class="grid g2">
+    ${[
+      {p:PRECIFICACOES[1], antes:24.6, motivo:'Desconto adicional de 5,4% concedido para fechar volume anual.', alerta:true},
+      {p:PRECIFICACOES[0], antes:26.1, motivo:'Volume revisado de 30 mil para 42 mil unidades, diluindo conversão.', alerta:false}
+    ].map(({p,antes,motivo,alerta}) => { const agora = p.maco; return `
+      <section class="card"${alerta ? ' style="border-color:color-mix(in srgb,var(--atencao) 40%,transparent)"' : ''}>
+        <div class="card-h">
+          ${Ico(alerta ? 'alerta' : 'aprovacao')}
+          <h2>${p.cod}</h2>
+          ${alerta ? '<span class="tag t-atencao"><i></i>Abaixo da política</span>' : tagDe('aprovacao')}
+        </div>
+        <div style="font-weight:600;font-size:15px">${p.cliente}</div>
+        <div style="color:var(--txt-3);font-size:12.5px;margin-top:2px">
+          ${p.produto} · ${p.uf} · ${p.modalidade}</div>
+
+        <div class="grid g3" style="gap:10px;margin-top:16px">
+          <div class="campo"><label>v${p.versao-1}</label>
+            <div class="valor-campo"><span class="num">${pct(antes)}</span></div></div>
+          <div class="campo"><label>v${p.versao} proposta</label>
+            <div class="valor-campo" style="border-color:var(--${alerta?'atencao':'ok'})">
+              <span class="num" style="color:var(--${alerta?'atencao':'ok'});font-weight:600">${pct(agora)}</span>
+              ${Ico(agora>antes?'sobe':'desce',14)}</div></div>
+          <div class="campo"><label>MaCo absoluta</label>
+            <div class="valor-campo"><span class="num">${brl(p.macoAbs)}</span></div></div>
+        </div>
+
+        <div class="item" style="margin-top:14px">
+          <div class="marca-item">${Ico('cliente',16)}</div>
+          <div style="min-width:0">
+            <div class="sb" style="margin:0;color:var(--txt-2)">${motivo}</div>
+            <div class="sb">Rafael Costa · ${p.quando}</div>
+          </div>
+        </div>
+
+        <div class="campo" style="margin-top:14px">
+          <label>Comentário${alerta ? ' — obrigatório para reprovar' : ''}</label>
+          <textarea class="inp" id="cmt-${p.cod}" placeholder="Registre o motivo da decisão. Fica na trilha de auditoria junto com seu nome e a data."></textarea>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap">
+          <button class="btn primario" style="flex:1">${Ico('confere',15)}Aprovar</button>
+          <button class="btn" style="flex:1">${Ico('fecha',15)}Reprovar</button>
+        </div>
+      </section>`; }).join('')}
+  </div>
+  <p class="nota-rodape">A reprovação exige comentário; a aprovação registra responsável,
+  data e observação na trilha de auditoria.</p>`;
+
+/* ------------------------------------------------------------ COTAÇÕES */
+TELAS.cotacoes = () => `
+  <section class="card">
+    <div class="card-h">${Ico('cotacao')}<h2>Cotações vigentes</h2>
+      <span class="aux">Resolvidas por faixa de volume</span>
+      <button class="btn p">${Ico('mais',15)}Importar planilha</button></div>
+    <div class="rolagem">
+      <table class="tb">
+        <thead><tr>
+          <th>Insumo</th><th>Fornecedor</th><th>Faixa de volume</th>
+          <th class="dir">Preço</th><th class="dir">Líquido</th>
+          <th class="dir">Desvio 90 d</th><th>Validade</th>
+        </tr></thead>
+        <tbody>
+          ${[
+            ['Whey protein concentrado 80%','Glanbia Nutritionals','15 a 50 t','USD 9,35','R$ 39,82',8.4,'17/09/2026','erro',true],
+            ['Whey protein concentrado 80%','Glanbia Nutritionals','2 a 15 t','USD 9,88','R$ 42,08',7.9,'17/09/2026','erro',false],
+            ['Whey protein concentrado 80%','Alibra Ingredientes','2 a 15 t','R$ 54,10','R$ 41,12',2.1,'30/09/2026','atencao',false],
+            ['Creatina monoidratada','AlzChem','1 a 5 t','USD 21,40','R$ 91,08',3.1,'12/10/2026','atencao',false],
+            ['Cacau alcalino 10/12','Barry Callebaut','500 kg a 2 t','R$ 38,90','R$ 29,56',-2.2,'28/10/2026','ok',false],
+            ['Pote PET 1200 ml + tampa','Embalplast','20 a 100 mil un','R$ 3,18','R$ 2,42',0.4,'15/11/2026','ok',false]
+          ].map(([mp,f,faixa,pr,liq,desv,val,cor,vig]) => `
+            <tr${vig ? ' style="background:var(--marca-fraca)"' : ''}>
+              <td class="tit">${mp}${vig ? '<span class="tag t-revisao" style="margin-left:8px;font-size:10px;padding:2px 8px"><i></i>Em uso</span>' : ''}</td>
+              <td style="color:var(--txt-2)">${f}</td>
+              <td class="num" style="font-size:12.5px;color:var(--txt-2)">${faixa}</td>
+              <td class="dir num">${pr}</td>
+              <td class="dir num" style="font-weight:600">${liq}</td>
+              <td class="dir"><span class="tag t-${cor}"><i></i>${desv > 0 ? '+' : ''}${n1(desv)}%</span></td>
+              <td class="num" style="font-size:12.5px;color:var(--txt-3)">${val}</td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+    <p class="nota-rodape">O preço líquido desconta ICMS, PIS e COFINS recuperáveis na aquisição.
+    Para 42 mil potes o consumo de WPC é de 19,4 t — 42.000 × 0,462 kg — o que cai na faixa
+    de 15 a 50 t. A linha destacada é a que o sistema resolveu sozinho para o cenário aberto.</p>
+  </section>`;
+
+/* ------------------------------------------------------------- TRIBUTOS */
+TELAS.tributos = () => `
+  <section class="card">
+    <div class="card-h">${Ico('tributo')}<h2>Alíquotas por UF, NCM e regime</h2>
+      <span class="aux">NCM 2106.90.30 · vigência a partir de 01/09/2026</span></div>
+    <div class="rolagem">
+      <table class="tb">
+        <thead><tr>
+          <th>UF destino</th><th>Regime do cliente</th>
+          <th class="dir">PIS</th><th class="dir">COFINS</th><th class="dir">ICMS</th>
+          <th class="dir">IPI</th><th class="dir">ICMS int.</th><th class="dir">FCP</th><th class="dir">MVA</th>
+        </tr></thead>
+        <tbody>
+          ${[
+            ['SP','Lucro Real',1.65,7.60,12.00,0,18.00,2.00,41.34,true],
+            ['SP','Simples Nacional',1.65,7.60,12.00,0,18.00,2.00,41.34,false],
+            ['MG','Lucro Real',1.65,7.60,12.00,0,18.00,2.00,52.61,false],
+            ['RJ','Lucro Presumido',1.65,7.60,12.00,0,20.00,2.00,48.92,false],
+            ['PR','Lucro Real',1.65,7.60,12.00,0,19.50,0,44.10,false],
+            ['Exportação','—',0,0,0,0,0,0,0,false]
+          ].map(([uf,reg,pis,cof,icms,ipi,int,fcp,mva,dest]) => `
+            <tr${dest ? ' style="background:var(--marca-fraca)"' : ''}>
+              <td class="tit">${uf}${dest ? '<span class="tag t-revisao" style="margin-left:8px;font-size:10px;padding:2px 8px"><i></i>Cenário aberto</span>' : ''}</td>
+              <td style="color:var(--txt-2)">${reg}</td>
+              ${[pis,cof,icms,ipi,int,fcp,mva].map(v =>
+                `<td class="dir num" style="color:${v===0?'var(--txt-3)':'inherit'}">${v===0?'—':n2(v)+'%'}</td>`).join('')}
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+    <p class="nota-rodape">Alíquota e MVA são dado de configuração, mantido pela área fiscal.
+    Nenhuma regra de setor está no código do motor de cálculo.</p>
+  </section>`;
+
+/* ------------------------------------------------------------ AUDITORIA */
+TELAS.auditoria = () => `
+  <section class="card">
+    <div class="card-h">${Ico('auditoria')}<h2>Trilha de auditoria</h2>
+      <span class="aux">PRC-2026-0148</span></div>
+    <div class="lista">
+      ${[
+        ['Submetida para aprovação','Rafael Costa','hoje, 09:47','revisao','aprovacao',
+         'Status: Em preenchimento → Em aprovação'],
+        ['Margem alterada de 32,0% para 30,0%','Rafael Costa','hoje, 09:42','atencao','precificacao',
+         'MaCo unitária: R$ 13,44 → R$ 11,67'],
+        ['Versão v3 criada a partir da v2','Rafael Costa','hoje, 09:40','neutro','versao',
+         'Cópia integral da formulação e do cabeçalho'],
+        ['Volume alterado de 30.000 para 42.000 un','Rafael Costa','ontem, 16:20','neutro','caixa',
+         'ROB: R$ 1.738.200 → R$ 2.433.480'],
+        ['Cotação de WPC 80 resolvida para a faixa 15–50 t','Sistema','ontem, 16:20','neutro','cotacao',
+         'Preço líquido: R$ 42,08 → R$ 39,82/kg']
+      ].map(([tt,quem,quando,cor,ic,detalhe]) => `
+        <div class="item">
+          <div class="marca-item" style="color:var(--${cor==='neutro'?'txt-2':cor});background:var(--${cor==='neutro'?'sup-3':cor+'-fraco'})">${Ico(ic,16)}</div>
+          <div style="min-width:0">
+            <div class="tt" style="font-size:13.5px">${tt}</div>
+            <div class="sb num" style="font-size:12px">${detalhe}</div>
+          </div>
+          <div class="dir">
+            <div style="font-size:12.5px;font-weight:600">${quem}</div>
+            <div style="font-size:11.5px;color:var(--txt-3)">${quando}</div>
+          </div>
+        </div>`).join('')}
+    </div>
+    <p class="nota-rodape">O registro é imutável: a aplicação escreve, nunca altera nem apaga.
+    Cada linha guarda usuário, data e o valor antes e depois.</p>
+  </section>`;
+
+/* ------------------------------------------------ RF04 NOVA PRECIFICAÇÃO */
+TELAS.novo = () => `
+  <div class="split">
+    <section class="card">
+      <div class="card-h">${Ico('precificacao')}<h2>Dados da precificação</h2>
+        <span class="aux">Etapa 1 de 2</span></div>
+      <div class="grid g2" style="gap:14px">
+        <div class="campo"><label>Cliente</label>
+          <select class="inp" id="np-cliente">
+            <option>Nutrafit Distribuidora — SP</option>
+            <option>Corpore Suplementos — MG</option>
+            <option>Atlas Nutrition LLC — Exportação</option>
+            <option>Vita Prime Indústria — PR</option>
+          </select></div>
+        <div class="campo"><label>Produto</label>
+          <select class="inp" id="np-produto">
+            <option>WPC 80 — pote 600 g</option>
+            <option>Creatina mono 300 g</option>
+            <option>BCAA 2:1:1 — 250 g</option>
+          </select></div>
+        <div class="campo"><label>Modalidade comercial</label>
+          <select class="inp" id="np-modalidade">
+            <option>Full Service Nacional</option>
+            <option>Full Service Exportação</option>
+            <option>Industrialização por Encomenda</option>
+          </select></div>
+        <div class="campo"><label>UF de destino</label>
+          <select class="inp" id="np-uf"><option>SP</option><option>MG</option>
+            <option>RJ</option><option>PR</option><option>Exterior</option></select></div>
+        <div class="campo"><label>Regime tributário do cliente</label>
+          <select class="inp" id="np-regime"><option>Lucro Real</option>
+            <option>Lucro Presumido</option><option>Simples Nacional</option></select></div>
+        <div class="campo"><label>Frete</label>
+          <select class="inp" id="np-frete"><option>CIF — por conta do fabricante</option>
+            <option>FOB — por conta do cliente</option></select></div>
+        <div class="campo"><label>Prazo médio de pagamento</label>
+          <input class="inp" id="np-prazo" value="45 dias"></div>
+        <div class="campo"><label>Volume negociado</label>
+          <input class="inp" id="np-volume" value="42.000 un"></div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:20px;flex-wrap:wrap">
+        <button class="btn primario" data-ir="cenario">${Ico('seta',15)}Compor formulação</button>
+        <button class="btn" data-ir="precificacoes">Cancelar</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-h">${Ico('tributo')}<h2>Tributação resolvida</h2></div>
+      <p style="color:var(--txt-3);font-size:12.5px;margin:0 0 14px;line-height:1.6">
+        As alíquotas vêm do cadastro de tributos pela combinação de UF de destino,
+        NCM do produto e regime do cliente. Não se digita alíquota aqui.</p>
+      <div class="memoria">
+        ${[['PIS',1.65],['COFINS',7.60],['ICMS interestadual',12.00],['IPI',0],
+           ['ICMS interno SP',18.00],['FCP',2.00],['MVA',41.34]].map(([nm,v]) => `
+          <div class="mem-l"><span class="nome">${nm}</span><span class="pt"></span>
+            <span class="v">${v === 0 ? '—' : n2(v)+'%'}</span></div>`).join('')}
+      </div>
+      <p class="nota-rodape">NCM 2106.90.30 · vigência a partir de 01/09/2026.
+      Como há MVA e FCP, o cenário terá substituição tributária.</p>
+    </section>
+  </div>`;
+
+/* -------------------------------------------------------- RF16 INVERSO */
+TELAS.inverso = () => `
+  <div class="grid g2">
+    <section class="card">
+      <div class="card-h">${Ico('inverso')}<h2>Preço-alvo para margem</h2></div>
+      <p style="color:var(--txt-3);font-size:12.5px;margin:0 0 16px;line-height:1.6">
+        O cliente cravou um preço. Quanto sobra de margem?</p>
+      <div class="campo"><label>Preço-alvo negociado</label>
+        <input class="inp" value="R$ 54,90"></div>
+      <div class="memoria" style="margin-top:18px">
+        <div class="mem-l"><span class="nome">Preço atual do cenário</span><span class="pt"></span>
+          <span class="v">${brl(57.94)}</span></div>
+        <div class="mem-l negativo"><span class="nome">Desconto exigido</span><span class="pt"></span>
+          <span class="v">−5,25%</span></div>
+        <div class="mem-l"><span class="nome">MaCo unitária resultante</span><span class="pt"></span>
+          <span class="v">${brl(9.53)}</span></div>
+        <div class="mem-l forte"><span class="nome">Margem resultante</span><span class="pt"></span>
+          <span class="v">${pct(24.9)}</span></div>
+      </div>
+      <div class="barra">
+        <span style="width:${24.9/40*100}%"></span>
+        <span class="piso" style="left:${24/40*100}%"></span>
+      </div>
+      <p class="nota-rodape">Passa no piso de 24% por 0,9 p.p. Abaixo disso a submissão
+      dispara alerta automático para o gerente.</p>
+    </section>
+
+    <section class="card">
+      <div class="card-h">${Ico('balanca')}<h2>Meta de custo de matéria-prima</h2></div>
+      <p style="color:var(--txt-3);font-size:12.5px;margin:0 0 16px;line-height:1.6">
+        Para vender a este preço mantendo a margem, quanto o insumo pode custar?</p>
+      <div class="grid g2" style="gap:12px">
+        <div class="campo"><label>Preço desejado</label><input class="inp" value="R$ 52,00"></div>
+        <div class="campo"><label>Margem a manter</label><input class="inp" value="30,0%"></div>
+      </div>
+      <div class="memoria" style="margin-top:18px">
+        <div class="mem-l"><span class="nome">Custo de MP hoje</span><span class="pt"></span>
+          <span class="v">${brl(28.30)}</span></div>
+        <div class="mem-l forte"><span class="nome">Custo máximo admissível</span><span class="pt"></span>
+          <span class="v">${brl(24.86)}</span></div>
+        <div class="mem-l negativo"><span class="nome">Redução necessária</span><span class="pt"></span>
+          <span class="v">−12,2%</span></div>
+      </div>
+      <div class="item" style="margin-top:16px">
+        <div class="marca-item" style="color:var(--atencao);background:var(--atencao-fraco)">${Ico('alerta',16)}</div>
+        <div><div class="tt" style="font-size:13.5px">Meta fora da faixa de mercado</div>
+          <div class="sb">A melhor cotação de WPC 80 hoje dá R$ 26,84 no consumo do produto.</div></div>
+      </div>
+      <p class="nota-rodape">Resolvido pelo mesmo motor, invertendo a função de preço.
+      É o insumo para a negociação com suprimentos.</p>
+    </section>
+  </div>`;
+
+/* ------------------------------------------------------- RF19 COMPARAR */
+TELAS.comparar = () => `
+  <section class="card">
+    <div class="card-h">${Ico('comparar')}<h2>Comparação de cenários</h2>
+      <span class="aux">PRC-2026-0148 · 3 versões</span></div>
+    <div class="rolagem">
+      <table class="tb">
+        <thead><tr><th>Indicador</th><th class="dir">v1</th><th class="dir">v2</th>
+          <th class="dir">v3 vigente</th><th class="dir">v2 → v3</th></tr></thead>
+        <tbody>
+          ${[
+            ['Volume negociado','30.000 un','30.000 un','42.000 un','+40,0%','sobe'],
+            ['Custo de matéria-prima','R$ 29,84','R$ 28,30','R$ 28,30','0,0%','igual'],
+            ['Custo de conversão','R$ 4,28','R$ 4,28','R$ 3,06','−28,5%','sobe'],
+            ['Margem aplicada','32,0%','32,0%','30,0%','−2,0 p.p.','desce'],
+            ['Preço bruto','R$ 61,12','R$ 59,88','R$ 57,94','−3,2%','desce'],
+            ['MaCo unitária','R$ 12,08','R$ 12,44','R$ 11,67','−6,2%','desce'],
+            ['Margem de contribuição','24,8%','26,1%','28,4%','+2,3 p.p.','sobe'],
+            ['ROB','R$ 1.833.600','R$ 1.796.400','R$ 2.433.480','+35,5%','sobe'],
+            ['MaCo absoluta','R$ 362.400','R$ 373.200','R$ 490.140','+31,3%','sobe']
+          ].map(([nm,a,b,c,d,dir]) => `
+            <tr>
+              <td class="tit">${nm}</td>
+              <td class="dir num" style="color:var(--txt-3)">${a}</td>
+              <td class="dir num" style="color:var(--txt-3)">${b}</td>
+              <td class="dir num" style="font-weight:600">${c}</td>
+              <td class="dir"><span class="delta ${dir==='sobe'?'d-sobe':dir==='desce'?'d-desce':''}">${d}</span></td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+    <p class="nota-rodape">A v3 baixou o preço unitário e mesmo assim subiu a margem:
+    o volume maior diluiu mão de obra e gastos gerais. É esse tipo de leitura que a
+    comparação existe para permitir.</p>
+  </section>`;
+
+/* ------------------------------------------------------- RF17 PROPOSTA */
+TELAS.proposta = () => `
+  <div class="split">
+    <section class="card">
+      <div class="card-h">${Ico('documento')}<h2>Prévia do documento</h2>
+        <span class="aux">PROP-2026-0087</span></div>
+      <div class="folha">
+        <div class="cab">
+          <div><h3>Proposta comercial</h3>
+            <div style="color:#6C7488;margin-top:3px">Nutrafit Distribuidora Ltda</div></div>
+          <div style="text-align:right">
+            <div class="rot">Número</div>
+            <div style="font-weight:700;font-family:var(--mono)">PROP-2026-0087</div>
+            <div class="rot" style="margin-top:8px">Validade</div>
+            <div style="font-family:var(--mono)">30/09/2026</div></div>
+        </div>
+        <div style="display:flex;gap:26px;flex-wrap:wrap;margin-bottom:6px">
+          <div><div class="rot">Emissão</div><div style="font-family:var(--mono)">15/09/2026</div></div>
+          <div><div class="rot">Condição</div><div>45 dias</div></div>
+          <div><div class="rot">Frete</div><div>CIF — São Paulo, SP</div></div>
+        </div>
+        <table>
+          <thead><tr><th>Produto</th><th class="dir">Qtd</th>
+            <th class="dir">Unitário</th><th class="dir">Total</th></tr></thead>
+          <tbody>
+            <tr><td>WPC 80 — pote 600 g<br><span style="color:#6C7488;font-size:11px">NCM 2106.90.30</span></td>
+              <td class="dir">42.000</td><td class="dir">R$ 57,94</td><td class="dir">R$ 2.433.480,00</td></tr>
+            <tr class="total"><td colspan="3">Total da proposta</td>
+              <td class="dir">R$ 2.433.480,00</td></tr>
+          </tbody>
+        </table>
+        <div class="rot" style="margin-top:16px">Condições</div>
+        <p style="margin:5px 0 0;color:#454C61">
+          Preço com todos os tributos inclusos, incluindo substituição tributária.
+          Validade de 15 dias a partir da emissão. Prazo de entrega de 30 dias após o pedido firme.</p>
+      </div>
+    </section>
+
+    <div style="display:flex;flex-direction:column;gap:var(--gap)">
+      <section class="card">
+        <div class="card-h">${Ico('ajustes')}<h2>Emissão</h2></div>
+        <div class="campo"><label>Cenário de origem</label>
+          <div class="valor-campo"><span>PRC-2026-0148 · v3 aprovada</span>${Ico('seta',14)}</div></div>
+        <div class="campo" style="margin-top:12px"><label>Validade</label>
+          <select class="inp"><option>15 dias</option><option>30 dias</option>
+            <option>Data específica</option></select></div>
+        <div class="campo" style="margin-top:12px"><label>Numeração</label>
+          <div class="valor-campo"><span class="num">PROP-2026-0087</span>
+            <span class="tag t-neutro">sequencial</span></div></div>
+        <button class="btn primario cheio" style="width:100%;margin-top:18px">
+          ${Ico('documento',15)}Gerar PDF</button>
+        <p class="nota-rodape">Só cenário aprovado gera proposta. A numeração é sequencial
+        e não se repete nem em caso de cancelamento.</p>
+      </section>
+
+      <section class="card">
+        <div class="card-h">${Ico('relogio')}<h2>Emitidas para o cliente</h2></div>
+        <div class="lista">
+          ${[['PROP-2026-0071','WPC 80 — v2','venceu em 05/09','erro'],
+             ['PROP-2026-0054','Hipercalórico 3 kg','aceita em 22/08','ok'],
+             ['PROP-2026-0039','BCAA 250 g','recusada em 04/08','neutro']]
+            .map(([n,p,q,cor]) => `
+            <div class="item">
+              <div class="marca-item">${Ico('documento',16)}</div>
+              <div style="min-width:0"><div class="tt num" style="font-size:13px">${n}</div>
+                <div class="sb">${p}</div></div>
+              <div class="dir"><span class="tag t-${cor}"><i></i>${q}</span></div>
+            </div>`).join('')}
+        </div>
+      </section>
+    </div>
+  </div>`;
+
+/* ------------------------------------------------------ RF20 BREAK-EVEN */
+TELAS.breakeven = () => `
+  <div class="split">
+    <section class="card">
+      <div class="card-h">${Ico('breakeven')}<h2>Ponto de equilíbrio</h2>
+        <span class="aux">PRC-2026-0148 · v3</span></div>
+      <div class="grid g3" style="gap:12px;margin-bottom:20px">
+        <div class="kpi destaque" style="padding:15px">
+          <div class="rot">Volume mínimo</div><div class="val" style="font-size:23px">11.480</div>
+          <div class="nota">unidades por lote</div></div>
+        <div class="kpi" style="padding:15px">
+          <div class="rot">Volume negociado</div><div class="val" style="font-size:23px">42.000</div>
+          <div class="nota">3,7× o equilíbrio</div></div>
+        <div class="kpi" style="padding:15px">
+          <div class="rot">Folga</div><div class="val" style="font-size:23px">72,7%</div>
+          <div class="nota">queda tolerável de volume</div></div>
+      </div>
+      <div class="gr">
+        ${[['Custo fixo do lote',134000,'var(--atencao)'],
+           ['MaCo no volume mínimo',133972,'var(--txt-3)'],
+           ['MaCo no volume negociado',490140,'var(--marca)']].map(([nm,v,cor]) => `
+          <div class="gr-l">
+            <span class="nm">${nm}</span>
+            <span class="tr"><span style="width:${v/500000*100}%;background:${cor}"></span></span>
+            <span class="vl">${brl(v)}</span>
+          </div>`).join('')}
+      </div>
+      <p class="nota-rodape">Escala de R$ 0 a R$ 500 mil. O equilíbrio é onde a MaCo absoluta
+      empata com o custo fixo do lote: 11.480 × ${'R$ 11,67'} dá ${'R$ 133.972'}. Acima disso
+      cada unidade vendida vira resultado.</p>
+    </section>
+
+    <section class="card">
+      <div class="card-h">${Ico('alerta')}<h2>Tolerância de preço</h2></div>
+      <p style="color:var(--txt-3);font-size:12.5px;margin:0 0 16px;line-height:1.6">
+        Quanto o preço pode cair antes de cada limite ser rompido.</p>
+      <div class="memoria">
+        <div class="mem-l"><span class="nome">Até o piso de margem (24%)</span><span class="pt"></span>
+          <span class="v">−5,9%</span></div>
+        <div class="mem-l"><span class="nome">Preço correspondente</span><span class="pt"></span>
+          <span class="v">${brl(54.52)}</span></div>
+        <div class="mem-l somatorio"><span class="nome">Até o equilíbrio</span><span class="pt"></span>
+          <span class="v">−21,4%</span></div>
+        <div class="mem-l"><span class="nome">Preço correspondente</span><span class="pt"></span>
+          <span class="v">${brl(45.54)}</span></div>
+        <div class="mem-l forte negativo"><span class="nome">Abaixo disso o lote dá prejuízo</span>
+          <span class="pt"></span><span class="v">${brl(45.54)}</span></div>
+      </div>
+      <p class="nota-rodape">O piso de desconto que o comercial pode conceder sem
+      aprovação é o primeiro limite, não o segundo.</p>
+    </section>
+  </div>`;
+
+/* --------------------------------------------------- RF21 SENSIBILIDADE */
+TELAS.sensibilidade = () => `
+  <section class="card">
+    <div class="card-h">${Ico('sensibilidade')}<h2>Sensibilidade da margem</h2>
+      <span class="aux">MaCo % · câmbio × custo de MP</span></div>
+    <div class="rolagem">
+      <table class="matriz">
+        <thead><tr><th></th>
+          ${['−10%','−5%','Atual','+5%','+10%','+15%'].map(c =>
+            `<th>MP ${c}</th>`).join('')}</tr></thead>
+        <tbody>
+          ${[
+            ['USD 5,04', [34.8,32.6,30.4,28.2,26.0,23.8]],
+            ['USD 5,32', [33.5,31.3,29.1,26.9,24.7,22.5]],
+            ['USD 5,60', [32.2,30.0,28.4,25.6,23.4,21.2]],
+            ['USD 5,88', [30.9,28.7,26.5,24.3,22.1,19.9]],
+            ['USD 6,16', [29.6,27.4,25.2,23.0,20.8,18.6]]
+          ].map(([cambio, linha], i) => `
+            <tr><td class="eixo">${cambio}</td>
+              ${linha.map((v, j) => {
+                const cls = v >= 30 ? 'm-alto' : v >= 26 ? 'm-medio' : v >= 24 ? 'm-baixo' : 'm-critico';
+                const atual = (i === 2 && j === 2) ? ' m-atual' : '';
+                return `<td class="${cls}${atual}">${n2(v)}%</td>`;
+              }).join('')}
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:16px">
+      ${[['m-alto','Acima de 30%'],['m-medio','26% a 30%'],
+         ['m-baixo','24% a 26% — perto do piso'],['m-critico','Abaixo do piso de 24%']]
+        .map(([c,r]) => `
+        <span style="display:inline-flex;align-items:center;gap:7px;font-size:12px;color:var(--txt-2)">
+          <span class="${c}" style="width:15px;height:15px;border-radius:5px;display:inline-block"></span>${r}</span>`).join('')}
+    </div>
+    <p class="nota-rodape">A célula contornada é o cenário vigente: câmbio de R$ 5,60
+    e custo de MP atual, resultando em 28,4%. Uma alta simultânea de 5% no dólar e 5%
+    no insumo já leva a margem para 24,3%, a 0,3 p.p. do piso.</p>
+  </section>`;
+
+/* ------------------------------------------------------- RF24 EXPORTAR */
+TELAS.exportar = () => `
+  <div class="split">
+    <section class="card">
+      <div class="card-h">${Ico('exportar')}<h2>Exportar para BI</h2></div>
+      <div class="grid g2" style="gap:14px">
+        <div class="campo"><label>Período</label>
+          <select class="inp"><option>Setembro de 2026</option>
+            <option>Terceiro trimestre</option><option>Ano corrente</option></select></div>
+        <div class="campo"><label>Formato</label>
+          <select class="inp"><option>CSV — separado por ponto e vírgula</option>
+            <option>XLSX — planilha do Excel</option></select></div>
+      </div>
+      <div style="margin-top:18px">
+        <label style="display:block;font-size:11.5px;font-weight:600;color:var(--txt-3);
+          margin-bottom:8px;letter-spacing:.04em;text-transform:uppercase">Colunas</label>
+        ${[['Identificação e cliente',true],['Produto e NCM',true],
+           ['Composição de custo detalhada',true],['Impostos destacados',true],
+           ['Preço e indicadores de margem',true],['Volume, ROB e MaCo absoluta',true],
+           ['Histórico de versões',false],['Trilha de aprovação',false]].map(([r,on]) => `
+          <div class="linha-chave">
+            <button class="chave${on?' on':''}" role="switch" aria-checked="${on}" aria-label="${r}"></button>
+            <div class="tx"><b>${r}</b></div>
+          </div>`).join('')}
+      </div>
+      <button class="btn primario" style="width:100%;margin-top:18px">
+        ${Ico('exportar',15)}Gerar arquivo</button>
+    </section>
+
+    <section class="card">
+      <div class="card-h">${Ico('caixa')}<h2>O que sai</h2></div>
+      <div class="memoria">
+        <div class="mem-l"><span class="nome">Cenários no período</span><span class="pt"></span>
+          <span class="v">34</span></div>
+        <div class="mem-l"><span class="nome">Linhas de formulação</span><span class="pt"></span>
+          <span class="v">208</span></div>
+        <div class="mem-l"><span class="nome">Colunas selecionadas</span><span class="pt"></span>
+          <span class="v">47</span></div>
+        <div class="mem-l forte"><span class="nome">Tamanho estimado</span><span class="pt"></span>
+          <span class="v">412 KB</span></div>
+      </div>
+      <p class="nota-rodape">A exportação respeita a carteira do usuário: você recebe apenas
+      os clientes que enxerga na plataforma. Valores decimais saem com ponto, para o BI
+      não precisar de tratamento.</p>
+    </section>
+  </div>`;
+
+/* ------------------------------------------------------ RF03 CADASTROS */
+TELAS.cadastros = () => `
+  <div class="abas">
+    ${['Matéria-prima','Embalagem','Produto','Cliente','Fornecedor','Produtividade']
+      .map((r,i) => `<button class="aba${i===0?' on':''}">${r}</button>`).join('')}
+  </div>
+  <section class="card">
+    <div class="card-h">${Ico('cotacao')}<h2>Matérias-primas</h2>
+      <span class="aux">184 ativas</span>
+      <button class="btn primario p">${Ico('mais',15)}Nova</button></div>
+    <div class="busca" style="display:flex;gap:10px;margin-bottom:var(--gap)">
+      <input class="inp" placeholder="Buscar por descrição, código ou fornecedor" style="flex:1">
+      <button class="btn p">${Ico('busca',15)}Buscar</button>
+    </div>
+    <div class="rolagem">
+      <table class="tb">
+        <thead><tr><th>Código</th><th>Descrição</th><th>Unidade</th>
+          <th class="dir">Perda padrão</th><th>Fornecedor principal</th><th>Situação</th></tr></thead>
+        <tbody>
+          ${[
+            ['MP-0012','Whey protein concentrado 80%','kg',1.5,'Glanbia Nutritionals','ok'],
+            ['MP-0034','Creatina monoidratada micronizada','kg',0.8,'AlzChem','ok'],
+            ['MP-0047','Cacau alcalino 10/12','kg',2.0,'Barry Callebaut','ok'],
+            ['MP-0051','Sucralose 25%','kg',0.5,'Tate & Lyle','ok'],
+            ['MP-0068','Blend de enzimas digestivas','kg',0.5,'Amano Enzyme','ok'],
+            ['MP-0072','Maltodextrina DE 18','kg',1.2,'Ingredion','neutro']
+          ].map(([cod,desc,un,perda,forn,st]) => `
+            <tr>
+              <td class="num" style="font-size:12.5px;color:var(--txt-2)">${cod}</td>
+              <td class="tit">${desc}</td>
+              <td style="color:var(--txt-2)">${un}</td>
+              <td class="dir num">${n2(perda)}%</td>
+              <td style="color:var(--txt-2)">${forn}</td>
+              <td><span class="tag t-${st}"><i></i>${st === 'ok' ? 'Ativa' : 'Inativa'}</span></td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+    <p class="nota-rodape">Busca, filtro e paginação acontecem no servidor: o catálogo tem
+    milhares de linhas e não cabe no navegador. NCM, CEP/IBGE e produtividade entram por
+    carga inicial e são mantidos nas outras abas.</p>
+  </section>`;
+
+/* ------------------------------------------------------- RF14 IMPORTAR */
+TELAS.importar = () => `
+  <section class="card">
+    <div class="card-h">${Ico('importar')}<h2>Importar cotações</h2>
+      <span class="aux">cotacoes-setembro.xlsx · 48 linhas</span></div>
+    <div class="grid g4" style="gap:12px;margin-bottom:20px">
+      ${[['Linhas lidas','48','neutro'],['Prontas para publicar','41','ok'],
+         ['Desvio acima de 5%','5','atencao'],['Com erro','2','erro']].map(([r,v,c]) => `
+        <div class="kpi" style="padding:15px">
+          <div class="rot">${r}</div>
+          <div class="val" style="font-size:23px;color:${c==='neutro'?'inherit':'var(--'+c+')'}">${v}</div>
+        </div>`).join('')}
+    </div>
+    <div class="rolagem">
+      <table class="tb">
+        <thead><tr><th>Linha</th><th>Insumo</th><th>Fornecedor</th>
+          <th class="dir">Preço novo</th><th class="dir">Preço médio 90 d</th>
+          <th class="dir">Desvio</th><th>Situação</th></tr></thead>
+        <tbody>
+          ${[
+            [3,'Whey protein concentrado 80%','Glanbia','USD 9,35','USD 8,62',8.4,'atencao','Desvio acima do limite'],
+            [7,'Creatina monoidratada','AlzChem','USD 21,40','USD 20,76',3.1,'ok','Pronta'],
+            [12,'Cacau alcalino 10/12','Barry Callebaut','R$ 38,90','R$ 39,78',-2.2,'ok','Pronta'],
+            [19,'Sucralose 25%','Tate & Lyle','USD 38,20','USD 36,04',6.0,'atencao','Desvio acima do limite'],
+            [23,'Colágeno hidrolisado','—','R$ 74,20','—',0,'erro','Fornecedor não cadastrado'],
+            [31,'Maltodextrina DE 18','Ingredion','R$ ---','R$ 12,44',0,'erro','Preço não numérico']
+          ].map(([ln,mp,f,novo,med,desv,cor,sit]) => `
+            <tr>
+              <td class="num" style="color:var(--txt-3)">${ln}</td>
+              <td class="tit">${mp}</td>
+              <td style="color:var(--txt-2)">${f}</td>
+              <td class="dir num">${novo}</td>
+              <td class="dir num" style="color:var(--txt-3)">${med}</td>
+              <td class="dir">${desv === 0 ? '<span style="color:var(--txt-3)">—</span>'
+                : `<span class="delta ${desv>0?'d-desce':'d-sobe'}">${desv>0?'+':''}${n2(desv)}%</span>`}</td>
+              <td><span class="tag t-${cor}"><i></i>${sit}</span></td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap">
+      <button class="btn primario">${Ico('confere',15)}Publicar as 41 prontas</button>
+      <button class="btn">${Ico('alerta',15)}Revisar as 5 com desvio</button>
+      <button class="btn">${Ico('fecha',15)}Descartar importação</button>
+    </div>
+    <p class="nota-rodape">O mapeamento de colunas fica salvo por origem, então a planilha do
+    mesmo fornecedor não precisa ser remapeada todo mês. Nada é publicado antes de você
+    decidir o que fazer com as linhas em desvio.</p>
+  </section>`;
+
+/* --------------------------------------------- RF02 e RF22 USUÁRIOS */
+TELAS.usuarios = () => `
+  <div class="split">
+    <section class="card">
+      <div class="card-h">${Ico('usuarios')}<h2>Usuários</h2>
+        <span class="aux">6 ativos</span>
+        <button class="btn primario p">${Ico('mais',15)}Convidar</button></div>
+      <div class="rolagem">
+        <table class="tb">
+          <thead><tr><th>Pessoa</th><th>Perfil</th><th>Carteira</th><th>Situação</th></tr></thead>
+          <tbody>
+            ${[
+              ['Rafael Costa','rafael.costa@','Analista de Pricing','Sudeste — 42 clientes','ok'],
+              ['Juliana Marques','juliana.marques@','Executiva de Contas','Sudeste — 42 clientes','ok'],
+              ['Marcos Tavares','marcos.tavares@','Gerente Comercial','Todas as carteiras','ok'],
+              ['Camila Reis','camila.reis@','Analista de Suprimentos','Sem carteira','ok'],
+              ['Diego Almeida','diego.almeida@','Administrador','Todas as carteiras','ok'],
+              ['Paulo Serra','paulo.serra@','Executivo de Contas','Sul — 18 clientes','neutro']
+            ].map(([nm,em,perfil,cart,st]) => `
+              <tr>
+                <td class="tit">${nm}<span class="sub">${em}neoprice.ind.br</span></td>
+                <td style="color:var(--txt-2)">${perfil}</td>
+                <td style="color:var(--txt-2)">${cart}</td>
+                <td><span class="tag t-${st}"><i></i>${st==='ok'?'Ativo':'Convite pendente'}</span></td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-h">${Ico('aprovacao')}<h2>Permissões do perfil</h2>
+        <span class="aux">Analista de Pricing</span></div>
+      ${[['Criar e editar precificação',true],['Submeter para aprovação',true],
+         ['Aprovar ou reprovar',false],['Manter cadastros base',true],
+         ['Manter alíquotas e parâmetros',false],['Emitir proposta comercial',false],
+         ['Exportar dados',true],['Administrar usuários',false]].map(([r,on]) => `
+        <div class="linha-chave">
+          <button class="chave${on?' on':''}" role="switch" aria-checked="${on}" aria-label="${r}"></button>
+          <div class="tx"><b>${r}</b></div>
+        </div>`).join('')}
+      <p class="nota-rodape">A permissão controla a operação. A carteira controla o dado, e é
+      aplicada pelo banco por política de segurança em nível de linha — desligar um botão na
+      tela não é o que protege o custo de um cliente.</p>
+    </section>
+  </div>`;
+
+/* ------------------------------------------------------ RF23 METADADOS */
+TELAS.metadados = () => `
+  <section class="card">
+    <div class="card-h">${Ico('metadados')}<h2>Campos do cadastro</h2>
+      <span class="aux">Entidade: Matéria-prima</span>
+      <button class="btn primario p">${Ico('mais',15)}Campo</button></div>
+    <div class="rolagem">
+      <table class="tb">
+        <thead><tr><th>Campo</th><th>Rótulo na tela</th><th>Tipo</th>
+          <th>Validação</th><th>Obrigatório</th><th>Na listagem</th></tr></thead>
+        <tbody>
+          ${[
+            ['codigo','Código','Texto','Único, 8 caracteres',true,true],
+            ['descricao','Descrição','Texto','Até 120 caracteres',true,true],
+            ['unidade','Unidade','Lista','kg, g, L, ml, un',true,true],
+            ['perda_padrao','Perda padrão','Percentual','Entre 0 e 30%',false,true],
+            ['ncm','NCM','Lista','Tabela de NCM vigente',true,false],
+            ['densidade','Densidade','Decimal','Maior que zero',false,false],
+            ['observacao','Observação','Texto longo','—',false,false]
+          ].map(([c,r,t,v,ob,li]) => `
+            <tr>
+              <td class="num" style="font-size:12.5px;color:var(--txt-2)">${c}</td>
+              <td class="tit">${r}</td>
+              <td><span class="tag t-neutro">${t}</span></td>
+              <td style="color:var(--txt-2);font-size:12.5px">${v}</td>
+              <td>${ob ? Ico('confere',16) : '<span style="color:var(--txt-3)">—</span>'}</td>
+              <td>${li ? Ico('confere',16) : '<span style="color:var(--txt-3)">—</span>'}</td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+    <p class="nota-rodape">Acrescentar um campo aqui muda a listagem, o formulário e a validação
+    do cadastro sem publicar versão nova do sistema. É o que evita chamar o time técnico para
+    cada campo novo que a operação precisa.</p>
+  </section>`;
+</script>
+
+<script>
+/* ==========================================================================
+   NAVEGAÇÃO
+   ========================================================================== */
+const MENU = [
+  ['Precificação', [
+    ['painel','Painel','painel',''],
+    ['precificacoes','Precificações','precificacao','7'],
+    ['novo','Nova precificação','mais',''],
+    ['cenario','Cenário aberto','cenario',''],
+    ['inverso','Modo inverso','inverso',''],
+    ['comparar','Comparar cenários','comparar',''],
+    ['aprovacoes','Aprovações','aprovacao','2'],
+    ['proposta','Proposta comercial','documento','']
+  ]],
+  ['Análises', [
+    ['breakeven','Break-even','breakeven',''],
+    ['sensibilidade','Sensibilidade','sensibilidade',''],
+    ['exportar','Exportar para BI','exportar','']
+  ]],
+  ['Cadastros', [
+    ['cadastros','Cadastros base','caixa',''],
+    ['cotacoes','Cotações','cotacao',''],
+    ['importar','Importar cotações','importar',''],
+    ['tributos','Tributos','tributo','']
+  ]],
+  ['Sistema', [
+    ['usuarios','Usuários e perfis','usuarios',''],
+    ['metadados','Metadados','metadados',''],
+    ['auditoria','Auditoria','auditoria',''],
+    ['ajustes','Ajustes','ajustes','']
+  ]]
+];
+
+const CABECALHO = {
+  painel:        ['Painel', 'Terça, 15 de setembro de 2026'],
+  precificacoes: ['Precificações', '7 cenários na sua carteira'],
+  novo:          ['Nova precificação', 'Cabeçalho comercial e fiscal do estudo'],
+  cenario:       ['PRC-2026-0148 <span class="leve">· v3</span>', 'Nutrafit Distribuidora · WPC 80 pote 600 g · Full Service Nacional'],
+  inverso:       ['Modo inverso', 'Do preço-alvo para a margem, e da margem para o custo de MP'],
+  comparar:      ['Comparar cenários', 'PRC-2026-0148 · v1, v2 e v3'],
+  aprovacoes:    ['Aprovações', 'Fila de Marcos Tavares · 7 aguardando decisão'],
+  proposta:      ['Proposta comercial', 'PROP-2026-0087 · Nutrafit Distribuidora'],
+  breakeven:     ['Break-even', 'Volume mínimo e tolerância de variação de preço'],
+  sensibilidade: ['Sensibilidade', 'Margem contra variação de câmbio e de custo de MP'],
+  exportar:      ['Exportar para BI', 'Extração de cenários em CSV e XLSX'],
+  cadastros:     ['Cadastros base', 'Insumo, produto, parceiro e produtividade'],
+  cotacoes:      ['Cotações', 'Preço de insumo por fornecedor e faixa de volume'],
+  importar:      ['Importar cotações', 'Prévia da planilha antes de publicar'],
+  tributos:      ['Tributos', 'Alíquotas por UF, NCM e regime tributário'],
+  usuarios:      ['Usuários e perfis', 'Acesso por funcionalidade e por carteira de clientes'],
+  metadados:     ['Metadados', 'Campos, tipos e validações sem publicar versão'],
+  auditoria:     ['Auditoria', 'Registro imutável de toda alteração'],
+  ajustes:       ['Ajustes', 'Parâmetros globais e câmbio']
+};
+
+TELAS.ajustes = () => `
+  <div class="grid g2">
+    <section class="card">
+      <div class="card-h">${Ico('ajustes')}<h2>Parâmetros globais</h2></div>
+      <div class="grid g2" style="gap:13px">
+        ${[['Perda de processo padrão','2,00%'],['Taxa financeira mensal','1,20%'],
+           ['Prazo médio padrão','30 dias'],['Desvio máximo de cotação','5,00%'],
+           ['Política de margem mínima','24,00%'],['Margem de segurança cambial','3,00%']]
+          .map(([r,v]) => `
+          <div class="campo"><label>${r}</label>
+            <div class="valor-campo"><span class="num">${v}</span>${Ico('seta',14)}</div></div>`).join('')}
+      </div>
+      <p class="nota-rodape">Alterar um parâmetro afeta apenas cenários novos.
+      Os já calculados preservam os valores usados na época.</p>
+    </section>
+    <section class="card">
+      <div class="card-h">${Ico('cotacao')}<h2>Câmbio</h2>
+        <span class="aux">Carga de 15/09/2026</span></div>
+      <div class="lista">
+        ${[['USD','5,6040','3,00%','R$ 5,7721'],['EUR','6,1180','3,00%','R$ 6,3015']]
+          .map(([m,c,mg,fim]) => `
+          <div class="item">
+            <div class="marca-item"><span class="num" style="font-size:11px;font-weight:600">${m}</span></div>
+            <div style="min-width:0">
+              <div class="tt" style="font-size:13.5px"><span class="num">${c}</span></div>
+              <div class="sb">Margem de segurança de ${mg}</div>
+            </div>
+            <div class="dir">
+              <div class="num" style="font-weight:600">${fim}</div>
+              <div style="font-size:11.5px;color:var(--txt-3)">aplicado</div>
+            </div>
+          </div>`).join('')}
+      </div>
+      <p class="nota-rodape">O motor usa o câmbio com margem de segurança, nunca o valor de tela.</p>
+    </section>
+  </div>`;
+
+let atual = 'painel';
+
+function montarMenu(){
+  document.getElementById('nav').innerHTML = MENU.map(([grupo, itens]) => `
+    <div class="nav-grupo">${grupo}</div>
+    ${itens.map(([id,rot,ic,qt]) => `
+      <button class="nav-item${id===atual?' on':''}" data-ir="${id}" title="${rot}">
+        ${Ico(ic)}<span class="rot">${rot}</span>
+        ${qt ? `<span class="qt">${qt}</span>` : ''}
+      </button>`).join('')}
+  `).join('');
+}
+
+function ir(id){
+  if(!TELAS[id]) return;
+  atual = id;
+  const [t, s] = CABECALHO[id];
+  document.getElementById('titulo').innerHTML = t;
+  document.getElementById('subtitulo').textContent = s;
+  document.getElementById('conteudo').innerHTML = `<div class="tela ativa">${TELAS[id]()}</div>`;
+  montarMenu();
+  document.body.classList.remove('gaveta');
+  window.scrollTo({top:0, behavior:'instant'});
+}
+
+document.addEventListener('click', e => {
+  const alvo = e.target.closest('[data-ir]');
+  if(alvo) ir(alvo.dataset.ir);
+});
+
+/* tema */
+const btnTema = document.getElementById('btn-tema');
+function claroAtivo(){
+  const stamp = document.documentElement.getAttribute('data-theme');
+  if(stamp) return stamp === 'light';
+  return window.matchMedia('(prefers-color-scheme: light)').matches;
+}
+function pintarBotao(){ btnTema.innerHTML = Ico(claroAtivo() ? 'lua' : 'sol', 19); }
+btnTema.addEventListener('click', () => {
+  document.documentElement.setAttribute('data-theme', claroAtivo() ? 'dark' : 'light');
+  pintarBotao();
+});
+
+document.getElementById('selo').innerHTML = Marca(20);
+document.getElementById('selo-login').innerHTML = Marca(20);
+document.getElementById('btn-gaveta').innerHTML = Ico('menu', 19);
+document.getElementById('btn-gaveta').addEventListener('click', () => {
+  document.body.classList.toggle('gaveta');
+});
+document.getElementById('veu').addEventListener('click', () => {
+  document.body.classList.remove('gaveta');
+});
+document.querySelector('[aria-label="Notificações"]').insertAdjacentHTML('afterbegin', Ico('sino', 19));
+
+/* chaves e abas respondem ao clique — protótipo mudo não valida nada com o PO */
+document.addEventListener('click', e => {
+  const ch = e.target.closest('.chave');
+  if(ch){
+    const ligada = ch.classList.toggle('on');
+    ch.setAttribute('aria-checked', String(ligada));
+  }
+  const ab = e.target.closest('.aba');
+  if(ab){
+    ab.parentElement.querySelectorAll('.aba').forEach(x => x.classList.remove('on'));
+    ab.classList.add('on');
+  }
+  const fl = e.target.closest('.filtros .f');
+  if(fl){
+    fl.parentElement.querySelectorAll('.f').forEach(x => x.classList.remove('on'));
+    fl.classList.add('on');
+  }
+});
+
+/* entrada e saída */
+const telaLogin = document.getElementById('tela-login');
+const app = document.getElementById('app');
+function mostrarLogin(){
+  telaLogin.hidden = false;
+  app.hidden = true;
+  window.scrollTo({top:0, behavior:'instant'});
+}
+function entrar(){
+  telaLogin.hidden = true;
+  app.hidden = false;
+  ir('painel');
+}
+document.getElementById('btn-entrar').addEventListener('click', entrar);
+document.getElementById('btn-esqueci').addEventListener('click', () => {
+  document.getElementById('lg-email').focus();
+});
+document.getElementById('btn-sair').addEventListener('click', mostrarLogin);
+document.getElementById('lg-senha').addEventListener('keydown', e => {
+  if(e.key === 'Enter') entrar();
+});
+
+pintarBotao();
+ir('painel');
+</script>
+
+</body>
+</html>
