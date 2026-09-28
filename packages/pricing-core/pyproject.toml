@@ -1,9 +1,11 @@
 [project]
 name = "pricing-core"
 version = "0.1.0"
-description = "Regras puras do motor de preço do NeoPrice"
+description = "Motor de precificação do NeoPrice — contrato e regras de domínio puras."
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "pydantic>=2.6",
+]
 
 [project.optional-dependencies]
 dev = ["pytest>=8"]

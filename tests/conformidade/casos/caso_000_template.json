@@ -1,0 +1,55 @@
+{
+  "id": "caso_000_template",
+  "descricao": "Copie este arquivo para caso_001.json, caso_002.json, ... durante a homologação com o PO (um arquivo por caso, até 30 — ver README.md desta pasta).",
+  "entrada": {
+    "cliente_uf": "SP",
+    "modalidade_comercial": "full_service_nacional",
+    "regime_tributario": "Lucro Presumido",
+    "materiais_primas": [
+      {
+        "codigo": "MP-EXEMPLO",
+        "preco_negociado": "10.00",
+        "moeda": "BRL",
+        "cambio": "1",
+        "margem_seguranca_percentual": "0",
+        "quantidade": "100",
+        "percentual_descarte": "0"
+      }
+    ],
+    "embalagens": [],
+    "perda_percentual": "0",
+    "material_fornecido_pelo_cliente": false,
+    "valor_material_cliente": "0",
+    "producao": {
+      "taxa_mod": "0",
+      "taxa_ggf": "0",
+      "produtividade": "1",
+      "numero_funcionarios": "0"
+    },
+    "impostos": {
+      "pis_percentual": "0.0165",
+      "cofins_percentual": "0.076",
+      "icms_percentual": "0.18",
+      "ipi_percentual": "0",
+      "icms_interno_percentual": "0",
+      "fcp_percentual": "0",
+      "mva_percentual": "0"
+    },
+    "comercial": {
+      "margem_desejada_percentual": "0.20",
+      "comissao_percentual": "0",
+      "frete_percentual": "0",
+      "prazo_medio_dias": "0",
+      "taxa_financeira_mensal_percentual": "0"
+    }
+  },
+  "saida_esperada": {
+    "preco_bruto_sem_ipi_sem_encargo": "PREENCHER_COM_PO",
+    "preco_bruto_sem_ipi": "PREENCHER_COM_PO",
+    "preco_bruto": "PREENCHER_COM_PO",
+    "receita_operacional_liquida": "PREENCHER_COM_PO",
+    "margem_contribuicao_valor": "PREENCHER_COM_PO",
+    "preco_indicado": "PREENCHER_COM_PO"
+  },
+  "observacoes": ""
+}
