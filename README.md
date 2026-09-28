@@ -112,6 +112,25 @@ Decisões relevantes:
 
 ---
 
+## Estrutura do repositório
+
+```
+apps/
+  web/                 SPA React (apresentação)
+  api/                 API FastAPI (aplicação)
+packages/
+  pricing-core/        motor de preço puro (domínio)
+supabase/
+  migrations/          schema, RLS e auditoria
+  seed/                dados de referência idempotentes
+docs/                  planejamento e especificação
+prototipo/             protótipo navegável
+```
+
+A dependência só aponta para dentro: `web` → `api` → `pricing-core`. O `pricing-core` não importa nada das outras pastas.
+
+---
+
 ## Cronograma
 
 Cinco sprints de duas semanas, de 14/09 a 20/11. A quinzena de 01/09 a 11/09 foi de descoberta e especificação.
