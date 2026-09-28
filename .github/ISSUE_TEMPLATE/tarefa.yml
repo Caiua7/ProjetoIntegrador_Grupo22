@@ -1,0 +1,105 @@
+name: Tarefa de sprint
+description: Entregável de uma sprint.
+title: "Verbo no infinitivo + o que será entregue"
+labels: []
+body:
+  - type: textarea
+    id: descricao
+    attributes:
+      label: Descrição
+      description: O que será entregue e por que importa.
+    validations:
+      required: true
+
+  - type: input
+    id: quem
+    attributes:
+      label: Quem faz
+      placeholder: Gustavo, Marcelo
+    validations:
+      required: true
+
+  - type: dropdown
+    id: sprint
+    attributes:
+      label: Sprint
+      options:
+        - S1 — Fundação e contrato (14/09 a 25/09)
+        - S2 — Custo e parâmetros (28/09 a 09/10)
+        - S3 — Preço, sprint crítica (12/10 a 23/10)
+        - S4 — Ponta a ponta (26/10 a 06/11)
+        - S5 — Governança e entrega (09/11 a 20/11)
+        - Backlog
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Área
+      options:
+        - Domínio
+        - Backend
+        - Frontend
+        - Banco
+        - Infra
+        - Design
+        - Docs
+    validations:
+      required: true
+
+  - type: dropdown
+    id: prioridade
+    attributes:
+      label: Prioridade
+      options:
+        - Must
+        - Should
+        - Could
+    validations:
+      required: true
+
+  - type: input
+    id: origem
+    attributes:
+      label: Origem no backlog
+      placeholder: US04 · 8 pts
+
+  - type: textarea
+    id: semana1
+    attributes:
+      label: Primeira semana
+      value: |
+        - [ ]
+        - [ ]
+    validations:
+      required: true
+
+  - type: textarea
+    id: semana2
+    attributes:
+      label: Segunda semana
+      value: |
+        - [ ]
+        - [ ]
+    validations:
+      required: true
+
+  - type: textarea
+    id: aceite
+    attributes:
+      label: Critério de aceite
+      description: Dado / Quando / Então.
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: dod
+    attributes:
+      label: Definition of Done
+      options:
+        - label: Código revisado por par e integrado à branch principal
+        - label: Testes unitários e de integração passando no pipeline
+        - label: Migration aplicada e documentada
+        - label: Deploy em staging validado pelo PO
+        - label: Documentação atualizada no repositório
