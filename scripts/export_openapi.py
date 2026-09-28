@@ -11,7 +11,7 @@ import sys
 
 RAIZ = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(RAIZ / "apps" / "api"))
-sys.path.insert(0, str(RAIZ / "packages" / "pricing-core"))
+sys.path.insert(0, str(RAIZ / "packages" / "pricing-core" / "src"))
 
 
 def main() -> None:

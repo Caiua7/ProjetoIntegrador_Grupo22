@@ -1,5 +1,5 @@
 """Regenera apps/web/src/types/calculate.generated.ts a partir de
-packages/pricing-core/pricing_core/contracts.py.
+packages/pricing-core/src/pricing_core/contracts.py.
 
 Dependências (não incluídas no monorepo ainda — instalar ao rodar):
     pip install pydantic-to-typescript
@@ -17,7 +17,7 @@ from pathlib import Path
 import sys
 
 RAIZ = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(RAIZ / "packages" / "pricing-core"))
+sys.path.insert(0, str(RAIZ / "packages" / "pricing-core" / "src"))
 
 
 def main() -> None:

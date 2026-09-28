@@ -8,7 +8,7 @@ o motor real (US16/US19, Sprint 3).
 
 | O quê | Onde |
 | :--- | :--- |
-| Schemas Pydantic (fonte da verdade) | `packages/pricing-core/pricing_core/contracts.py` |
+| Schemas Pydantic (fonte da verdade) | `packages/pricing-core/src/pricing_core/contracts.py` |
 | Endpoint mock para o Squad B | `apps/api/app/routers/calculate.py` |
 | Tipos TypeScript para o front | `apps/web/src/types/calculate.generated.ts` |
 | Script para regenerar os tipos TS | `scripts/generate_ts_types.py` |
