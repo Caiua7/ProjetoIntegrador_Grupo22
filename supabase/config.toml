@@ -1,0 +1,7 @@
+# Configuração do Supabase CLI. O que não está aqui usa o padrão do CLI.
+project_id = "neoprice"
+
+[db.seed]
+enabled = true
+# Ordem de carga: referência antes da carga de desenvolvimento.
+sql_paths = ["./seed/referencia/*.sql", "./seed/dev/*.sql"]
