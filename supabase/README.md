@@ -3,8 +3,8 @@
 Banco PostgreSQL do NeoPrice (Supabase).
 
 - `migrations/`: schema, índices, políticas de RLS e gatilhos, em ordem de aplicação.
-- `seed/referencia/`: carga idempotente dos dados de referência (UF, município IBGE, NCM, CEP e alíquotas por UF).
-- `seed/dev/`: carga idempotente de desenvolvimento (fornecedores, MPs, embalagens, produtos, produtividade e clientes fictícios). Não aplicar em produção.
+- `seed/referencia/`: carga idempotente dos dados de referência (UF, município IBGE, NCM, CEP, alíquotas por UF, perfis e permissões).
+- `seed/dev/`: carga idempotente de desenvolvimento (fornecedores, MPs, embalagens, produtos, produtividade, clientes, carteiras e precificações fictícios). Não aplicar em produção.
 - `config.toml`: configuração do Supabase CLI, com a ordem dos seeds.
 
 ## Como aplicar
@@ -38,7 +38,14 @@ Os seeds podem rodar quantas vezes for preciso: cada `INSERT` usa `ON CONFLICT` 
 | `produto` | `codigo` | Produtos acabados, com NCM e categoria |
 | `linha_producao` | `codigo` | Linhas de produção, com TaxaMOD e TaxaGGF (R$/h) |
 | `produtividade` | produto e linha | Unidades por hora e número de funcionários |
-| `cliente` | `codigo` | Clientes, com UF, município, CEP e regime tributário |
+| `cliente` | `codigo` | Clientes, com UF, município, CEP, regime tributário e carteira |
+| `perfil` | `codigo` | Perfis de usuário, um por persona |
+| `permissao` | `codigo` | Permissões nomeadas (`recurso.acao`) |
+| `perfil_permissao` | perfil e permissão | Matriz de acesso |
+| `usuario` | `id` (o de `auth.users`) | Usuários da aplicação, com perfil |
+| `carteira` | `codigo` | Carteiras de clientes |
+| `usuario_carteira` | usuário e carteira | Carteiras que cada usuário atende |
+| `precificacao` | `codigo` | Cabeçalho mínimo da precificação (completado na US29) |
 
 ## Convenções
 
@@ -46,7 +53,8 @@ Os seeds podem rodar quantas vezes for preciso: cada `INSERT` usa `ON CONFLICT` 
 - Todo percentual é fração decimal (`0.18` é 18%), igual ao contrato do motor.
 - `created_at` e `updated_at` em todas as tabelas; `updated_at` é mantido pelo gatilho `set_updated_at`.
 - Cadastro não é apagado: usa-se a coluna `ativo`.
-- RLS ativo em todas as tabelas, por enquanto só com a política do `service_role` (backend). As políticas por perfil e carteira entram na US04.
+- RLS ativo em todas as tabelas: o `service_role` (backend) tem acesso total, o `authenticated` passa pelas políticas por perfil e carteira e o `anon` não acessa nada. Ver [docs/controle-de-acesso.md](../docs/controle-de-acesso.md).
+- Tabela nova precisa de `ENABLE ROW LEVEL SECURITY`, `GRANT` e políticas na mesma migration; o teste `test_todas_as_tabelas_com_rls_ativo` barra a que ficar sem RLS.
 
 ## Alíquotas
 

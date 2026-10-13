@@ -3,25 +3,12 @@
 Critério de aceite: dado um banco vazio, quando migrations e seed rodam,
 então o schema sobe populado e o seed é reexecutável sem duplicar.
 
-Precisa de um PostgreSQL 15+ apontado por NEOPRICE_TEST_DATABASE_URL; sem a
-variável, a suíte fica com skip. Nada é criado em `public`: tudo roda em um
-schema temporário, removido ao final (ver README.md desta pasta).
+O banco de teste é montado pela fixture `conn` (conftest.py).
 """
-
-import os
-from pathlib import Path
-import uuid
 
 import pytest
 
 psycopg = pytest.importorskip("psycopg")
-
-RAIZ = Path(__file__).resolve().parents[2]
-MIGRATIONS = sorted((RAIZ / "supabase" / "migrations").glob("*.sql"))
-# Mesma ordem do [db.seed] em supabase/config.toml
-SEEDS = sorted((RAIZ / "supabase" / "seed" / "referencia").glob("*.sql")) + sorted(
-    (RAIZ / "supabase" / "seed" / "dev").glob("*.sql")
-)
 
 TABELAS = [
     "uf",
@@ -36,16 +23,12 @@ TABELAS = [
     "linha_producao",
     "produtividade",
     "cliente",
+    "perfil",
+    "permissao",
+    "perfil_permissao",
+    "carteira",
+    "precificacao",
 ]
-
-DATABASE_URL = os.environ.get("NEOPRICE_TEST_DATABASE_URL")
-
-pytestmark = pytest.mark.skipif(not DATABASE_URL, reason="defina NEOPRICE_TEST_DATABASE_URL para rodar os testes de banco")
-
-
-def _rodar(conn, arquivos: list[Path]) -> None:
-    for arquivo in arquivos:
-        conn.execute(arquivo.read_text(encoding="utf-8"))
 
 
 def _retrato(conn) -> dict[str, tuple]:
@@ -56,23 +39,6 @@ def _retrato(conn) -> dict[str, tuple]:
         ).fetchone()
         for tabela in TABELAS
     }
-
-
-@pytest.fixture(scope="module")
-def conn():
-    schema = f"teste_{uuid.uuid4().hex[:12]}"
-    with psycopg.connect(DATABASE_URL, autocommit=True) as conexao:
-        # As políticas de RLS citam service_role, que só existe no Supabase
-        if not conexao.execute("SELECT 1 FROM pg_roles WHERE rolname = 'service_role'").fetchone():
-            conexao.execute("CREATE ROLE service_role NOLOGIN")
-        conexao.execute(f"CREATE SCHEMA {schema}")
-        conexao.execute(f"SET search_path TO {schema}")
-        try:
-            _rodar(conexao, MIGRATIONS)
-            _rodar(conexao, SEEDS)
-            yield conexao
-        finally:
-            conexao.execute(f"DROP SCHEMA {schema} CASCADE")
 
 
 def test_schema_sobe_populado(conn):
@@ -87,10 +53,10 @@ def test_schema_sobe_populado(conn):
     assert all(total > 0 for total in contagem.values()), contagem
 
 
-def test_seed_e_reexecutavel_sem_duplicar(conn):
+def test_seed_e_reexecutavel_sem_duplicar(conn, rodar_seeds):
     antes = _retrato(conn)
 
-    _rodar(conn, SEEDS)
+    rodar_seeds()
 
     assert _retrato(conn) == antes
 
