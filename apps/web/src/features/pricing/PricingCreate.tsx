@@ -18,9 +18,9 @@ function PricingCreate({ onCancel }: Props) {
     </div>
 
     <div className="demo-notice"><span className="notice-dot" />Demonstração: opções de clientes e produtos são ilustrativas. Nenhum dado será salvo.</div>
-    {submitted && <div className="success-notice" role="status"><span aria-hidden="true">✓</span><div><strong>Validação concluída</strong><p>O cabeçalho está válido. O rascunho não foi persistido; a criação será conectada à API quando disponível.</p></div></div>}
+    {submitted && <div className="success-notice" role="status"><span aria-hidden="true">✓</span><div><strong>Campos obrigatórios preenchidos</strong><p>Validação feita no navegador. Nenhum cenário foi criado ou salvo.</p></div></div>}
 
-    <form className="pricing-form" onSubmit={handleSubmit}>
+    <form className="pricing-form" onSubmit={handleSubmit} onChange={() => setSubmitted(false)}>
       <section className="form-card">
         <div className="card-heading"><span className="heading-icon" aria-hidden="true">▤</span><div><h3>Informações comerciais e fiscais</h3><p>Campos do cabeçalho previstos na US29</p></div></div>
         <div className="form-grid">
