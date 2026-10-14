@@ -1,19 +1,3 @@
-"""Gera os seeds de referência em supabase/seed/referencia/ a partir das
-fontes públicas oficiais, para que UF, município, NCM e CEP não sejam
-digitados à mão:
-
-    01_uf.sql         IBGE (API de localidades)
-    02_municipio.sql  IBGE (API de localidades)
-    03_ncm.sql        Portal Único Siscomex (tabela NCM vigente)
-    04_cep.sql        ViaCEP, só para os CEPs listados em CEPS
-
-Os arquivos gerados são versionados; rode este script de novo apenas para
-atualizar as tabelas (ex.: nova resolução Gecex) ou incluir CEPs.
-
-Uso:
-    python scripts/gerar_seed_referencia.py
-"""
-
 import gzip
 import json
 from pathlib import Path
@@ -28,7 +12,6 @@ URL_MUNICIPIOS = "https://servicodados.ibge.gov.br/api/v1/localidades/municipios
 URL_NCM = "https://portalunico.siscomex.gov.br/classif/api/publico/nomenclatura/download/json?perfil=PUBLICO"
 URL_CEP = "https://viacep.com.br/ws/{cep}/json/"
 
-# CEPs dos clientes da carga de desenvolvimento (seed/dev) e alguns de apoio.
 CEPS = [
     "01310100",
     "04538133",
@@ -49,7 +32,7 @@ def _baixar_json(url: str):
     requisicao = urllib.request.Request(url, headers={"User-Agent": "neoprice-seed"})
     with urllib.request.urlopen(requisicao, timeout=120) as resposta:
         conteudo = resposta.read()
-    if conteudo[:2] == bytes([0x1F, 0x8B]):  # o IBGE responde em gzip mesmo sem Accept-Encoding
+    if conteudo[:2] == bytes([0x1F, 0x8B]):
         conteudo = gzip.decompress(conteudo)
     return json.loads(conteudo.decode("utf-8"))
 
@@ -63,8 +46,6 @@ def _sql(valor) -> str:
 
 
 def _upsert(tabela: str, colunas: list[str], chave: str, linhas: list[tuple]) -> str:
-    """INSERT ... ON CONFLICT que só toca a linha quando algum valor mudou,
-    para a reexecução do seed não alterar nem o updated_at."""
     demais = [c for c in colunas if c != chave]
     atual = ", ".join(f"{tabela}.{c}" for c in demais)
     novo = ", ".join(f"EXCLUDED.{c}" for c in demais)
@@ -81,14 +62,8 @@ def _upsert(tabela: str, colunas: list[str], chave: str, linhas: list[tuple]) ->
     return "\n".join(blocos)
 
 
-def _gravar(nome: str, fonte: str, corpo: str, total: int) -> None:
-    cabecalho = (
-        f"-- Seed: {nome}\n"
-        f"-- GERADO por scripts/gerar_seed_referencia.py — não editar à mão.\n"
-        f"-- Fonte: {fonte}\n"
-        f"-- Idempotente: pode rodar mais de uma vez sem duplicar nem alterar registros.\n\n"
-    )
-    (SAIDA / nome).write_text(cabecalho + corpo, encoding="utf-8", newline="\n")
+def _gravar(nome: str, corpo: str, total: int) -> None:
+    (SAIDA / nome).write_text(corpo, encoding="utf-8", newline="\n")
     print(f"{nome}: {total} registros")
 
 
@@ -96,19 +71,19 @@ def gerar_uf() -> None:
     ufs = sorted(_baixar_json(URL_UFS), key=lambda u: u["id"])
     linhas = [(u["sigla"], u["id"], u["nome"], u["regiao"]["sigla"]) for u in ufs]
     corpo = _upsert("uf", ["sigla", "codigo_ibge", "nome", "regiao"], "sigla", linhas)
-    _gravar("01_uf.sql", URL_UFS, corpo, len(linhas))
+    _gravar("01_uf.sql", corpo, len(linhas))
 
 
 def gerar_municipio() -> None:
     municipios = sorted(_baixar_json(URL_MUNICIPIOS), key=lambda m: m["municipio-id"])
     linhas = [(m["municipio-id"], m["municipio-nome"], m["UF-sigla"]) for m in municipios]
     corpo = _upsert("municipio", ["codigo_ibge", "nome", "uf_sigla"], "codigo_ibge", linhas)
-    _gravar("02_municipio.sql", URL_MUNICIPIOS, corpo, len(linhas))
+    _gravar("02_municipio.sql", corpo, len(linhas))
 
 
 def _limpar_descricao_ncm(descricao: str) -> str:
     texto = re.sub(r"<[^>]+>", "", descricao).replace(" ", " ")
-    texto = re.sub(r"^[-\s]+", "", texto)  # hífens de nível hierárquico
+    texto = re.sub(r"^[-\s]+", "", texto)
     return re.sub(r"\s+", " ", texto).strip()
 
 
@@ -117,12 +92,11 @@ def gerar_ncm() -> None:
     linhas = []
     for item in tabela["Nomenclaturas"]:
         codigo = re.sub(r"\D", "", item["Codigo"])
-        if len(codigo) == 8:  # capítulos, posições e subposições ficam de fora
+        if len(codigo) == 8:
             linhas.append((codigo, _limpar_descricao_ncm(item["Descricao"])))
     linhas.sort()
     corpo = _upsert("ncm", ["codigo", "descricao"], "codigo", linhas)
-    fonte = f"{URL_NCM} ({tabela['Data_Ultima_Atualizacao_NCM']}, {tabela['Ato']})"
-    _gravar("03_ncm.sql", fonte, corpo, len(linhas))
+    _gravar("03_ncm.sql", corpo, len(linhas))
 
 
 def gerar_cep() -> None:
@@ -133,7 +107,7 @@ def gerar_cep() -> None:
             raise SystemExit(f"CEP {cep} não encontrado no ViaCEP")
         linhas.append((cep, dados["logradouro"], dados["bairro"], int(dados["ibge"])))
     corpo = _upsert("cep", ["cep", "logradouro", "bairro", "municipio_codigo_ibge"], "cep", linhas)
-    _gravar("04_cep.sql", URL_CEP.format(cep="<cep>"), corpo, len(linhas))
+    _gravar("04_cep.sql", corpo, len(linhas))
 
 
 def main() -> None:

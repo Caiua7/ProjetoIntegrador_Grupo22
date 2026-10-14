@@ -1,8 +1,3 @@
--- Seed: 01_uf.sql
--- GERADO por scripts/gerar_seed_referencia.py — não editar à mão.
--- Fonte: https://servicodados.ibge.gov.br/api/v1/localidades/estados
--- Idempotente: pode rodar mais de uma vez sem duplicar nem alterar registros.
-
 INSERT INTO uf (sigla, codigo_ibge, nome, regiao) VALUES
     ('RO', 11, 'Rondônia', 'N'),
     ('AC', 12, 'Acre', 'N'),

@@ -1,12 +1,3 @@
--- Seed de DESENVOLVIMENTO: 02_aliquota_st.sql
--- Regra por NCM com substituição tributária, para o time ter um cenário de
--- ICMS-ST (US21) antes de a tela de alíquotas existir. Reproduz a
--- "Tributação resolvida" do protótipo: NCM 2106.90.30, destino SP, Lucro
--- Real, vigência a partir de 01/09/2026.
--- Idempotente: pode rodar mais de uma vez sem duplicar nem alterar registros.
---
--- ATENÇÃO — valores fictícios do protótipo, não são a regra fiscal real.
-
 INSERT INTO aliquota_fiscal (
     uf_destino, ncm_codigo, regime_tributario, vigencia_inicio,
     pis_percentual, cofins_percentual, icms_percentual, ipi_percentual,

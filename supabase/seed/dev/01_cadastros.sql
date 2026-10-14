@@ -1,17 +1,3 @@
--- Seed de DESENVOLVIMENTO: 01_cadastros.sql
--- Fornecedores, matérias-primas, embalagens, produtos, linhas de produção,
--- produtividade e clientes do segmento de suplementos, espelhando os dados
--- do protótipo (prototipo/neoprice-prototipo.html).
--- Idempotente: pode rodar mais de uma vez sem duplicar nem alterar registros.
---
--- ATENÇÃO — dados fictícios, só para desenvolvimento e demo. Clientes,
--- taxas e produtividades são inventados; o NCM de cada insumo é uma
--- classificação plausível, não validada pela área fiscal. Não aplicar em
--- produção.
-
--- ------------------------------------------------------------
--- Fornecedores
--- ------------------------------------------------------------
 INSERT INTO fornecedor (codigo, razao_social, nome_fantasia, pais, uf_sigla) VALUES
     ('FOR-0001', 'Glanbia Nutritionals',          'Glanbia',         'IE', NULL),
     ('FOR-0002', 'Alibra Ingredientes Ltda',      'Alibra',          'BR', 'SP'),
@@ -30,9 +16,6 @@ ON CONFLICT (codigo) DO UPDATE SET
 WHERE (fornecedor.razao_social, fornecedor.nome_fantasia, fornecedor.pais, fornecedor.uf_sigla)
     IS DISTINCT FROM (EXCLUDED.razao_social, EXCLUDED.nome_fantasia, EXCLUDED.pais, EXCLUDED.uf_sigla);
 
--- ------------------------------------------------------------
--- Matérias-primas
--- ------------------------------------------------------------
 INSERT INTO materia_prima (codigo, descricao, unidade_medida, ncm_codigo) VALUES
     ('MP-0001', 'Whey protein concentrado 80%',           'kg', '04041000'),
     ('MP-0002', 'Whey protein isolado 90%',               'kg', '35022000'),
@@ -53,9 +36,6 @@ ON CONFLICT (codigo) DO UPDATE SET
 WHERE (materia_prima.descricao, materia_prima.unidade_medida, materia_prima.ncm_codigo)
     IS DISTINCT FROM (EXCLUDED.descricao, EXCLUDED.unidade_medida, EXCLUDED.ncm_codigo);
 
--- ------------------------------------------------------------
--- Embalagens
--- ------------------------------------------------------------
 INSERT INTO embalagem (codigo, descricao, unidade_medida, ncm_codigo) VALUES
     ('EMB-0001', 'Pote PET 1200 ml + tampa',              'un', '39233090'),
     ('EMB-0002', 'Pote PEAD 500 ml + tampa',              'un', '39233090'),
@@ -70,9 +50,6 @@ ON CONFLICT (codigo) DO UPDATE SET
 WHERE (embalagem.descricao, embalagem.unidade_medida, embalagem.ncm_codigo)
     IS DISTINCT FROM (EXCLUDED.descricao, EXCLUDED.unidade_medida, EXCLUDED.ncm_codigo);
 
--- ------------------------------------------------------------
--- Produtos
--- ------------------------------------------------------------
 INSERT INTO produto (codigo, descricao, categoria, ncm_codigo, peso_liquido_g) VALUES
     ('PA-0001', 'WPC 80 — pote 600 g',              'Proteínas',      '21069030', 600),
     ('PA-0002', 'Whey isolado 900 g',               'Proteínas',      '21069030', 900),
@@ -89,9 +66,6 @@ ON CONFLICT (codigo) DO UPDATE SET
 WHERE (produto.descricao, produto.categoria, produto.ncm_codigo, produto.peso_liquido_g)
     IS DISTINCT FROM (EXCLUDED.descricao, EXCLUDED.categoria, EXCLUDED.ncm_codigo, EXCLUDED.peso_liquido_g);
 
--- ------------------------------------------------------------
--- Linhas de produção (TaxaMOD por funcionário e TaxaGGF, em R$/h)
--- ------------------------------------------------------------
 INSERT INTO linha_producao (codigo, descricao, taxa_mod, taxa_ggf) VALUES
     ('LIN-01', 'Envase de pós — potes até 1 kg',      58.20, 403.20),
     ('LIN-02', 'Envase de pós — potes acima de 1 kg', 58.20, 465.00)
@@ -102,11 +76,6 @@ ON CONFLICT (codigo) DO UPDATE SET
 WHERE (linha_producao.descricao, linha_producao.taxa_mod, linha_producao.taxa_ggf)
     IS DISTINCT FROM (EXCLUDED.descricao, EXCLUDED.taxa_mod, EXCLUDED.taxa_ggf);
 
--- ------------------------------------------------------------
--- Produtividade por produto e linha
--- PA-0001 na LIN-01 reproduz o cenário do protótipo: MOD R$ 1,94 e
--- GGF R$ 1,12 por unidade.
--- ------------------------------------------------------------
 INSERT INTO produtividade (produto_id, linha_producao_id, unidades_por_hora, numero_funcionarios)
 SELECT p.id, l.id, v.unidades_por_hora, v.numero_funcionarios
 FROM (VALUES
@@ -126,9 +95,6 @@ ON CONFLICT (produto_id, linha_producao_id) DO UPDATE SET
 WHERE (produtividade.unidades_por_hora, produtividade.numero_funcionarios)
     IS DISTINCT FROM (EXCLUDED.unidades_por_hora, EXCLUDED.numero_funcionarios);
 
--- ------------------------------------------------------------
--- Clientes (sem CNPJ: são empresas fictícias)
--- ------------------------------------------------------------
 INSERT INTO cliente (
     codigo, razao_social, nome_fantasia, regime_tributario, pais, uf_sigla, municipio_codigo_ibge, cep
 ) VALUES

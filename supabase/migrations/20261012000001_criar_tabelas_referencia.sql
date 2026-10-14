@@ -1,17 +1,3 @@
--- ============================================================
--- Migration: tabelas de referência (UF, município IBGE, CEP, NCM e
--- alíquotas por UF/NCM/regime)
--- Issue #43 (US05) — Sprint 1
--- Executar via: supabase db push
---
--- Convenções deste schema:
---   - Todo percentual é fração decimal (0.18 representa 18%), igual ao
---     contrato do motor (packages/pricing-core/.../contracts.py).
---   - Códigos oficiais (UF, IBGE, CEP, NCM) são a própria chave primária e
---     ficam sem máscara, só dígitos.
--- ============================================================
-
--- Trigger para manter updated_at sincronizado automaticamente
 CREATE OR REPLACE FUNCTION set_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -20,9 +6,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- ============================================================
--- TABELA: uf
--- ============================================================
 CREATE TABLE uf (
     sigla           CHAR(2)         PRIMARY KEY,
     codigo_ibge     SMALLINT        NOT NULL,
@@ -42,10 +25,6 @@ CREATE TRIGGER trg_uf_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION set_updated_at();
 
--- ============================================================
--- TABELA: municipio
--- Código IBGE de 7 dígitos como chave.
--- ============================================================
 CREATE TABLE municipio (
     codigo_ibge     INTEGER         PRIMARY KEY,
     nome            VARCHAR(120)    NOT NULL,
@@ -57,7 +36,6 @@ CREATE TABLE municipio (
     CONSTRAINT ck_municipio_codigo_ibge CHECK (codigo_ibge BETWEEN 1000000 AND 9999999)
 );
 
--- Listagem de municípios de uma UF em ordem alfabética (combo de cadastro)
 CREATE INDEX idx_municipio_uf_nome ON municipio (uf_sigla, nome);
 
 CREATE TRIGGER trg_municipio_updated_at
@@ -65,12 +43,6 @@ CREATE TRIGGER trg_municipio_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION set_updated_at();
 
--- ============================================================
--- TABELA: cep
--- Tabela de consulta CEP -> município/UF. Não é a base completa dos
--- Correios: recebe os CEPs usados nos cadastros, por isso cliente.cep
--- não tem FK para cá.
--- ============================================================
 CREATE TABLE cep (
     cep                     CHAR(8)         PRIMARY KEY,
     logradouro              VARCHAR(200)    NULL,
@@ -90,10 +62,6 @@ CREATE TRIGGER trg_cep_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION set_updated_at();
 
--- ============================================================
--- TABELA: ncm
--- Itens de 8 dígitos da Nomenclatura Comum do Mercosul.
--- ============================================================
 CREATE TABLE ncm (
     codigo          CHAR(8)         PRIMARY KEY,
     descricao       TEXT            NOT NULL,
@@ -109,12 +77,6 @@ CREATE TRIGGER trg_ncm_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION set_updated_at();
 
--- ============================================================
--- TABELA: aliquota_fiscal
--- Alíquotas por UF de destino, NCM e regime tributário (RF05/US12).
--- ncm_codigo NULL é a regra geral da UF; uma linha com NCM preenchido
--- tem precedência sobre ela.
--- ============================================================
 CREATE TABLE aliquota_fiscal (
     id                      UUID            PRIMARY KEY DEFAULT gen_random_uuid(),
 
@@ -129,7 +91,7 @@ CREATE TABLE aliquota_fiscal (
     ipi_percentual          NUMERIC(7, 6)   NOT NULL DEFAULT 0,
     icms_interno_percentual NUMERIC(7, 6)   NOT NULL DEFAULT 0,
     fcp_percentual          NUMERIC(7, 6)   NOT NULL DEFAULT 0,
-    mva_percentual          NUMERIC(8, 6)   NOT NULL DEFAULT 0,   -- MVA pode passar de 100%
+    mva_percentual          NUMERIC(8, 6)   NOT NULL DEFAULT 0,
 
     created_by              UUID            NULL,
     updated_by              UUID            NULL,
@@ -137,8 +99,6 @@ CREATE TABLE aliquota_fiscal (
     created_at              TIMESTAMPTZ     NOT NULL DEFAULT now(),
     updated_at              TIMESTAMPTZ     NOT NULL DEFAULT now(),
 
-    -- NULLS NOT DISTINCT: só pode existir uma regra geral (NCM nulo) por
-    -- UF, regime e início de vigência
     CONSTRAINT uq_aliquota_fiscal UNIQUE NULLS NOT DISTINCT
         (uf_destino, ncm_codigo, regime_tributario, vigencia_inicio),
     CONSTRAINT ck_aliquota_regime CHECK
@@ -159,12 +119,6 @@ CREATE TRIGGER trg_aliquota_fiscal_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION set_updated_at();
 
--- ============================================================
--- RLS (Row Level Security)
--- Ativado já na criação, com acesso só para o service_role (backend).
--- As políticas por perfil e carteira de clientes entram com a story de
--- RLS (US04).
--- ============================================================
 ALTER TABLE uf              ENABLE ROW LEVEL SECURITY;
 ALTER TABLE municipio       ENABLE ROW LEVEL SECURITY;
 ALTER TABLE cep             ENABLE ROW LEVEL SECURITY;

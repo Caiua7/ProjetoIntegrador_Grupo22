@@ -1,19 +1,3 @@
--- Seed: 05_aliquota_fiscal.sql
--- Regra geral de alíquotas por UF de destino (ncm_codigo NULL), uma linha
--- por UF e regime tributário.
--- Idempotente: pode rodar mais de uma vez sem duplicar nem alterar registros.
---
--- ATENÇÃO — valores de SIMULAÇÃO para desenvolvimento, ainda não
--- homologados com o PO nem conferidos contra a legislação de cada UF:
---   - icms: assume fabricante em SP. 18% na operação interna (SP), 12%
---     para Sul e Sudeste e 7% para Norte, Nordeste, Centro-Oeste e ES.
---   - icms_interno: alíquota modal interna da UF de destino.
---   - fcp: só o adicional geral conhecido (RJ); os demais ficam em zero.
---   - pis/cofins: regime não cumulativo do fabricante (1,65% e 7,6%),
---     iguais nos três regimes até a regra por regime ser definida (US12).
---   - ipi e mva: zero na regra geral; ST e IPI entram por NCM.
--- A manutenção destes valores pela interface é a US12 (Sprint 2).
-
 INSERT INTO aliquota_fiscal (
     uf_destino, ncm_codigo, regime_tributario, vigencia_inicio,
     pis_percentual, cofins_percentual, icms_percentual, ipi_percentual,
@@ -24,7 +8,6 @@ SELECT
     0.0165, 0.076, a.icms, 0,
     a.icms_interno, a.fcp, 0
 FROM (VALUES
-    -- uf, icms da operação, icms interno, fcp
     ('AC', 0.07, 0.19,  0),
     ('AL', 0.07, 0.19,  0),
     ('AM', 0.07, 0.20,  0),

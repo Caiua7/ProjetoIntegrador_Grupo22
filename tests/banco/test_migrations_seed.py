@@ -1,13 +1,3 @@
-"""Teste de integração do banco (issue #43 / US05).
-
-Critério de aceite: dado um banco vazio, quando migrations e seed rodam,
-então o schema sobe populado e o seed é reexecutável sem duplicar.
-
-Precisa de um PostgreSQL 15+ apontado por NEOPRICE_TEST_DATABASE_URL; sem a
-variável, a suíte fica com skip. Nada é criado em `public`: tudo roda em um
-schema temporário, removido ao final (ver README.md desta pasta).
-"""
-
 import os
 from pathlib import Path
 import uuid
@@ -18,7 +8,6 @@ psycopg = pytest.importorskip("psycopg")
 
 RAIZ = Path(__file__).resolve().parents[2]
 MIGRATIONS = sorted((RAIZ / "supabase" / "migrations").glob("*.sql"))
-# Mesma ordem do [db.seed] em supabase/config.toml
 SEEDS = sorted((RAIZ / "supabase" / "seed" / "referencia").glob("*.sql")) + sorted(
     (RAIZ / "supabase" / "seed" / "dev").glob("*.sql")
 )
@@ -49,7 +38,6 @@ def _rodar(conn, arquivos: list[Path]) -> None:
 
 
 def _retrato(conn) -> dict[str, tuple]:
-    """Contagem e hash do conteúdo de cada tabela, updated_at incluído."""
     return {
         tabela: conn.execute(
             f"SELECT count(*), md5(coalesce(string_agg(t::text, '|' ORDER BY t::text), '')) FROM {tabela} t"
@@ -62,7 +50,6 @@ def _retrato(conn) -> dict[str, tuple]:
 def conn():
     schema = f"teste_{uuid.uuid4().hex[:12]}"
     with psycopg.connect(DATABASE_URL, autocommit=True) as conexao:
-        # As políticas de RLS citam service_role, que só existe no Supabase
         if not conexao.execute("SELECT 1 FROM pg_roles WHERE rolname = 'service_role'").fetchone():
             conexao.execute("CREATE ROLE service_role NOLOGIN")
         conexao.execute(f"CREATE SCHEMA {schema}")
@@ -82,7 +69,6 @@ def test_schema_sobe_populado(conn):
     assert contagem["municipio"] >= 5570
     assert contagem["ncm"] >= 10000
     assert contagem["cep"] >= 10
-    # 27 UFs × 3 regimes de regra geral + a regra de ST da carga de dev
     assert contagem["aliquota_fiscal"] == 27 * 3 + 1
     assert all(total > 0 for total in contagem.values()), contagem
 
@@ -128,7 +114,6 @@ def test_todas_as_tabelas_com_rls_ativo(conn):
             id="municipio_com_uf_inexistente",
         ),
         pytest.param(
-            # NULLS NOT DISTINCT: a regra geral (NCM nulo) também é única
             "INSERT INTO aliquota_fiscal (uf_destino, ncm_codigo, regime_tributario, vigencia_inicio) "
             "VALUES ('SP', NULL, 'lucro_real', DATE '2026-01-01')",
             psycopg.errors.UniqueViolation,
@@ -149,8 +134,6 @@ def test_restricoes_de_integridade(conn, sql, erro):
 
 def test_updated_at_muda_no_update(conn):
     with conn.transaction(force_rollback=True):
-        # now() fica parado dentro da transação; o gatilho precisa ter rodado
-        # para updated_at sair do valor gravado pelo seed
         antes, depois = conn.execute(
             "WITH alterado AS ("
             "  UPDATE produto SET descricao = descricao || ' (rev)' WHERE codigo = 'PA-0001' RETURNING updated_at"
