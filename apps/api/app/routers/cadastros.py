@@ -59,6 +59,14 @@ class InsumoResposta(BaseModel):
     updated_at: datetime
 
 
+class PaginaInsumosResposta(BaseModel):
+    registros: list[InsumoResposta]
+    total: int
+    pagina: int
+    tamanho_pagina: int
+    total_paginas: int
+
+
 class NcmResposta(BaseModel):
     codigo: str
     descricao: str
@@ -114,6 +122,12 @@ def _buscar_por_id(tipo: TipoInsumo, registro_id: UUID, usuario: UsuarioAutentic
     return registros[0]
 
 
+def _padrao_busca_postgrest(termo: str) -> str:
+    """Escapa a busca como valor do filtro PostgREST, sem abrir sua gramática."""
+    escapado = termo.replace("\\", "\\\\").replace('"', '\\"').replace("%", "\\%").replace("_", "\\_")
+    return f'"%{escapado}%"'
+
+
 @router.get("/ncm", response_model=list[NcmResposta])
 def buscar_ncm(
     termo: str = Query(min_length=1, max_length=80),
@@ -152,15 +166,39 @@ def buscar_ncm(
     return ordenados[:20]
 
 
-@router.get("/{tipo}", response_model=list[InsumoResposta])
+@router.get("/{tipo}", response_model=PaginaInsumosResposta)
 def listar_insumos(
     tipo: TipoInsumo,
+    busca: str | None = Query(default=None, max_length=100),
+    ativo: bool | None = None,
+    unidade_medida: UnidadeMedida | None = None,
+    pagina: int = Query(default=1, ge=1),
+    tamanho_pagina: int = Query(default=20, ge=1, le=100),
     usuario: UsuarioAutenticado = Depends(exigir_permissao("cadastro.ler")),
-) -> list[dict]:
-    resposta = _executar(
-        lambda: supabase_do_usuario(usuario.access_token).table(_tabela(tipo)).select("*").order("descricao").execute()
-    )
-    return resposta.data or []
+) -> dict:
+    termo = busca.strip() if busca else ""
+    inicio = (pagina - 1) * tamanho_pagina
+
+    def consultar():
+        consulta = supabase_do_usuario(usuario.access_token).table(_tabela(tipo)).select("*", count="exact")
+        if termo:
+            padrao = _padrao_busca_postgrest(termo)
+            consulta = consulta.or_(f"codigo.ilike.{padrao},descricao.ilike.{padrao},ncm_codigo.ilike.{padrao}")
+        if ativo is not None:
+            consulta = consulta.eq("ativo", ativo)
+        if unidade_medida is not None:
+            consulta = consulta.eq("unidade_medida", unidade_medida)
+        return consulta.order("descricao").order("id").range(inicio, inicio + tamanho_pagina - 1).execute()
+
+    resposta = _executar(consultar)
+    total = resposta.count or 0
+    return {
+        "registros": resposta.data or [],
+        "total": total,
+        "pagina": pagina,
+        "tamanho_pagina": tamanho_pagina,
+        "total_paginas": (total + tamanho_pagina - 1) // tamanho_pagina,
+    }
 
 
 @router.get("/{tipo}/{registro_id}", response_model=InsumoResposta)

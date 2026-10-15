@@ -11,6 +11,7 @@ import {
   type Ncm,
   type TipoInsumo,
 } from './insumosService'
+import { type FiltroAtivo, type FiltroUnidade } from './insumosQuery'
 
 type Draft = { codigo: string, descricao: string, unidade_medida: InsumoEntrada['unidade_medida'] }
 
@@ -26,8 +27,15 @@ function unidadeInicial(tipo: TipoInsumo): Draft['unidade_medida'] {
 
 export function InsumosPage({ canEdit }: { canEdit: boolean }) {
   const [tipo, setTipo] = useState<TipoInsumo>('materias-primas')
-  const [itens, setItens] = useState<Insumo[]>([])
+  const [paginaDados, setPaginaDados] = useState<Awaited<ReturnType<typeof listarInsumos>> | null>(null)
+  const itens = paginaDados?.registros ?? []
+  const [busca, setBusca] = useState('')
+  const [filtroAtivo, setFiltroAtivo] = useState<FiltroAtivo>('todos')
+  const [unidadeFiltro, setUnidadeFiltro] = useState<FiltroUnidade>('todas')
+  const [pagina, setPagina] = useState(1)
+  const [tamanhoPagina, setTamanhoPagina] = useState(20)
   const [carregando, setCarregando] = useState(true)
+  const [erroLista, setErroLista] = useState<string | null>(null)
   const [erro, setErro] = useState<string | null>(null)
   const [mensagem, setMensagem] = useState<string | null>(null)
   const [versao, setVersao] = useState(0)
@@ -45,15 +53,32 @@ export function InsumosPage({ canEdit }: { canEdit: boolean }) {
 
   useEffect(() => {
     let vigente = true
-    void listarInsumos(tipo).then((resultado) => {
-      if (vigente) setItens(resultado)
-    }).catch((falha: unknown) => {
-      if (vigente) setErro(falha instanceof Error ? falha.message : 'Não foi possível carregar os cadastros.')
-    }).finally(() => {
-      if (vigente) setCarregando(false)
-    })
-    return () => { vigente = false }
-  }, [tipo, versao])
+    let ajustandoPagina = false
+    const temporizador = window.setTimeout(() => {
+      setPaginaDados(null)
+      setErroLista(null)
+      void listarInsumos(tipo, {
+        busca,
+        ativo: filtroAtivo,
+        unidade_medida: unidadeFiltro,
+        pagina,
+        tamanho_pagina: tamanhoPagina,
+      }).then((resultado) => {
+        if (!vigente) return
+        if ((resultado.total_paginas > 0 || pagina > 1) && pagina > Math.max(1, resultado.total_paginas)) {
+          ajustandoPagina = true
+          setPagina(Math.max(1, resultado.total_paginas))
+          return
+        }
+        setPaginaDados(resultado)
+      }).catch((falha: unknown) => {
+        if (vigente) setErroLista(falha instanceof Error ? falha.message : 'Falha ao carregar os cadastros.')
+      }).finally(() => {
+        if (vigente && !ajustandoPagina) setCarregando(false)
+      })
+    }, busca.trim() ? 300 : 0)
+    return () => { vigente = false; window.clearTimeout(temporizador) }
+  }, [tipo, busca, filtroAtivo, unidadeFiltro, pagina, tamanhoPagina, versao])
 
   useEffect(() => {
     const termo = ncmBusca.trim()
@@ -166,8 +191,24 @@ export function InsumosPage({ canEdit }: { canEdit: boolean }) {
         className={`filter-chip${tipo === opcao ? ' selected' : ''}`}
         type="button"
         aria-pressed={tipo === opcao}
-        onClick={() => { setTipo(opcao); setCarregando(true); setErro(null); setRegistroDetalhe(null); setFormularioAberto(false); setMensagem(null) }}
+        onClick={() => { setTipo(opcao); setPagina(1); setCarregando(true); setErro(null); setRegistroDetalhe(null); setFormularioAberto(false); setMensagem(null) }}
       >{rotulos[opcao]}</button>)}
+    </div>
+
+    <div className="catalog-filters" role="search" aria-label="Busca e filtros de cadastros">
+      <label className="field catalog-search">Buscar por código, descrição ou NCM
+        <input type="search" maxLength={100} value={busca} placeholder="Digite para pesquisar" onChange={(evento) => { setBusca(evento.target.value); setPagina(1); setCarregando(true); setErro(null); setErroLista(null) }} />
+      </label>
+      <label className="field">Situação
+        <select value={filtroAtivo} onChange={(evento) => { setFiltroAtivo(evento.target.value as FiltroAtivo); setPagina(1); setCarregando(true); setErro(null); setErroLista(null) }}>
+          <option value="todos">Todas</option><option value="ativos">Ativos</option><option value="inativos">Inativos</option>
+        </select>
+      </label>
+      <label className="field">Unidade
+        <select value={unidadeFiltro} onChange={(evento) => { setUnidadeFiltro(evento.target.value as FiltroUnidade); setPagina(1); setCarregando(true); setErro(null); setErroLista(null) }}>
+          <option value="todas">Todas</option>{unidades.map((unidade) => <option key={unidade} value={unidade}>{unidade}</option>)}
+        </select>
+      </label>
     </div>
 
     {mensagem && <p className="catalog-success" role="status">{mensagem}</p>}
@@ -210,18 +251,31 @@ export function InsumosPage({ canEdit }: { canEdit: boolean }) {
     </section>}
 
     <section className="form-card catalog-table-card" aria-labelledby="catalog-table-title">
-      <div className="list-card-heading"><div><span className="heading-icon" aria-hidden="true">▤</span><h3 id="catalog-table-title">{rotulos[tipo]}</h3></div><span className="list-scope">{itens.length} {itens.length === 1 ? 'registro' : 'registros'}</span></div>
-      {carregando ? <div className="empty-list" role="status">Carregando cadastros…</div>
-        : itens.length === 0 ? <div className="empty-list" role="status"><span className="empty-icon" aria-hidden="true">⌕</span><h3>Nenhum cadastro encontrado</h3><p>Esta lista ainda não possui registros.</p>{canEdit && <button className="button primary" type="button" onClick={abrirNovo}>Criar primeiro cadastro</button>}</div>
-          : <div className="table-scroll" role="region" aria-label={`Lista de ${rotulos[tipo].toLocaleLowerCase('pt-BR')}`} tabIndex={0}>
-            <table className="pricing-table catalog-table"><caption className="sr-only">{rotulos[tipo]} cadastradas, incluindo código, descrição, unidade, NCM, situação e ações</caption>
-              <thead><tr><th scope="col">Código</th><th scope="col">Descrição</th><th scope="col">Unidade</th><th scope="col">NCM</th><th scope="col">Situação</th><th scope="col">Ações</th></tr></thead>
-              <tbody>{itens.map((item) => <tr key={item.id}>
-                <th scope="row" className="code-cell">{item.codigo}</th><td>{item.descricao}</td><td>{item.unidade_medida}</td><td className="mono-cell">{item.ncm_codigo}</td><td><span className={`status-pill ${item.ativo ? 'status-approved' : 'status-neutral'}`}><i />{item.ativo ? 'Ativo' : 'Inativo'}</span></td>
-                <td className="catalog-actions"><button className="button secondary" type="button" disabled={carregandoDetalhe === item.id} onClick={() => { void mostrarDetalhes(item.id) }}>{carregandoDetalhe === item.id ? 'Abrindo…' : 'Visualizar'}</button>{canEdit && <><button className="button secondary" type="button" onClick={() => abrirEdicao(item)}>Editar</button><button className="button secondary" type="button" disabled={operandoId === item.id} onClick={() => { void alternarAtivo(item) }}>{operandoId === item.id ? 'Aguarde…' : item.ativo ? 'Inativar' : 'Reativar'}</button></>}</td>
-              </tr>)}</tbody>
-            </table>
-          </div>}
+      <div className="list-card-heading">
+        <div><span className="heading-icon" aria-hidden="true">{String.fromCharCode(0x25a4)}</span><h3 id="catalog-table-title">{rotulos[tipo]}</h3></div>
+        <span className="list-scope" aria-live="polite">{carregando || !paginaDados ? 'Carregando total…' : `${paginaDados.total} ${paginaDados.total === 1 ? 'registro' : 'registros'}`}</span>
+      </div>
+      {carregando ? <div className="empty-list" role="status">{'Carregando cadastros…'}</div>
+        : erroLista ? <div className="empty-list" role="alert"><h3>{'Não foi possível carregar a lista'}</h3><p>{erroLista}</p><button className="button secondary" type="button" onClick={() => { setCarregando(true); setVersao((atual) => atual + 1) }}>{'Tentar novamente'}</button></div>
+          : itens.length === 0 ? <div className="empty-list" role="status"><span className="empty-icon" aria-hidden="true">{String.fromCharCode(0x2315)}</span><h3>{'Nenhum cadastro encontrado'}</h3><p>{busca.trim() || filtroAtivo !== 'todos' || unidadeFiltro !== 'todas' ? 'A busca e os filtros atuais não encontraram registros.' : 'Esta lista ainda não possui registros.'}</p>{canEdit && !busca.trim() && filtroAtivo === 'todos' && unidadeFiltro === 'todas' && <button className="button primary" type="button" onClick={abrirNovo}>{'Criar primeiro cadastro'}</button>}</div>
+            : <div className="table-scroll" role="region" aria-label={`Lista de ${rotulos[tipo].toLocaleLowerCase('pt-BR')}`} tabIndex={0}>
+              <table className="pricing-table catalog-table"><caption className="sr-only">{rotulos[tipo]} {'cadastradas, incluindo código, descrição, unidade, NCM, situação e ações'}</caption>
+                <thead><tr><th scope="col">{'Código'}</th><th scope="col">{'Descrição'}</th><th scope="col">Unidade</th><th scope="col">NCM</th><th scope="col">{'Situação'}</th><th scope="col">{'Ações'}</th></tr></thead>
+                <tbody>{itens.map((item) => <tr key={item.id}>
+                  <th scope="row" className="code-cell">{item.codigo}</th><td>{item.descricao}</td><td>{item.unidade_medida}</td><td className="mono-cell">{item.ncm_codigo}</td><td><span className={`status-pill ${item.ativo ? 'status-approved' : 'status-neutral'}`}><i />{item.ativo ? 'Ativo' : 'Inativo'}</span></td>
+                  <td className="catalog-actions"><button className="button secondary" type="button" disabled={carregandoDetalhe === item.id} onClick={() => { void mostrarDetalhes(item.id) }}>{carregandoDetalhe === item.id ? 'Abrindo…' : 'Visualizar'}</button>{canEdit && <><button className="button secondary" type="button" onClick={() => abrirEdicao(item)}>Editar</button><button className="button secondary" type="button" disabled={operandoId === item.id} onClick={() => { void alternarAtivo(item) }}>{operandoId === item.id ? 'Aguarde…' : item.ativo ? 'Inativar' : 'Reativar'}</button></>}</td>
+                </tr>)}</tbody>
+              </table>
+            </div>}
+      {!carregando && !erroLista && paginaDados && paginaDados.total > 0 && <nav className="catalog-pagination" aria-label={'Paginação dos cadastros'}>
+        <span>{'Mostrando'} {(pagina - 1) * tamanhoPagina + 1}–{Math.min(pagina * tamanhoPagina, paginaDados.total)} {'de'} {paginaDados.total}</span>
+        <label>{'Por página'} <select value={tamanhoPagina} onChange={(evento) => { setTamanhoPagina(Number(evento.target.value)); setPagina(1); setCarregando(true) }}>
+          {[10, 20, 50, 100].map((quantidade) => <option key={quantidade} value={quantidade}>{quantidade}</option>)}
+        </select></label>
+        <button className="button secondary" type="button" aria-label={'Página anterior'} disabled={pagina <= 1} onClick={() => { setPagina((atual) => Math.max(1, atual - 1)); setCarregando(true) }}>{'Anterior'}</button>
+        <span aria-live="polite">{'Página'} {pagina} {'de'} {paginaDados.total_paginas}</span>
+        <button className="button secondary" type="button" aria-label={'Próxima página'} disabled={pagina >= paginaDados.total_paginas} onClick={() => { setPagina((atual) => Math.min(paginaDados.total_paginas, atual + 1)); setCarregando(true) }}>{'Próxima'}</button>
+      </nav>}
     </section>
   </section>
 }

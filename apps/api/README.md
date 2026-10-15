@@ -75,7 +75,7 @@ As rotas usam `supabase_do_usuario(token)`, exigem JWT e respeitam `cadastro.ler
 
 | Método e rota | Operação |
 | :--- | :--- |
-| `GET /cadastros/materias-primas` / `GET /cadastros/embalagens` | Lista registros, inclusive inativos |
+| `GET /cadastros/materias-primas` / `GET /cadastros/embalagens` | Lista registros com busca, filtros e paginação no servidor |
 | `GET /cadastros/{tipo}/{id}` | Consulta um registro |
 | `POST /cadastros/{tipo}` | Cria matéria-prima ou embalagem |
 | `PATCH /cadastros/{tipo}/{id}` | Atualiza campos informados; `ativo` permite reativar um cadastro |
@@ -83,5 +83,7 @@ As rotas usam `supabase_do_usuario(token)`, exigem JWT e respeitam `cadastro.ler
 | `GET /cadastros/ncm?termo=...` | Busca até 20 resultados por descrição ou prefixo de código NCM |
 
 `tipo` é `materias-primas` ou `embalagens`. Os campos vêm das tabelas existentes: `codigo`, `descricao`, `unidade_medida`, `ncm_codigo` e `ativo`. Código, descrição, unidade permitida e NCM de oito dígitos seguem limites e restrições já declarados no schema; as unidades padrão são `kg` para matéria-prima e `un` para embalagem. Não foi necessária nova tabela ou migration. A exclusão é lógica porque a convenção do projeto é inativar cadastros; a foreign key existente mantém a validação do NCM.
+
+Na listagem, `busca` (opcional, até 100 caracteres) pesquisa código, descrição e NCM; `ativo` e `unidade_medida` são filtros opcionais combináveis. A paginação usa `pagina` (padrão `1`) e `tamanho_pagina` (padrão `20`, máximo `100`). A resposta contém `registros`, `total`, `pagina`, `tamanho_pagina` e `total_paginas`; os registros são ordenados por descrição e, como desempate estável, por ID. Contagem, filtros e intervalo são executados pelo PostgREST em nome do usuário, então RLS continua aplicado.
 
 Testes: `cd apps/api && python -m pytest tests`.
