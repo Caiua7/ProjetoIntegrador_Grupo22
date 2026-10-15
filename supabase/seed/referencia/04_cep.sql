@@ -1,8 +1,3 @@
--- Seed: 04_cep.sql
--- GERADO por scripts/gerar_seed_referencia.py — não editar à mão.
--- Fonte: https://viacep.com.br/ws/<cep>/json/
--- Idempotente: pode rodar mais de uma vez sem duplicar nem alterar registros.
-
 INSERT INTO cep (cep, logradouro, bairro, municipio_codigo_ibge) VALUES
     ('01310100', 'Avenida Paulista', 'Bela Vista', 3550308),
     ('04538133', 'Avenida Brigadeiro Faria Lima', 'Itaim Bibi', 3550308),

@@ -1,8 +1,3 @@
--- Seed: 03_ncm.sql
--- GERADO por scripts/gerar_seed_referencia.py — não editar à mão.
--- Fonte: https://portalunico.siscomex.gov.br/classif/api/publico/nomenclatura/download/json?perfil=PUBLICO (Vigente em 12/10/2026, Resolução Gecex nº 926/2026)
--- Idempotente: pode rodar mais de uma vez sem duplicar nem alterar registros.
-
 INSERT INTO ncm (codigo, descricao) VALUES
     ('01012100', 'Reprodutores de raça pura'),
     ('01012900', 'Outros'),

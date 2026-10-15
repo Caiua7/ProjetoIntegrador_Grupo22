@@ -1,24 +1,11 @@
--- ============================================================
--- Migration: cadastros do núcleo (fornecedor, matéria-prima, embalagem,
--- produto, linha de produção, produtividade e cliente)
--- Issue #43 (US05) — Sprint 1
--- Executar via: supabase db push
---
--- Todo cadastro tem `codigo` de negócio único (é a chave usada pelo seed
--- e pelo contrato do motor) e `ativo` no lugar de exclusão física.
--- ============================================================
-
--- ============================================================
--- TABELA: fornecedor
--- ============================================================
 CREATE TABLE fornecedor (
     id              UUID            PRIMARY KEY DEFAULT gen_random_uuid(),
 
     codigo          VARCHAR(30)     NOT NULL,
     razao_social    VARCHAR(180)    NOT NULL,
     nome_fantasia   VARCHAR(180)    NULL,
-    cnpj            CHAR(14)        NULL,               -- fornecedor estrangeiro não tem
-    pais            CHAR(2)         NOT NULL DEFAULT 'BR',   -- ISO 3166-1 alfa-2
+    cnpj            CHAR(14)        NULL,
+    pais            CHAR(2)         NOT NULL DEFAULT 'BR',
     uf_sigla        CHAR(2)         NULL REFERENCES uf (sigla),
 
     ativo           BOOLEAN         NOT NULL DEFAULT TRUE,
@@ -44,9 +31,6 @@ CREATE TRIGGER trg_fornecedor_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION set_updated_at();
 
--- ============================================================
--- TABELA: materia_prima
--- ============================================================
 CREATE TABLE materia_prima (
     id              UUID            PRIMARY KEY DEFAULT gen_random_uuid(),
 
@@ -76,9 +60,6 @@ CREATE TRIGGER trg_materia_prima_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION set_updated_at();
 
--- ============================================================
--- TABELA: embalagem
--- ============================================================
 CREATE TABLE embalagem (
     id              UUID            PRIMARY KEY DEFAULT gen_random_uuid(),
 
@@ -108,9 +89,6 @@ CREATE TRIGGER trg_embalagem_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION set_updated_at();
 
--- ============================================================
--- TABELA: produto
--- ============================================================
 CREATE TABLE produto (
     id              UUID            PRIMARY KEY DEFAULT gen_random_uuid(),
 
@@ -142,11 +120,6 @@ CREATE TRIGGER trg_produto_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION set_updated_at();
 
--- ============================================================
--- TABELA: linha_producao
--- Guarda TaxaMOD e TaxaGGF da linha (US10), ambas em R$ por hora; a
--- TaxaMOD é por funcionário.
--- ============================================================
 CREATE TABLE linha_producao (
     id              UUID            PRIMARY KEY DEFAULT gen_random_uuid(),
 
@@ -173,13 +146,6 @@ CREATE TRIGGER trg_linha_producao_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION set_updated_at();
 
--- ============================================================
--- TABELA: produtividade
--- Produtividade de um produto em uma linha. Com as taxas da linha,
--- fecha os ParametrosProducao do contrato do motor:
---   CustoMOD = (TaxaMOD / Produtividade) × NumFunc
---   CustoGGF = TaxaGGF / Produtividade
--- ============================================================
 CREATE TABLE produtividade (
     id                  UUID            PRIMARY KEY DEFAULT gen_random_uuid(),
 
@@ -206,11 +172,6 @@ CREATE TRIGGER trg_produtividade_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION set_updated_at();
 
--- ============================================================
--- TABELA: cliente
--- Cliente de exportação tem pais <> 'BR' e fica sem UF, município, CEP
--- e regime tributário.
--- ============================================================
 CREATE TABLE cliente (
     id                      UUID            PRIMARY KEY DEFAULT gen_random_uuid(),
 
@@ -219,7 +180,7 @@ CREATE TABLE cliente (
     nome_fantasia           VARCHAR(180)    NULL,
     cnpj                    CHAR(14)        NULL,
     regime_tributario       VARCHAR(20)     NULL,
-    pais                    CHAR(2)         NOT NULL DEFAULT 'BR',   -- ISO 3166-1 alfa-2
+    pais                    CHAR(2)         NOT NULL DEFAULT 'BR',
     uf_sigla                CHAR(2)         NULL REFERENCES uf (sigla),
     municipio_codigo_ibge   INTEGER         NULL REFERENCES municipio (codigo_ibge),
     cep                     CHAR(8)         NULL,
@@ -239,7 +200,6 @@ CREATE TABLE cliente (
     CONSTRAINT ck_cliente_pais   CHECK (pais ~ '^[A-Z]{2}$'),
     CONSTRAINT ck_cliente_regime CHECK
         (regime_tributario IN ('lucro_real', 'lucro_presumido', 'simples_nacional')),
-    -- UF e regime definem a tributação do cenário: obrigatórios no Brasil
     CONSTRAINT ck_cliente_nacional CHECK
         (pais <> 'BR' OR (uf_sigla IS NOT NULL AND regime_tributario IS NOT NULL)),
     CONSTRAINT ck_cliente_exterior CHECK
@@ -256,10 +216,6 @@ CREATE TRIGGER trg_cliente_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION set_updated_at();
 
--- ============================================================
--- RLS (Row Level Security)
--- Mesmo critério da migration anterior: só service_role até a US04.
--- ============================================================
 ALTER TABLE fornecedor     ENABLE ROW LEVEL SECURITY;
 ALTER TABLE materia_prima  ENABLE ROW LEVEL SECURITY;
 ALTER TABLE embalagem      ENABLE ROW LEVEL SECURITY;

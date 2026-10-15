@@ -46,6 +46,7 @@ Os seeds podem rodar quantas vezes for preciso: cada `INSERT` usa `ON CONFLICT` 
 | `carteira` | `codigo` | Carteiras de clientes |
 | `usuario_carteira` | usuário e carteira | Carteiras que cada usuário atende |
 | `precificacao` | `codigo` | Cabeçalho mínimo da precificação (completado na US29) |
+| `auditoria` | `id` | Trilha imutável de toda inserção, alteração e exclusão, com usuário e diff |
 
 ## Convenções
 
@@ -55,6 +56,7 @@ Os seeds podem rodar quantas vezes for preciso: cada `INSERT` usa `ON CONFLICT` 
 - Cadastro não é apagado: usa-se a coluna `ativo`.
 - RLS ativo em todas as tabelas: o `service_role` (backend) tem acesso total, o `authenticated` passa pelas políticas por perfil e carteira e o `anon` não acessa nada. Ver [docs/controle-de-acesso.md](../docs/controle-de-acesso.md).
 - Tabela nova precisa de `ENABLE ROW LEVEL SECURITY`, `GRANT` e políticas na mesma migration; o teste `test_todas_as_tabelas_com_rls_ativo` barra a que ficar sem RLS.
+- Toda tabela é auditada: tabela nova precisa de `SELECT habilitar_auditoria('<tabela>');` na mesma migration. Ver [docs/auditoria.md](../docs/auditoria.md).
 
 ## Alíquotas
 

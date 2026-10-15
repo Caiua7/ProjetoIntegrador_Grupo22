@@ -8,6 +8,10 @@
   outra, cada perfil só alcança o que a matriz de acesso permite e ninguém
   consegue se promover.
 
+`test_auditoria.py` cobre o log imutável da issue #58: toda tabela auditada,
+inserção, alteração (com diff) e exclusão registradas com o usuário, e a trilha
+recusando UPDATE, DELETE e TRUNCATE.
+
 ## Como rodar
 
 Precisam de um PostgreSQL 15 ou superior. Com o banco local do Supabase

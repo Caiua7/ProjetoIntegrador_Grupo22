@@ -6,6 +6,7 @@ __pycache__/
 .pytest_cache/
 .coverage
 htmlcov/
+relatorio-conformidade.md
 
 # Node
 node_modules/

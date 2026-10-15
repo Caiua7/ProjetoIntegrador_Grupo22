@@ -1,8 +1,3 @@
--- Seed: 02_municipio.sql
--- GERADO por scripts/gerar_seed_referencia.py — não editar à mão.
--- Fonte: https://servicodados.ibge.gov.br/api/v1/localidades/municipios?view=nivelado
--- Idempotente: pode rodar mais de uma vez sem duplicar nem alterar registros.
-
 INSERT INTO municipio (codigo_ibge, nome, uf_sigla) VALUES
     (1100015, 'Alta Floresta D''Oeste', 'RO'),
     (1100023, 'Ariquemes', 'RO'),

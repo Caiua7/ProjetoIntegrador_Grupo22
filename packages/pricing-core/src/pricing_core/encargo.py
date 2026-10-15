@@ -15,13 +15,9 @@ longo da cadeia de preço.
 
 from decimal import Decimal, localcontext
 
+from pricing_core.numeros import PRECISAO, Numero, para_decimal
+
 DIAS_POR_MES = Decimal(30)
-
-# Dígitos significativos no cálculo. Folga ampla sobre a tolerância de
-# R$ 0,01 da suíte de conformidade, mesmo com expoente fracionário.
-PRECISAO = 34
-
-Numero = Decimal | int | str
 
 
 def taxa_encargo(taxa_mensal: Numero, prazo_medio_dias: Numero) -> Decimal:
@@ -30,8 +26,8 @@ def taxa_encargo(taxa_mensal: Numero, prazo_medio_dias: Numero) -> Decimal:
     >>> taxa_encargo("0.012", 30)
     Decimal('0.012')
     """
-    taxa = _para_decimal(taxa_mensal, "taxa_mensal")
-    prazo = _para_decimal(prazo_medio_dias, "prazo_medio_dias")
+    taxa = para_decimal(taxa_mensal, "taxa_mensal")
+    prazo = para_decimal(prazo_medio_dias, "prazo_medio_dias")
     if taxa < 0:
         raise ValueError(f"taxa_mensal não pode ser negativa: {taxa}")
     if prazo < 0:
@@ -53,8 +49,8 @@ def valor_encargo(taxa: Numero, base_preco: Numero) -> Decimal:
     Aplicar a taxa sobre o preço já com IPI ou com encargo cobraria juros
     sobre imposto ou juros sobre juros.
     """
-    taxa = _para_decimal(taxa, "taxa")
-    base = _para_decimal(base_preco, "base_preco")
+    taxa = para_decimal(taxa, "taxa")
+    base = para_decimal(base_preco, "base_preco")
     if taxa < 0:
         raise ValueError(f"taxa não pode ser negativa: {taxa}")
     if base < 0:
@@ -63,19 +59,3 @@ def valor_encargo(taxa: Numero, base_preco: Numero) -> Decimal:
     with localcontext() as ctx:
         ctx.prec = PRECISAO
         return taxa * base
-
-
-def _para_decimal(valor: Numero, nome: str) -> Decimal:
-    # float é recusado de propósito: 0.012 em binário já chega impreciso, e o
-    # critério de aceite do motor é divergência máxima de R$ 0,01.
-    if isinstance(valor, bool) or not isinstance(valor, Decimal | int | str):
-        raise TypeError(
-            f"{nome} deve ser Decimal, int ou str, não {type(valor).__name__}"
-        )
-    try:
-        numero = Decimal(valor)
-    except ArithmeticError:
-        raise ValueError(f"{nome} não é um número válido: {valor!r}") from None
-    if not numero.is_finite():
-        raise ValueError(f"{nome} deve ser finito: {valor!r}")
-    return numero
