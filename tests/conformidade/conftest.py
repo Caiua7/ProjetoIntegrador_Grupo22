@@ -9,7 +9,6 @@ O relatório é escrito ao fim da sessão mesmo quando há caso divergente, que
 from pathlib import Path
 
 import pytest
-
 from conferencia import Relatorio
 
 RELATORIO = pytest.StashKey[Relatorio]()

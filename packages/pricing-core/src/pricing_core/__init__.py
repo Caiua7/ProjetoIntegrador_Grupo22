@@ -5,12 +5,12 @@ percentual é ``Decimal``.
 """
 
 from pricing_core.contracts import (
+    ENGINE_CONTRACT_VERSION,
     CalculateMetadata,
     CalculateRequest,
     CalculateResponse,
     DomainErrorCodigo,
     DomainErrorResponse,
-    ENGINE_CONTRACT_VERSION,
     ImpostosDestacados,
     IsencaoMaoDeObraInfo,
     ItemInsumo,

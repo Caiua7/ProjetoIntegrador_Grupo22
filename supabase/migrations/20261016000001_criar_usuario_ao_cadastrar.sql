@@ -17,7 +17,7 @@ CREATE FUNCTION criar_usuario_do_auth()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path FROM CURRENT
 AS $$
 BEGIN
     INSERT INTO usuario (id, nome, email, perfil_id, ativo)

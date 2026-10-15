@@ -5,10 +5,11 @@ desta pasta).
 """
 
 import os
-from pathlib import Path
 import uuid
+from pathlib import Path
 
 import pytest
+from supabase_simulado import AUTH_SIMULADO, PAPEIS_SUPABASE
 
 RAIZ = Path(__file__).resolve().parents[2]
 MIGRATIONS = sorted((RAIZ / "supabase" / "migrations").glob("*.sql"))
@@ -16,19 +17,6 @@ MIGRATIONS = sorted((RAIZ / "supabase" / "migrations").glob("*.sql"))
 SEEDS = sorted((RAIZ / "supabase" / "seed" / "referencia").glob("*.sql")) + sorted(
     (RAIZ / "supabase" / "seed" / "dev").glob("*.sql")
 )
-
-# Papéis que as migrations citam e que só existem prontos no Supabase
-PAPEIS_SUPABASE = ["anon", "authenticated", "service_role"]
-
-# Mesmo comportamento do auth.uid() do Supabase: o id do usuário é o `sub`
-# do JWT, que o PostgREST publica em request.jwt.claims
-AUTH_UID_SIMULADO = """
-CREATE SCHEMA auth;
-CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$
-    SELECT (nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'sub')::uuid
-$$;
-GRANT USAGE ON SCHEMA auth TO anon, authenticated, service_role;
-"""
 
 
 def _rodar(conexao, arquivos: list[Path]) -> None:
@@ -52,7 +40,7 @@ def conn():
                 conexao.execute(f"CREATE ROLE {papel} NOLOGIN")
         auth_simulado = not conexao.execute("SELECT to_regprocedure('auth.uid()')").fetchone()[0]
         if auth_simulado:
-            conexao.execute(AUTH_UID_SIMULADO)
+            conexao.execute(AUTH_SIMULADO)
 
         conexao.execute(f"CREATE SCHEMA {schema}")
         conexao.execute(f"GRANT USAGE ON SCHEMA {schema} TO anon, authenticated, service_role")

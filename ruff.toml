@@ -1,0 +1,17 @@
+# Lint e formatação do Python do monorepo (apps/api, packages, tests).
+# Rodar a partir da raiz: `ruff check .` e `ruff format .`; o CI exige os dois limpos.
+line-length = 120
+target-version = "py312"
+extend-exclude = ["prototipo", "apps/web"]
+
+[lint]
+# E/W: estilo; F: erros; I: imports ordenados; B: bugs comuns; UP: sintaxe moderna; SIM: simplificações
+select = ["E", "W", "F", "I", "B", "UP", "SIM"]
+ignore = [
+    "B008",   # Depends(...) no default é o padrão do FastAPI
+    "E501",   # tamanho de linha fica com o `ruff format`; sobram só strings longas
+    "UP042",  # (str, Enum) mantido: trocar por StrEnum muda o contrato do pricing-core
+]
+
+[lint.isort]
+known-first-party = ["app", "pricing_core"]

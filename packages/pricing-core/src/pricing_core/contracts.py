@@ -38,10 +38,10 @@ contrato abaixo, apenas a fórmula usada por trás dele:
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from enum import Enum
-from typing import Annotated, Optional
+from typing import Annotated
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, PlainSerializer, model_validator
@@ -73,7 +73,7 @@ class ItemInsumo(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 
     codigo: str = Field(..., min_length=1, description="Código do insumo no cadastro mestre (RF03)")
-    descricao: Optional[str] = None
+    descricao: str | None = None
     preco_negociado: DecimalComoString = Field(..., ge=0, description="PrecoNeg — preço cotado, na moeda de origem")
     moeda: str = Field("BRL", min_length=3, max_length=3, description="Código ISO da moeda da cotação")
     cambio: DecimalComoString = Field(Decimal("1"), gt=0, description="Câmbio da moeda de origem para BRL")
@@ -119,8 +119,10 @@ class CalculateRequest(BaseModel):
 
     model_config = ConfigDict(str_strip_whitespace=True)
 
-    cenario_id: Optional[UUID] = Field(None, description="Cenário já existente sendo recalculado (RF09)")
-    cliente_uf: str = Field(..., pattern=r"^[A-Z]{2}$", description="UF de destino — usada na isenção de MDO e no ICMS-ST")
+    cenario_id: UUID | None = Field(None, description="Cenário já existente sendo recalculado (RF09)")
+    cliente_uf: str = Field(
+        ..., pattern=r"^[A-Z]{2}$", description="UF de destino — usada na isenção de MDO e no ICMS-ST"
+    )
     modalidade_comercial: ModalidadeComercial
     regime_tributario: str = Field(..., min_length=1, description="Ex.: Lucro Real, Lucro Presumido, Simples Nacional")
 
@@ -130,7 +132,9 @@ class CalculateRequest(BaseModel):
 
     material_fornecido_pelo_cliente: bool = Field(False, description="Origem do material (RF05)")
     valor_material_cliente: DecimalComoString = Field(
-        Decimal("0"), ge=0, description="MaterialCliente / CustoEnviadoCliente — ver decisão em aberto (3) no topo do módulo"
+        Decimal("0"),
+        ge=0,
+        description="MaterialCliente / CustoEnviadoCliente — ver decisão em aberto (3) no topo do módulo",
     )
 
     producao: ParametrosProducao
@@ -138,7 +142,7 @@ class CalculateRequest(BaseModel):
     comercial: ParametrosComerciais
 
     @model_validator(mode="after")
-    def _exige_ao_menos_um_insumo(self) -> "CalculateRequest":
+    def _exige_ao_menos_um_insumo(self) -> CalculateRequest:
         if not self.materiais_primas and not self.embalagens:
             raise ValueError("informe ao menos um item em materiais_primas ou embalagens")
         return self
@@ -159,7 +163,7 @@ class IsencaoMaoDeObraInfo(BaseModel):
 
 class CalculateMetadata(BaseModel):
     versao_motor: str = ENGINE_CONTRACT_VERSION
-    calculado_em: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    calculado_em: datetime = Field(default_factory=lambda: datetime.now(UTC))
     is_mock: bool = Field(..., description="True enquanto o motor real (US16/US19, Sprint 3) não estiver integrado")
 
 

@@ -1,8 +1,8 @@
 import gzip
 import json
-from pathlib import Path
 import re
 import urllib.request
+from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parent.parent
 SAIDA = RAIZ / "supabase" / "seed" / "referencia"

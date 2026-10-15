@@ -22,9 +22,7 @@ def para_decimal(valor: Numero, nome: str) -> Decimal:
     # float é recusado de propósito: 0.012 em binário já chega impreciso, e o
     # critério de aceite do motor é divergência máxima de R$ 0,01.
     if isinstance(valor, bool) or not isinstance(valor, Decimal | int | str):
-        raise TypeError(
-            f"{nome} deve ser Decimal, int ou str, não {type(valor).__name__}"
-        )
+        raise TypeError(f"{nome} deve ser Decimal, int ou str, não {type(valor).__name__}")
     try:
         numero = Decimal(valor)
     except ArithmeticError:

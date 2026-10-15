@@ -108,9 +108,8 @@ def test_todas_as_tabelas_com_rls_ativo(conn):
     ],
 )
 def test_restricoes_de_integridade(conn, sql, erro):
-    with pytest.raises(erro):
-        with conn.transaction(force_rollback=True):
-            conn.execute(sql)
+    with pytest.raises(erro), conn.transaction(force_rollback=True):
+        conn.execute(sql)
 
 
 def test_updated_at_muda_no_update(conn):

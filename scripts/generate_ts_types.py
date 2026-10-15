@@ -13,8 +13,8 @@ um header "NÃO EDITAR À MÃO" — se você editar o .ts direto, a próxima
 rodada do script sobrescreve sem aviso.
 """
 
-from pathlib import Path
 import sys
+from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(RAIZ / "packages" / "pricing-core" / "src"))

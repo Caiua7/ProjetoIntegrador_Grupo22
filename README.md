@@ -129,6 +129,17 @@ prototipo/             protótipo navegável
 
 A dependência só aponta para dentro: `web` → `api` → `pricing-core`. O `pricing-core` não importa nada das outras pastas.
 
+## Integração contínua
+
+Todo PR roda o workflow [CI](.github/workflows/ci.yml), e o merge na `main` exige todos os jobs verdes. A suíte do motor roda à parte, no workflow [Conformidade](.github/workflows/conformidade.yml).
+
+| Job | O que confere | Como rodar local |
+| :--- | :--- | :--- |
+| Python · lint e formatação | `ruff` com as regras de [ruff.toml](ruff.toml) | `ruff check .` e `ruff format --check .` (corrigir: `ruff check --fix .` e `ruff format .`) |
+| API · testes | `apps/api/tests` | `cd apps/api && pytest tests` |
+| Banco · migrations, seeds e RLS | `tests/banco` num PostgreSQL 17 | ver [tests/banco/README.md](tests/banco/README.md) |
+| Web · lint, tipos, testes e build | ESLint, TypeScript `strict`, `node --test` e build do Vite | `cd apps/web && npm run lint && npm run build && npm test` |
+
 ---
 
 ## Cronograma
