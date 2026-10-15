@@ -50,3 +50,23 @@ A documentação interativa fica em <http://localhost:8000/docs>.
 | `get_db()` / `get_engine()` | SQL direto pelo SQLAlchemy, também só para tarefas de sistema | **Ignorado** |
 
 Detalhes da regra de acesso em [docs/controle-de-acesso.md](../../docs/controle-de-acesso.md).
+
+## Autenticação
+
+O front manda o access token do Supabase Auth em `Authorization: Bearer <token>`. A API confere o token no próprio Supabase e carrega perfil e permissões da tabela `usuario` (`app/core/auth.py`).
+
+| Dependência | O que faz |
+| :--- | :--- |
+| `usuario_atual` | 401 sem token ou com token inválido/expirado; 403 para usuário inativo ou sem linha em `usuario` |
+| `exigir_permissao("precificacao.ler")` | Além do acima, 403 se o perfil não tem a permissão nomeada |
+
+```python
+@router.get("/precificacoes")
+def listar(usuario: UsuarioAutenticado = Depends(exigir_permissao("precificacao.ler"))): ...
+```
+
+`GET /auth/me` devolve nome, perfil e permissões de quem está logado; o front usa para montar o menu e a guarda de rota.
+
+Quem se cadastra no Supabase Auth ganha a linha em `usuario` sozinho (migration `20261016000001_criar_usuario_ao_cadastrar.sql`), mas **inativa**: o administrador ativa e escolhe o perfil.
+
+Testes: `cd apps/api && python -m pytest tests`.

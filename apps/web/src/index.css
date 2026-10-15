@@ -1,5 +1,10 @@
 :root {
-  font-family: 'IBM Plex Sans', sans-serif;
+  /* Tipografia: Bricolage Grotesque nos títulos, Instrument Sans no texto,
+     JetBrains Mono nos números (tabulares, alinham em coluna). */
+  --f-titulo: 'Bricolage Grotesque', 'Instrument Sans', system-ui, sans-serif;
+  --f-texto: 'Instrument Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --f-numero: 'JetBrains Mono', ui-monospace, 'Cascadia Mono', monospace;
+  font-family: var(--f-texto);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -10,4 +15,4 @@
 * { box-sizing: border-box; }
 body { min-width: 320px; min-height: 100vh; margin: 0; }
 button, input, select { font: inherit; }
-button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid #7d98ff; outline-offset: 2px; }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid #6ea2ff; outline-offset: 2px; }
