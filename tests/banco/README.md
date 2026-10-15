@@ -4,6 +4,10 @@ Verificam o critério de aceite da issue #43: dado um banco vazio, migrations e
 seed sobem o schema populado e o seed pode rodar de novo sem duplicar. Também
 cobrem as restrições de integridade, o RLS ativo e o gatilho de `updated_at`.
 
+`test_auditoria.py` cobre o log imutável da issue #58: toda tabela auditada,
+inserção, alteração (com diff) e exclusão registradas com o usuário, e a trilha
+recusando UPDATE, DELETE e TRUNCATE.
+
 ## Como rodar
 
 Precisam de um PostgreSQL 15 ou superior. Com o banco local do Supabase
