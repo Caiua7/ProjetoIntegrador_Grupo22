@@ -22,3 +22,10 @@ test('guarda de rota barra tela sem permissão', () => {
   assert.equal(canOpen('new-pricing', perfil('precificacao.editar')), true)
   assert.equal(canOpen('dashboard', perfil()), true)
 })
+
+test('cadastros de insumos exigem leitura para abrir e edição para manter registros', () => {
+  assert.equal(canOpen('records', perfil()), false)
+  assert.equal(canOpen('records', perfil('cadastro.ler')), true)
+  const ids = navigationFor(perfil('cadastro.ler')).flatMap((grupo) => grupo.items.map((item) => item.id))
+  assert.ok(ids.includes('records'))
+})

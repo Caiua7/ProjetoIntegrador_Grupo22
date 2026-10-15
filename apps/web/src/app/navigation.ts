@@ -1,7 +1,7 @@
 import type { IconName } from '../components/icons/Icon'
 
 /** Telas já implementadas; o resto do menu aparece desabilitado. */
-export type Screen = 'dashboard' | 'pricing-list' | 'new-pricing'
+export type Screen = 'dashboard' | 'pricing-list' | 'new-pricing' | 'records'
 
 export type NavItem = {
   id: string
@@ -13,12 +13,13 @@ export type NavItem = {
 
 export type NavGroup = { title: string, items: NavItem[] }
 
-export const IMPLEMENTED_SCREENS: readonly Screen[] = ['dashboard', 'pricing-list', 'new-pricing']
+export const IMPLEMENTED_SCREENS: readonly Screen[] = ['dashboard', 'pricing-list', 'new-pricing', 'records']
 
 export const SCREEN_HEADER: Record<Screen, { title: string, subtitle: string }> = {
   dashboard: { title: 'Painel', subtitle: 'Visão geral da sua carteira' },
   'pricing-list': { title: 'Precificações', subtitle: 'Cenários demonstrativos da carteira' },
   'new-pricing': { title: 'Nova precificação', subtitle: 'Cabeçalho comercial e fiscal do estudo' },
+  records: { title: 'Matérias-primas e embalagens', subtitle: 'Cadastros de insumos' },
 }
 
 export const NAVIGATION: NavGroup[] = [
@@ -38,7 +39,7 @@ export const NAVIGATION: NavGroup[] = [
     { id: 'bi', label: 'Exportar para BI', icon: 'exportar', permission: 'precificacao.ler' },
   ] },
   { title: 'Cadastros', items: [
-    { id: 'records', label: 'Cadastros base', icon: 'cadastros', permission: 'cadastro.ler' },
+    { id: 'records', label: 'Matérias-primas e embalagens', icon: 'cadastros', permission: 'cadastro.ler' },
     { id: 'quotes', label: 'Cotações', icon: 'cotacoes', permission: 'custo.ler' },
     { id: 'import-quotes', label: 'Importar cotações', icon: 'importar', permission: 'custo.editar' },
     { id: 'taxes', label: 'Tributos', icon: 'tributos', permission: 'parametro_fiscal.ler' },

@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.routers.auth import router as auth_router
+from app.routers.cadastros import router as cadastros_router
 from app.routers.calculate import router as calculate_router
 from app.routers.health import router as health_router
 
@@ -25,4 +26,5 @@ app.add_middleware(
 
 app.include_router(health_router)
 app.include_router(auth_router)
+app.include_router(cadastros_router)
 app.include_router(calculate_router)
