@@ -1,8 +1,12 @@
 import { createContext } from 'react'
 import type { Session } from '@supabase/supabase-js'
+import type { SessaoUsuario } from '../../services/apiClient'
 
 export type AuthContextValue = {
   session: Session | null
+  usuario: SessaoUsuario | null
+  accessError: string | null
+  hasPermission: (codigo: string) => boolean
   loading: boolean
   recoveryMode: boolean
   isConfigured: boolean

@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { getAuthErrorMessage, type AuthErrorLike } from './authMessages'
 import { isSupabaseConfigured, supabaseClient, supabaseConfigurationMessage } from '../../services/supabaseClient'
 import { AuthContext, type AuthContextValue } from './authContext'
+import { fetchSessaoUsuario, type SessaoUsuario } from '../../services/apiClient'
 
 function toAuthError(error: unknown): AuthErrorLike {
   if (error && typeof error === 'object') return error as AuthErrorLike
@@ -19,6 +20,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [recoveryMode, setRecoveryMode] = useState(false)
   const [startupError, setStartupError] = useState<string | null>(null)
   const [statusMessage, setStatusMessage] = useState<string | null>(null)
+  // Resultado de /auth/me guardado junto com o id a que se refere: se o
+  // usuário logado mudou, o resultado antigo deixa de valer sozinho.
+  const [perfil, setPerfil] = useState<{ userId: string, usuario: SessaoUsuario | null, error: string | null } | null>(null)
+  const signingOut = useRef(false)
+  const userId = session?.user.id ?? null
+  const perfilAtual = perfil && perfil.userId === userId ? perfil : null
+  const usuario = perfilAtual?.usuario ?? null
+  const accessError = perfilAtual?.error ?? null
+  const loadingUsuario = userId !== null && perfilAtual === null
 
   useEffect(() => {
     if (!supabaseClient) return
@@ -30,7 +40,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (event === 'PASSWORD_RECOVERY') setRecoveryMode(true)
       if (event === 'SIGNED_OUT') {
         setRecoveryMode(false)
-        setStatusMessage(null)
+        // Saída que o usuário não pediu = a sessão expirou e não renovou.
+        setStatusMessage(signingOut.current ? null : 'Sua sessão expirou. Entre novamente.')
+        signingOut.current = false
       }
       setLoading(false)
     })
@@ -52,9 +64,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  // Perfil e permissões vêm da API; recarrega só quando muda o usuário logado,
+  // não a cada renovação de token.
+  useEffect(() => {
+    if (!userId) return
+    let active = true
+    fetchSessaoUsuario()
+      .then((dados) => { if (active) setPerfil({ userId, usuario: dados, error: null }) })
+      .catch((error: unknown) => {
+        if (!active) return
+        const message = error instanceof Error ? error.message : 'Não foi possível carregar seu perfil.'
+        setPerfil({ userId, usuario: null, error: message })
+      })
+    return () => { active = false }
+  }, [userId])
+
   const value = useMemo<AuthContextValue>(() => ({
     session,
-    loading,
+    usuario,
+    accessError,
+    hasPermission: (codigo) => usuario?.permissoes.includes(codigo) ?? false,
+    loading: loading || loadingUsuario,
     recoveryMode,
     isConfigured: isSupabaseConfigured,
     configurationMessage: supabaseConfigurationMessage,
@@ -95,6 +125,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     async signOut() {
       if (!supabaseClient) return supabaseConfigurationMessage ?? 'Autenticação indisponível.'
+      signingOut.current = true
       try {
         const { error } = await supabaseClient.auth.signOut()
         const message = error ? getAuthErrorMessage(error) : null
@@ -106,7 +137,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return message
       }
     },
-  }), [session, loading, recoveryMode, startupError, statusMessage])
+  }), [session, usuario, accessError, loading, loadingUsuario, recoveryMode, startupError, statusMessage])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

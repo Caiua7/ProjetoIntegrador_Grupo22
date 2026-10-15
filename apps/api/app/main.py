@@ -1,11 +1,10 @@
-"""App FastAPI mínimo desta tarefa: só existe para publicar o contrato de
-`/calculate` (schema OpenAPI em /docs e /openapi.json) e servir o mock
-para o Squad B. Login, RLS e demais rotas entram por outras stories
-(US01–US04)."""
-
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
+from app.core.config import settings
+from app.routers.auth import router as auth_router
 from app.routers.calculate import router as calculate_router
+from app.routers.health import router as health_router
 
 app = FastAPI(
     title="NeoPrice API",
@@ -16,4 +15,14 @@ app = FastAPI(
     ),
 )
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.get_cors_origins(),
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.include_router(health_router)
+app.include_router(auth_router)
 app.include_router(calculate_router)

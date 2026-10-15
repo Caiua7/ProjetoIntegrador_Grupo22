@@ -122,7 +122,7 @@ packages/
   pricing-core/        motor de preço puro (domínio)
 supabase/
   migrations/          schema, RLS e auditoria
-  seed/                dados de referência idempotentes
+  seed/                dados de referência e carga de desenvolvimento, idempotentes
 docs/                  planejamento e especificação
 prototipo/             protótipo navegável
 ```

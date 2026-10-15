@@ -11,12 +11,13 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react()],
-    // Only inject the two explicitly public values below. Other VITE_ variables
+    // Only inject the explicitly public values below. Other VITE_ variables
     // (including accidental secrets) are not exposed through import.meta.env.
     envPrefix: 'NEOPRICE_PUBLIC_ONLY_',
     define: {
       'import.meta.env.VITE_NEOPRICE_SUPABASE_URL': JSON.stringify(env.VITE_NEOPRICE_SUPABASE_URL ?? ''),
       'import.meta.env.VITE_NEOPRICE_SUPABASE_ANON_KEY': JSON.stringify(env.VITE_NEOPRICE_SUPABASE_ANON_KEY ?? ''),
+      'import.meta.env.VITE_NEOPRICE_API_URL': JSON.stringify(env.VITE_NEOPRICE_API_URL ?? ''),
     },
   }
 })
