@@ -1,16 +1,14 @@
-import os
-from pathlib import Path
-import uuid
+"""Teste de integração do banco (issue #43 / US05).
+
+Critério de aceite: dado um banco vazio, quando migrations e seed rodam,
+então o schema sobe populado e o seed é reexecutável sem duplicar.
+
+O banco de teste é montado pela fixture `conn` (conftest.py).
+"""
 
 import pytest
 
 psycopg = pytest.importorskip("psycopg")
-
-RAIZ = Path(__file__).resolve().parents[2]
-MIGRATIONS = sorted((RAIZ / "supabase" / "migrations").glob("*.sql"))
-SEEDS = sorted((RAIZ / "supabase" / "seed" / "referencia").glob("*.sql")) + sorted(
-    (RAIZ / "supabase" / "seed" / "dev").glob("*.sql")
-)
 
 TABELAS = [
     "uf",
@@ -25,41 +23,22 @@ TABELAS = [
     "linha_producao",
     "produtividade",
     "cliente",
+    "perfil",
+    "permissao",
+    "perfil_permissao",
+    "carteira",
+    "precificacao",
 ]
-
-DATABASE_URL = os.environ.get("NEOPRICE_TEST_DATABASE_URL")
-
-pytestmark = pytest.mark.skipif(not DATABASE_URL, reason="defina NEOPRICE_TEST_DATABASE_URL para rodar os testes de banco")
-
-
-def _rodar(conn, arquivos: list[Path]) -> None:
-    for arquivo in arquivos:
-        conn.execute(arquivo.read_text(encoding="utf-8"))
 
 
 def _retrato(conn) -> dict[str, tuple]:
+    """Contagem e hash do conteúdo de cada tabela, updated_at incluído."""
     return {
         tabela: conn.execute(
             f"SELECT count(*), md5(coalesce(string_agg(t::text, '|' ORDER BY t::text), '')) FROM {tabela} t"
         ).fetchone()
         for tabela in TABELAS
     }
-
-
-@pytest.fixture(scope="module")
-def conn():
-    schema = f"teste_{uuid.uuid4().hex[:12]}"
-    with psycopg.connect(DATABASE_URL, autocommit=True) as conexao:
-        if not conexao.execute("SELECT 1 FROM pg_roles WHERE rolname = 'service_role'").fetchone():
-            conexao.execute("CREATE ROLE service_role NOLOGIN")
-        conexao.execute(f"CREATE SCHEMA {schema}")
-        conexao.execute(f"SET search_path TO {schema}")
-        try:
-            _rodar(conexao, MIGRATIONS)
-            _rodar(conexao, SEEDS)
-            yield conexao
-        finally:
-            conexao.execute(f"DROP SCHEMA {schema} CASCADE")
 
 
 def test_schema_sobe_populado(conn):
@@ -69,14 +48,15 @@ def test_schema_sobe_populado(conn):
     assert contagem["municipio"] >= 5570
     assert contagem["ncm"] >= 10000
     assert contagem["cep"] >= 10
+    # 27 UFs × 3 regimes de regra geral + a regra de ST da carga de dev
     assert contagem["aliquota_fiscal"] == 27 * 3 + 1
     assert all(total > 0 for total in contagem.values()), contagem
 
 
-def test_seed_e_reexecutavel_sem_duplicar(conn):
+def test_seed_e_reexecutavel_sem_duplicar(conn, rodar_seeds):
     antes = _retrato(conn)
 
-    _rodar(conn, SEEDS)
+    rodar_seeds()
 
     assert _retrato(conn) == antes
 
@@ -114,6 +94,7 @@ def test_todas_as_tabelas_com_rls_ativo(conn):
             id="municipio_com_uf_inexistente",
         ),
         pytest.param(
+            # NULLS NOT DISTINCT: a regra geral (NCM nulo) também é única
             "INSERT INTO aliquota_fiscal (uf_destino, ncm_codigo, regime_tributario, vigencia_inicio) "
             "VALUES ('SP', NULL, 'lucro_real', DATE '2026-01-01')",
             psycopg.errors.UniqueViolation,
@@ -134,6 +115,8 @@ def test_restricoes_de_integridade(conn, sql, erro):
 
 def test_updated_at_muda_no_update(conn):
     with conn.transaction(force_rollback=True):
+        # now() fica parado dentro da transação; o gatilho precisa ter rodado
+        # para updated_at sair do valor gravado pelo seed
         antes, depois = conn.execute(
             "WITH alterado AS ("
             "  UPDATE produto SET descricao = descricao || ' (rev)' WHERE codigo = 'PA-0001' RETURNING updated_at"

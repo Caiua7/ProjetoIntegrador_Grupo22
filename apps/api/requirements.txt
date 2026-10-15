@@ -1,0 +1,9 @@
+-e ./packages/pricing-core
+
+fastapi==0.136.1
+uvicorn==0.46.0
+pydantic==2.13.3
+pydantic-settings==2.14.0
+SQLAlchemy==2.0.49
+psycopg[binary]==3.3.2
+supabase==2.28.3
