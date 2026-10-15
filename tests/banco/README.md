@@ -12,6 +12,13 @@
 inserção, alteração (com diff) e exclusão registradas com o usuário, e a trilha
 recusando UPDATE, DELETE e TRUNCATE.
 
+`test_cadastro_usuario.py` cobre a issue #44: o cadastro no Supabase Auth cria
+a linha em `usuario`, inativa e com o perfil de menor alcance.
+
+O que só existe pronto no Supabase (papéis, `auth.uid()` e `auth.users`) é
+simulado por `supabase_simulado.py`; migration nova que use outra coisa do
+schema `auth` precisa ser acrescentada lá.
+
 ## Como rodar
 
 Precisam de um PostgreSQL 15 ou superior. Com o banco local do Supabase
@@ -20,6 +27,14 @@ Precisam de um PostgreSQL 15 ou superior. Com o banco local do Supabase
 ```bash
 pip install pytest "psycopg[binary]"
 export NEOPRICE_TEST_DATABASE_URL="postgresql://postgres:postgres@127.0.0.1:54322/postgres"
+pytest tests/banco
+```
+
+Sem o Supabase local, um PostgreSQL em Docker serve (é o que o CI usa):
+
+```bash
+docker run -d --rm --name neoprice-pg -e POSTGRES_PASSWORD=postgres -p 54329:5432 postgres:17
+export NEOPRICE_TEST_DATABASE_URL="postgresql://postgres:postgres@127.0.0.1:54329/postgres"
 pytest tests/banco
 ```
 

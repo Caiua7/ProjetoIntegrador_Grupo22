@@ -10,10 +10,11 @@ deixar dados nem linhas de auditoria para o seguinte.
 
 import json
 import os
-from pathlib import Path
 import uuid
+from pathlib import Path
 
 import pytest
+from supabase_simulado import AUTH_SIMULADO, PAPEIS_SUPABASE
 
 psycopg = pytest.importorskip("psycopg")
 
@@ -25,21 +26,11 @@ SEEDS = sorted((RAIZ / "supabase" / "seed" / "referencia").glob("*.sql")) + sort
 
 DATABASE_URL = os.environ.get("NEOPRICE_TEST_DATABASE_URL")
 
-pytestmark = pytest.mark.skipif(not DATABASE_URL, reason="defina NEOPRICE_TEST_DATABASE_URL para rodar os testes de banco")
+pytestmark = pytest.mark.skipif(
+    not DATABASE_URL, reason="defina NEOPRICE_TEST_DATABASE_URL para rodar os testes de banco"
+)
 
 USUARIO = uuid.UUID("11111111-1111-1111-1111-111111111111")
-
-
-# Papéis e auth.uid() que só existem prontos no Supabase. As migrations de
-# RLS (US04) usam os dois; sem eles, o schema não sobe num Postgres puro.
-PAPEIS_SUPABASE = ["anon", "authenticated", "service_role"]
-AUTH_UID_SIMULADO = """
-CREATE SCHEMA auth;
-CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$
-    SELECT (nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'sub')::uuid
-$$;
-GRANT USAGE ON SCHEMA auth TO anon, authenticated, service_role;
-"""
 
 
 @pytest.fixture(scope="module")
@@ -51,7 +42,7 @@ def conn():
                 conexao.execute(f"CREATE ROLE {papel} NOLOGIN")
         auth_simulado = not conexao.execute("SELECT to_regprocedure('auth.uid()')").fetchone()[0]
         if auth_simulado:
-            conexao.execute(AUTH_UID_SIMULADO)
+            conexao.execute(AUTH_SIMULADO)
 
         conexao.execute(f"CREATE SCHEMA {schema}")
         conexao.execute(f"GRANT USAGE ON SCHEMA {schema} TO anon, authenticated, service_role")
@@ -189,12 +180,11 @@ def test_service_role_audita_mas_nao_escreve_na_trilha(tx):
     assert linha["papel"] == "service_role"
     assert linha["usuario_id"] == USUARIO
 
-    with pytest.raises(psycopg.errors.InsufficientPrivilege):
-        with tx.transaction():
-            tx.execute(
-                "INSERT INTO auditoria (tabela, registro_id, operacao, papel, dados_depois) "
-                "VALUES ('fornecedor', 'x', 'INSERT', 'service_role', '{}')"
-            )
+    with pytest.raises(psycopg.errors.InsufficientPrivilege), tx.transaction():
+        tx.execute(
+            "INSERT INTO auditoria (tabela, registro_id, operacao, papel, dados_depois) "
+            "VALUES ('fornecedor', 'x', 'INSERT', 'service_role', '{}')"
+        )
 
 
 @pytest.mark.parametrize(
@@ -208,12 +198,10 @@ def test_service_role_audita_mas_nao_escreve_na_trilha(tx):
 def test_trilha_e_imutavel_ate_para_o_dono(tx, sql):
     _novo_fornecedor(tx)
 
-    with pytest.raises(psycopg.errors.InsufficientPrivilege):
-        with tx.transaction():
-            tx.execute(sql)
+    with pytest.raises(psycopg.errors.InsufficientPrivilege), tx.transaction():
+        tx.execute(sql)
 
 
 def test_truncate_em_tabela_auditada_e_recusado(tx):
-    with pytest.raises(psycopg.errors.InsufficientPrivilege):
-        with tx.transaction():
-            tx.execute("TRUNCATE produtividade")
+    with pytest.raises(psycopg.errors.InsufficientPrivilege), tx.transaction():
+        tx.execute("TRUNCATE produtividade")
