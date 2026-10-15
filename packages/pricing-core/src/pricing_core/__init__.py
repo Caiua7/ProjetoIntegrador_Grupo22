@@ -20,6 +20,7 @@ from pricing_core.contracts import (
     ParametrosProducao,
 )
 from pricing_core.encargo import taxa_encargo, valor_encargo
+from pricing_core.rentabilidade import Rentabilidade, derivar_rentabilidade
 
 __all__ = [
     "CalculateMetadata",
@@ -35,6 +36,8 @@ __all__ = [
     "ParametrosComerciais",
     "ParametrosImpostos",
     "ParametrosProducao",
+    "Rentabilidade",
+    "derivar_rentabilidade",
     "taxa_encargo",
     "valor_encargo",
 ]
