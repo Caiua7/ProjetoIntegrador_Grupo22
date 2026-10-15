@@ -2,6 +2,10 @@ import { useState } from 'react'
 import './App.css'
 import PricingCreate from './features/pricing/PricingCreate'
 import PricingList from './features/pricing/PricingList'
+import { AuthProvider } from './features/auth/AuthProvider'
+import { useAuth } from './features/auth/useAuth'
+import LoginPage from './features/auth/LoginPage'
+import PasswordRecoveryPage from './features/auth/PasswordRecoveryPage'
 
 type Screen = 'dashboard' | 'pricing-list' | 'new-pricing'
 
@@ -36,10 +40,19 @@ const navigation = [
 ]
 
 function App() {
+  return <AuthProvider><AuthenticatedApp /></AuthProvider>
+}
+
+function AuthenticatedApp() {
+  const { session, loading, recoveryMode, isConfigured, signOut, statusMessage } = useAuth()
   const [screen, setScreen] = useState<Screen>('dashboard')
   const [theme, setTheme] = useState<'dark' | 'light'>(() =>
     window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark',
   )
+
+  if (loading) return <main className="auth-page" data-theme="dark"><p className="auth-loading" role="status">Verificando sessão…</p></main>
+  if (recoveryMode) return <PasswordRecoveryPage />
+  if (!isConfigured || !session) return <LoginPage />
 
   const pageTitle: Record<Screen, string> = {
     dashboard: 'Painel',
@@ -82,8 +95,9 @@ function App() {
         </nav>
 
         <div className="sidebar-footer">
-          <span className="avatar">RC</span>
-          <span className="user-label"><strong>Rafael Costa</strong><small>Analista de Pricing · demonstração</small></span>
+          <span className="avatar">{(session.user.email?.slice(0, 2) ?? 'US').toUpperCase()}</span>
+          <span className="user-label"><strong>{session.user.email ?? 'Usuário conectado'}</strong><small>Sessão Supabase ativa</small></span>
+          <button className="logout" type="button" onClick={() => { void signOut() }}>Sair</button>
         </div>
       </aside>
 
@@ -99,6 +113,7 @@ function App() {
           </div>
         </header>
 
+        {statusMessage && <div className="auth-status-banner" role="status">{statusMessage}</div>}
         {screen === 'dashboard' && <Dashboard onNewPricing={() => setScreen('new-pricing')} />}
         {screen === 'pricing-list' && <PricingList onNewPricing={() => setScreen('new-pricing')} />}
         {screen === 'new-pricing' && <PricingCreate onCancel={() => setScreen('pricing-list')} />}
