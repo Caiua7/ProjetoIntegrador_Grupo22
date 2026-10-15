@@ -21,8 +21,9 @@ class ErroPersistencia(Exception):
 
 
 class Resposta:
-    def __init__(self, data):
+    def __init__(self, data, count=None):
         self.data = data
+        self.count = count
 
 
 class ConsultaFalsa:
@@ -34,9 +35,12 @@ class ConsultaFalsa:
         self.filtros = []
         self.busca = None
         self.limite = None
-        self.ordem = None
+        self.intervalo = None
+        self.ordens = []
+        self.contagem_exata = False
 
-    def select(self, _campos="*"):
+    def select(self, _campos="*", count=None):
+        self.contagem_exata = count == "exact"
         return self
 
     def insert(self, dados):
@@ -55,12 +59,24 @@ class ConsultaFalsa:
         self.busca = (campo, valor.strip("% ").casefold())
         return self
 
+    def or_(self, filtros):
+        prefixo = 'codigo.ilike."%'
+        separador = '%",descricao.ilike."%'
+        inicio = filtros.find(prefixo)
+        fim = filtros.find(separador, inicio + len(prefixo))
+        self.busca = filtros[inicio + len(prefixo) : fim].replace(r"\%", "%").replace(r"\_", "_").casefold()
+        return self
+
     def order(self, campo):
-        self.ordem = campo
+        self.ordens.append(campo)
         return self
 
     def limit(self, quantidade):
         self.limite = quantidade
+        return self
+
+    def range(self, inicio, fim):
+        self.intervalo = (inicio, fim)
         return self
 
     def execute(self):
@@ -80,8 +96,20 @@ class ConsultaFalsa:
             linha for linha in linhas if all(str(linha.get(campo)) == str(valor) for campo, valor in self.filtros)
         ]
         if self.busca:
-            campo, termo = self.busca
-            correspondentes = [linha for linha in correspondentes if termo in linha[campo].casefold()]
+            if isinstance(self.busca, tuple):
+                campo, termo = self.busca
+                correspondentes = [linha for linha in correspondentes if termo in linha[campo].casefold()]
+            else:
+                termo = self.busca
+                correspondentes = [
+                    linha
+                    for linha in correspondentes
+                    if (
+                        termo in linha["codigo"].casefold()
+                        or termo in linha["descricao"].casefold()
+                        or termo in linha["ncm_codigo"].casefold()
+                    )
+                ]
         if self.acao == "update":
             for linha in correspondentes:
                 if "codigo" in self.dados and any(
@@ -95,9 +123,15 @@ class ConsultaFalsa:
                 linha.update(self.dados)
                 linha["updated_at"] = datetime.now(UTC).isoformat()
             return Resposta(deepcopy(correspondentes[: self.limite]))
-        if self.ordem:
-            correspondentes.sort(key=lambda linha: linha[self.ordem])
-        return Resposta(deepcopy(correspondentes[: self.limite]))
+        for campo in reversed(self.ordens):
+            correspondentes.sort(key=lambda linha: linha[campo])
+        total = len(correspondentes)
+        if self.intervalo is not None:
+            inicio, fim = self.intervalo
+            correspondentes = correspondentes[inicio : fim + 1]
+        elif self.limite is not None:
+            correspondentes = correspondentes[: self.limite]
+        return Resposta(deepcopy(correspondentes), total if self.contagem_exata else None)
 
 
 class ClienteFalso:
@@ -159,7 +193,8 @@ def test_cria_lista_consulta_edita_e_inativa_materia_prima(ambiente):
 
     lista = http.get("/cadastros/materias-primas", headers=TOKEN)
     assert lista.status_code == 200
-    assert [item["id"] for item in lista.json()] == [registro["id"]]
+    assert [item["id"] for item in lista.json()["registros"]] == [registro["id"]]
+    assert lista.json()["total"] == 1
 
     detalhe = http.get(f"/cadastros/materias-primas/{registro['id']}", headers=TOKEN)
     assert detalhe.status_code == 200
@@ -240,3 +275,136 @@ def test_rotas_exigem_sessao_e_permissao_de_edicao(ambiente):
     assert http.get("/cadastros/materias-primas").status_code == 401
     dados_usuario["permissoes"] = ["cadastro.ler"]
     assert http.post("/cadastros/materias-primas", headers=TOKEN, json=payload()).status_code == 403
+
+
+def _registro(codigo, descricao, unidade="kg", ativo=True, identificador=None, ncm="10000000"):
+    agora = datetime.now(UTC).isoformat()
+    return {
+        "id": str(identificador or uuid4()),
+        "codigo": codigo,
+        "descricao": descricao,
+        "unidade_medida": unidade,
+        "ncm_codigo": ncm,
+        "ativo": ativo,
+        "created_at": agora,
+        "updated_at": agora,
+    }
+
+
+def test_lista_paginada_retorna_metadados_padrao(ambiente):
+    http, banco, _usuario = ambiente
+    banco["materia_prima"] = [_registro("MP-001", "Farinha")]
+
+    resposta = http.get("/cadastros/materias-primas", headers=TOKEN)
+
+    assert resposta.status_code == 200
+    corpo = resposta.json()
+    assert [item["id"] for item in corpo["registros"]] == [banco["materia_prima"][0]["id"]]
+    assert {chave: corpo[chave] for chave in ("total", "pagina", "tamanho_pagina", "total_paginas")} == {
+        "total": 1,
+        "pagina": 1,
+        "tamanho_pagina": 20,
+        "total_paginas": 1,
+    }
+
+
+def test_busca_filtros_combinados_e_paginacao_sao_aplicados_no_servidor(ambiente):
+    http, banco, _usuario = ambiente
+    banco["materia_prima"] = [
+        _registro("MP-001", "Farinha de trigo", ativo=True),
+        _registro("MP-002", "Farinha de milho", unidade="g", ativo=False),
+        _registro("MP-003", "Farinha integral", ativo=False),
+        _registro("MP-004", "Açúcar", ativo=False),
+    ]
+
+    resposta = http.get(
+        "/cadastros/materias-primas",
+        headers=TOKEN,
+        params={"busca": "farinha", "ativo": "false", "unidade_medida": "kg", "pagina": 1, "tamanho_pagina": 1},
+    )
+
+    assert resposta.status_code == 200
+    assert [item["codigo"] for item in resposta.json()["registros"]] == ["MP-003"]
+    assert resposta.json()["total"] == 1
+    assert resposta.json()["total_paginas"] == 1
+
+
+def test_busca_e_filtros_individuais(ambiente):
+    http, banco, _usuario = ambiente
+    banco["materia_prima"] = [
+        _registro("MP-001", "Farinha de trigo", unidade="kg", ativo=True),
+        _registro("MP-002", "Amido", unidade="g", ativo=False, ncm="02011000"),
+    ]
+
+    por_codigo = http.get("/cadastros/materias-primas", headers=TOKEN, params={"busca": "MP-002"}).json()
+    por_ncm = http.get("/cadastros/materias-primas", headers=TOKEN, params={"busca": "02011000"}).json()
+    por_unidade = http.get("/cadastros/materias-primas", headers=TOKEN, params={"unidade_medida": "g"}).json()
+    por_situacao = http.get("/cadastros/materias-primas", headers=TOKEN, params={"ativo": "true"}).json()
+
+    assert [item["codigo"] for item in por_codigo["registros"]] == ["MP-002"]
+    assert [item["codigo"] for item in por_ncm["registros"]] == ["MP-002"]
+    assert [item["codigo"] for item in por_unidade["registros"]] == ["MP-002"]
+    assert [item["codigo"] for item in por_situacao["registros"]] == ["MP-001"]
+
+
+def test_paginas_ordenadas_estavelmente_e_pagina_vazia(ambiente):
+    http, banco, _usuario = ambiente
+    banco["embalagem"] = [
+        _registro("EMB-003", "Caixa", identificador=UUID(int=3)),
+        _registro("EMB-001", "Caixa", identificador=UUID(int=1)),
+        _registro("EMB-002", "Caixa", identificador=UUID(int=2)),
+    ]
+
+    primeira = http.get("/cadastros/embalagens", headers=TOKEN, params={"pagina": 1, "tamanho_pagina": 2}).json()
+    segunda = http.get("/cadastros/embalagens", headers=TOKEN, params={"pagina": 2, "tamanho_pagina": 2}).json()
+    vazia = http.get("/cadastros/embalagens", headers=TOKEN, params={"pagina": 3, "tamanho_pagina": 2}).json()
+
+    assert [item["codigo"] for item in primeira["registros"]] == ["EMB-001", "EMB-002"]
+    assert [item["codigo"] for item in segunda["registros"]] == ["EMB-003"]
+    assert vazia["registros"] == []
+    assert vazia["total"] == 3
+    assert vazia["pagina"] == 3
+    assert vazia["total_paginas"] == 2
+
+
+@pytest.mark.parametrize(
+    "parametros",
+    [
+        {"pagina": 0},
+        {"tamanho_pagina": 0},
+        {"tamanho_pagina": 101},
+        {"busca": "x" * 101},
+        {"unidade_medida": "cx"},
+        {"ativo": "talvez"},
+    ],
+)
+def test_parametros_de_listagem_invalidos_sao_rejeitados(ambiente, parametros):
+    http, _banco, _usuario = ambiente
+
+    assert http.get("/cadastros/materias-primas", headers=TOKEN, params=parametros).status_code == 422
+
+
+def test_limite_maximo_de_pagina_e_busca_vazia(ambiente):
+    http, banco, _usuario = ambiente
+    banco["materia_prima"] = [_registro("MP-001", "Farinha")]
+
+    resposta = http.get("/cadastros/materias-primas", headers=TOKEN, params={"busca": "   ", "tamanho_pagina": 100})
+
+    assert resposta.status_code == 200
+    assert resposta.json()["total"] == 1
+    assert resposta.json()["tamanho_pagina"] == 100
+
+
+def test_valor_de_busca_escapa_gramatica_do_postgrest():
+    assert cadastros._padrao_busca_postgrest('a,b"c\\d%_') == '"%a,b\\"c\\\\d\\%\\_%"'
+
+
+def test_consulta_da_listagem_repassa_o_token_do_usuario_para_o_postgrest(ambiente, monkeypatch):
+    http, banco, _usuario = ambiente
+    tokens = []
+    monkeypatch.setattr(cadastros, "supabase_do_usuario", lambda token: tokens.append(token) or ClienteFalso(banco))
+
+    resposta = http.get("/cadastros/materias-primas", headers=TOKEN)
+
+    assert resposta.status_code == 200
+    assert tokens == ["token-us06"]

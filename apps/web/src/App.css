@@ -266,6 +266,10 @@
 .catalog-success { border-color: rgba(47,208,138,.28); background: var(--green-wash); color: var(--green); }
 .catalog-error { border-color: rgba(255,107,107,.3); background: var(--error-wash); color: var(--error); }
 .catalog-form-card, .catalog-table-card, .catalog-detail { margin-top: 14px; }
+.catalog-filters { display: grid; grid-template-columns: minmax(220px, 1fr) repeat(2, minmax(150px, .35fr)); gap: 10px; margin-top: 14px; }
+.catalog-pagination { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 9px; margin-top: 14px; color: var(--text-3); font-size: 11px; }
+.catalog-pagination label { display: flex; align-items: center; gap: 6px; }
+.catalog-pagination select { min-height: 31px; padding: 0 8px; border: 1px solid var(--line-strong); border-radius: 7px; background: var(--surface-2); color: var(--text); }
 .catalog-form { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 14px; }
 .catalog-ncm-field { position: relative; }
 .catalog-ncm-field > label { color: var(--text-2); font-size: 11px; font-weight: 500; }
@@ -289,6 +293,8 @@
 .catalog-content button:focus-visible, .catalog-content input:focus-visible, .catalog-content select:focus-visible { outline: 2px solid var(--brand-light); outline-offset: 2px; }
 
 @media (max-width: 620px) {
+  .catalog-filters { grid-template-columns: 1fr; }
+  .catalog-pagination { justify-content: flex-start; }
   .catalog-form { grid-template-columns: 1fr; }
   .catalog-form-actions { grid-column: auto; flex-direction: column-reverse; }
   .catalog-form-actions .button { width: 100%; }
