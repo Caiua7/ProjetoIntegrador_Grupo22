@@ -39,6 +39,7 @@ Os seeds podem rodar quantas vezes for preciso: cada `INSERT` usa `ON CONFLICT` 
 | `linha_producao` | `codigo` | Linhas de produção, com TaxaMOD e TaxaGGF (R$/h) |
 | `produtividade` | produto e linha | Unidades por hora e número de funcionários |
 | `cliente` | `codigo` | Clientes, com UF, município, CEP e regime tributário |
+| `auditoria` | `id` | Trilha imutável de toda inserção, alteração e exclusão, com usuário e diff |
 
 ## Convenções
 
@@ -47,6 +48,7 @@ Os seeds podem rodar quantas vezes for preciso: cada `INSERT` usa `ON CONFLICT` 
 - `created_at` e `updated_at` em todas as tabelas; `updated_at` é mantido pelo gatilho `set_updated_at`.
 - Cadastro não é apagado: usa-se a coluna `ativo`.
 - RLS ativo em todas as tabelas, por enquanto só com a política do `service_role` (backend). As políticas por perfil e carteira entram na US04.
+- Toda tabela é auditada: tabela nova precisa de `SELECT habilitar_auditoria('<tabela>');` na mesma migration. Ver [docs/auditoria.md](../docs/auditoria.md).
 
 ## Alíquotas
 
