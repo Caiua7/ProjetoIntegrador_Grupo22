@@ -1,0 +1,58 @@
+# Suíte de conformidade do motor (RNF08, US22, issue #56).
+# Roda os testes do pricing-core e os casos homologados com o PO, e publica
+# o relatório de divergência por caso no resumo do job e como artefato.
+name: Conformidade do motor
+
+on:
+  pull_request:
+    paths:
+      - "packages/pricing-core/**"
+      - "tests/conformidade/**"
+      - ".github/workflows/conformidade.yml"
+  push:
+    branches: [main]
+    paths:
+      - "packages/pricing-core/**"
+      - "tests/conformidade/**"
+      - ".github/workflows/conformidade.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  conformidade:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: packages/pricing-core/pyproject.toml
+
+      - name: Instalar o pricing-core
+        run: pip install -e "packages/pricing-core[dev]"
+
+      - name: Testes do pricing-core
+        working-directory: packages/pricing-core
+        run: pytest
+
+      - name: Casos homologados
+        run: pytest tests/conformidade -rs --relatorio-conformidade=relatorio-conformidade.md
+
+      - name: Publicar o relatório no resumo do job
+        if: always()
+        run: |
+          if [ -f relatorio-conformidade.md ]; then
+            cat relatorio-conformidade.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: relatorio-conformidade
+          path: relatorio-conformidade.md
+          if-no-files-found: ignore

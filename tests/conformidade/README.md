@@ -39,10 +39,42 @@ caso feliz), cubra pelo menos:
       impostos que zerem ou neguem o denominador `D`), para validar que a
       API responde com `DomainErrorResponse` (422) e não uma exceção crua
 
-## Depois da sessão
+## Formato do caso
 
-- Rode `pytest tests/conformidade/` — os testes ficam com skip até
-  `pricing_core.engine` existir (Sprint 3), mas já validam que os JSONs
-  estão bem formados.
-- Assim que `pricing_core.engine.calcular` existir, a suíte passa a
-  comparar de verdade — nenhuma mudança neste arquivo é esperada.
+- `id`: igual ao nome do arquivo (`caso_007`).
+- `entrada`: payload de `CalculateRequest`, validado contra o contrato.
+- `saida_esperada`: campos de `CalculateResponse` com o valor do PO, sempre
+  como **string** (`"1749.93"`, nunca `1749.93`: número no JSON vira float e
+  perde precisão). Campo aninhado vai com ponto:
+  `"impostos_destacados.icms_st_valor"`. Enquanto o PO não der o valor,
+  deixe `"PREENCHER_COM_PO"`: o caso fica como pendente e não falha.
+- `erro_esperado` (só no caso desenhado para falhar): o código de
+  `DomainErrorCodigo`, por exemplo `"DENOMINADOR_INVALIDO"`, e
+  `saida_esperada` vazio. A suíte espera que `calcular` levante uma exceção
+  com atributo `codigo` igual a ele.
+
+Tolerância: R$ 0,01 nos campos monetários e 0,000001 nas frações
+(`denominador`, `encargo_financeiro_percentual`,
+`margem_contribuicao_percentual`). Ver `conferencia.py`.
+
+## Rodando
+
+```bash
+pip install -e "packages/pricing-core[dev]"
+pytest tests/conformidade --relatorio-conformidade=relatorio-conformidade.md
+```
+
+- `test_caso_bem_formado` valida todo JSON contra o contrato desde já: um
+  caso mal preenchido falha agora, e não só quando o motor chegar.
+- `test_caso_homologado` compara de verdade assim que
+  `pricing_core.engine.calcular(entrada: CalculateRequest) -> CalculateResponse`
+  existir (US16/US19). Até lá fica com skip.
+- O relatório traz a situação de cada caso (conforme, divergente, erro,
+  pendente com o PO) e a tabela de divergências por campo.
+
+## No CI
+
+O workflow `.github/workflows/conformidade.yml` roda os testes do
+`pricing-core` e esta suíte em todo PR que mexe no motor ou nos casos, e
+publica o relatório no resumo do job e como artefato
+(`relatorio-conformidade`). A S3 só fecha com os 30 casos conformes.
