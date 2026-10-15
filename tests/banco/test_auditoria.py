@@ -30,14 +30,31 @@ pytestmark = pytest.mark.skipif(not DATABASE_URL, reason="defina NEOPRICE_TEST_D
 USUARIO = uuid.UUID("11111111-1111-1111-1111-111111111111")
 
 
+# Papéis e auth.uid() que só existem prontos no Supabase. As migrations de
+# RLS (US04) usam os dois; sem eles, o schema não sobe num Postgres puro.
+PAPEIS_SUPABASE = ["anon", "authenticated", "service_role"]
+AUTH_UID_SIMULADO = """
+CREATE SCHEMA auth;
+CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$
+    SELECT (nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'sub')::uuid
+$$;
+GRANT USAGE ON SCHEMA auth TO anon, authenticated, service_role;
+"""
+
+
 @pytest.fixture(scope="module")
 def conn():
     schema = f"teste_{uuid.uuid4().hex[:12]}"
     with psycopg.connect(DATABASE_URL, autocommit=True) as conexao:
-        if not conexao.execute("SELECT 1 FROM pg_roles WHERE rolname = 'service_role'").fetchone():
-            conexao.execute("CREATE ROLE service_role NOLOGIN")
+        for papel in PAPEIS_SUPABASE:
+            if not conexao.execute("SELECT 1 FROM pg_roles WHERE rolname = %s", [papel]).fetchone():
+                conexao.execute(f"CREATE ROLE {papel} NOLOGIN")
+        auth_simulado = not conexao.execute("SELECT to_regprocedure('auth.uid()')").fetchone()[0]
+        if auth_simulado:
+            conexao.execute(AUTH_UID_SIMULADO)
+
         conexao.execute(f"CREATE SCHEMA {schema}")
-        conexao.execute(f"GRANT USAGE ON SCHEMA {schema} TO service_role")
+        conexao.execute(f"GRANT USAGE ON SCHEMA {schema} TO anon, authenticated, service_role")
         # Mesmo privilégio padrão do Supabase: o service_role recebe tudo em
         # tabela nova, e a migration é que precisa tirar o que não deve ter
         conexao.execute(f"ALTER DEFAULT PRIVILEGES IN SCHEMA {schema} GRANT ALL ON TABLES TO service_role")
@@ -49,6 +66,8 @@ def conn():
         finally:
             conexao.execute("RESET ROLE")
             conexao.execute(f"DROP SCHEMA {schema} CASCADE")
+            if auth_simulado:
+                conexao.execute("DROP SCHEMA auth CASCADE")
 
 
 @pytest.fixture
