@@ -14,8 +14,8 @@ chegar. O endpoint mock de apps/api NÃO é o alvo desta suíte.
 from pathlib import Path
 
 import pytest
-
 from conferencia import PENDENTE, Situacao, carregar_casos, conferir, para_decimal
+
 from pricing_core.contracts import ENGINE_CONTRACT_VERSION, CalculateRequest, CalculateResponse, DomainErrorCodigo
 
 CASOS_DIR = Path(__file__).parent / "casos"
@@ -93,7 +93,9 @@ def _conferir_erro(caso, entrada, relatorio):
         if obtido == caso.erro_esperado:
             relatorio.registrar(caso, Situacao.CONFORME, detalhe=f"recusado com {obtido}")
             return
-        relatorio.registrar(caso, Situacao.ERRO, detalhe=f"esperado {caso.erro_esperado}, veio {type(erro).__name__}: {erro}")
+        relatorio.registrar(
+            caso, Situacao.ERRO, detalhe=f"esperado {caso.erro_esperado}, veio {type(erro).__name__}: {erro}"
+        )
         raise
     relatorio.registrar(caso, Situacao.DIVERGENTE, detalhe=f"esperado erro {caso.erro_esperado}, o motor calculou")
     pytest.fail(f"esperado erro de domínio {caso.erro_esperado}, mas o motor calculou")

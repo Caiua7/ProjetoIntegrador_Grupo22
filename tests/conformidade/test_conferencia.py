@@ -5,7 +5,6 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-
 from conferencia import PENDENTE, Caso, Relatorio, Situacao, conferir
 
 
@@ -62,7 +61,9 @@ def test_relatorio_lista_situacao_e_divergencias():
     conforme = _caso({"preco_bruto": "10.00"})
     divergente = Caso(id="caso_002", arquivo=Path("caso_002.json"), entrada={}, saida_esperada={"preco_bruto": "10.00"})
     relatorio.registrar(conforme, Situacao.CONFORME, conferir(conforme, SimpleNamespace(preco_bruto=Decimal("10.00"))))
-    relatorio.registrar(divergente, Situacao.DIVERGENTE, conferir(divergente, SimpleNamespace(preco_bruto=Decimal("10.05"))))
+    relatorio.registrar(
+        divergente, Situacao.DIVERGENTE, conferir(divergente, SimpleNamespace(preco_bruto=Decimal("10.05")))
+    )
 
     texto = relatorio.markdown()
 

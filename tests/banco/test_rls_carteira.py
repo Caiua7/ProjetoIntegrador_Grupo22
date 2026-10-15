@@ -9,9 +9,9 @@ id do usuário no `sub` do JWT. Os clientes e precificações vêm da carga de
 desenvolvimento (supabase/seed/dev).
 """
 
-from contextlib import contextmanager
 import json
 import uuid
+from contextlib import contextmanager
 
 import pytest
 
@@ -78,9 +78,8 @@ def _total(conn, tabela: str) -> int:
 
 def _recusa(conn, sql: str, parametros=None) -> None:
     """O comando precisa ser barrado pelo banco (sem GRANT ou fora da política)."""
-    with pytest.raises(psycopg.errors.InsufficientPrivilege):
-        with conn.transaction():
-            conn.execute(sql, parametros)
+    with pytest.raises(psycopg.errors.InsufficientPrivilege), conn.transaction():
+        conn.execute(sql, parametros)
 
 
 def _id(conn, tabela: str, codigo: str):
@@ -115,9 +114,7 @@ def test_analista_so_enxerga_clientes_da_propria_carteira(conn, usuarios):
 
 
 def test_cliente_sem_carteira_so_aparece_para_quem_alcanca_todas(conn, usuarios):
-    conn.execute(
-        "INSERT INTO cliente (codigo, razao_social, pais) VALUES ('CLI-SEM-CARTEIRA', 'Sem carteira', 'US')"
-    )
+    conn.execute("INSERT INTO cliente (codigo, razao_social, pais) VALUES ('CLI-SEM-CARTEIRA', 'Sem carteira', 'US')")
 
     with como(conn, usuarios["analista_sudeste"]):
         assert "CLI-SEM-CARTEIRA" not in _codigos(conn, "cliente")

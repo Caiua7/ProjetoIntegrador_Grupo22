@@ -6,10 +6,10 @@ relatório de divergência que o CI publica.
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from decimal import Decimal, InvalidOperation
 from enum import Enum
-import json
 from pathlib import Path
 from typing import Any
 
@@ -122,7 +122,9 @@ class Relatorio:
     versao_motor: str | None = None
     linhas: list[tuple[Caso, Situacao, list[Conferencia], str]] = field(default_factory=list)
 
-    def registrar(self, caso: Caso, situacao: Situacao, conferencias: list[Conferencia] = (), detalhe: str = "") -> None:
+    def registrar(
+        self, caso: Caso, situacao: Situacao, conferencias: list[Conferencia] = (), detalhe: str = ""
+    ) -> None:
         self.linhas.append((caso, situacao, list(conferencias), detalhe))
 
     def markdown(self) -> str:
@@ -148,8 +150,7 @@ class Relatorio:
         for caso, situacao, conferencias, detalhe in self.linhas:
             maior = max((c.diferenca for c in conferencias), default=None)
             saida.append(
-                f"| {caso.id} | {situacao.value} | {len(conferencias)} | "
-                f"{'' if maior is None else maior} | {detalhe} |"
+                f"| {caso.id} | {situacao.value} | {len(conferencias)} | {'' if maior is None else maior} | {detalhe} |"
             )
 
         divergencias = [(caso, c) for caso, _, conferencias, _ in self.linhas for c in conferencias if not c.ok]

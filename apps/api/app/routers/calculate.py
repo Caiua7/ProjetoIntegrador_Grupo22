@@ -20,17 +20,17 @@ A implementação definitiva (US16/US19, Sprint 3) deve:
       de 30 casos, não apenas a checagem estrutural feita aqui.
 """
 
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import ROUND_HALF_UP, Decimal
 
 from fastapi import APIRouter, HTTPException, status
 
 from pricing_core.contracts import (
+    ENGINE_CONTRACT_VERSION,
     CalculateMetadata,
     CalculateRequest,
     CalculateResponse,
     DomainErrorCodigo,
     DomainErrorResponse,
-    ENGINE_CONTRACT_VERSION,
     ImpostosDestacados,
     IsencaoMaoDeObraInfo,
 )
@@ -74,7 +74,10 @@ def _erro_denominador(mensagem: str, detalhes: dict) -> None:
 )
 def calculate(payload: CalculateRequest) -> CalculateResponse:
     custo_mp = sum(
-        (i.preco_negociado * i.cambio * (1 + i.margem_seguranca_percentual) * i.quantidade for i in payload.materiais_primas),
+        (
+            i.preco_negociado * i.cambio * (1 + i.margem_seguranca_percentual) * i.quantidade
+            for i in payload.materiais_primas
+        ),
         Decimal("0"),
     )
     custo_embalagem = sum(
@@ -112,7 +115,9 @@ def calculate(payload: CalculateRequest) -> CalculateResponse:
     prazo_em_meses = float(com.prazo_medio_dias) / 30
     encargo_percentual = Decimal(str((1 + taxa) ** prazo_em_meses - 1))
 
-    isencao_valor = custo_mod if (payload.material_fornecido_pelo_cliente and payload.cliente_uf == "SP") else Decimal("0")
+    isencao_valor = (
+        custo_mod if (payload.material_fornecido_pelo_cliente and payload.cliente_uf == "SP") else Decimal("0")
+    )
     custo_enviado_cliente = payload.valor_material_cliente  # suposição (3), ver contracts.py
 
     base = custo_total  # suposição (1), ver contracts.py

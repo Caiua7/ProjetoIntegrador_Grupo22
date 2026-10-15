@@ -1,8 +1,7 @@
 from functools import lru_cache
 
-from supabase import Client, ClientOptions, create_client
-
 from app.core.config import settings
+from supabase import Client, ClientOptions, create_client
 
 
 def _exigir(**variaveis: str) -> None:
