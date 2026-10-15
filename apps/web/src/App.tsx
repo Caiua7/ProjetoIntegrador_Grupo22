@@ -10,6 +10,7 @@ import LoginPage from './features/auth/LoginPage'
 import PasswordRecoveryPage from './features/auth/PasswordRecoveryPage'
 import { useAuth } from './features/auth/useAuth'
 import { Dashboard } from './features/dashboard/Dashboard'
+import { InsumosPage } from './features/cadastros/InsumosPage'
 import PricingCreate from './features/pricing/PricingCreate'
 import PricingList from './features/pricing/PricingList'
 
@@ -51,6 +52,7 @@ function AppShell() {
       {current === 'dashboard' && <Dashboard canCreate={canOpen('new-pricing', hasPermission)} onNewPricing={() => setScreen('new-pricing')} />}
       {current === 'pricing-list' && <PricingList onNewPricing={() => setScreen('new-pricing')} />}
       {current === 'new-pricing' && <PricingCreate onCancel={() => setScreen('pricing-list')} />}
+      {current === 'records' && <InsumosPage canEdit={hasPermission('cadastro.editar')} />}
     </main>
   </div>
 }

@@ -69,4 +69,19 @@ def listar(usuario: UsuarioAutenticado = Depends(exigir_permissao("precificacao.
 
 Quem se cadastra no Supabase Auth ganha a linha em `usuario` sozinho (migration `20261016000001_criar_usuario_ao_cadastrar.sql`), mas **inativa**: o administrador ativa e escolhe o perfil.
 
+## Cadastros de matérias-primas e embalagens (US06)
+
+As rotas usam `supabase_do_usuario(token)`, exigem JWT e respeitam `cadastro.ler` para consulta e `cadastro.editar` para gravação. O PostgREST aplica as políticas RLS existentes e os gatilhos de auditoria registram o usuário autenticado.
+
+| Método e rota | Operação |
+| :--- | :--- |
+| `GET /cadastros/materias-primas` / `GET /cadastros/embalagens` | Lista registros, inclusive inativos |
+| `GET /cadastros/{tipo}/{id}` | Consulta um registro |
+| `POST /cadastros/{tipo}` | Cria matéria-prima ou embalagem |
+| `PATCH /cadastros/{tipo}/{id}` | Atualiza campos informados; `ativo` permite reativar um cadastro |
+| `DELETE /cadastros/{tipo}/{id}` | Inativa o registro, sem apagar histórico ou quebrar referências |
+| `GET /cadastros/ncm?termo=...` | Busca até 20 resultados por descrição ou prefixo de código NCM |
+
+`tipo` é `materias-primas` ou `embalagens`. Os campos vêm das tabelas existentes: `codigo`, `descricao`, `unidade_medida`, `ncm_codigo` e `ativo`. Código, descrição, unidade permitida e NCM de oito dígitos seguem limites e restrições já declarados no schema; as unidades padrão são `kg` para matéria-prima e `un` para embalagem. Não foi necessária nova tabela ou migration. A exclusão é lógica porque a convenção do projeto é inativar cadastros; a foreign key existente mantém a validação do NCM.
+
 Testes: `cd apps/api && python -m pytest tests`.
