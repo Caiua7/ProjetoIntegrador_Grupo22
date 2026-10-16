@@ -82,6 +82,19 @@ As rotas usam `supabase_do_usuario(token)`, exigem JWT e respeitam `cadastro.ler
 | `DELETE /cadastros/{tipo}/{id}` | Inativa o registro, sem apagar histórico ou quebrar referências |
 | `GET /cadastros/ncm?termo=...` | Busca até 20 resultados por descrição ou prefixo de código NCM |
 
+## Parâmetros fiscais (US12)
+
+As rotas de alíquotas usam o JWT do usuário e as permissões `parametro_fiscal.ler` e `parametro_fiscal.editar`, aplicadas também pelo RLS de `aliquota_fiscal`.
+
+| Método e rota | Operação |
+| :--- | :--- |
+| `GET /parametros-fiscais/aliquotas` | Lista e filtra por UF, NCM, regime e data limite de vigência |
+| `GET /parametros-fiscais/aliquotas/resolver` | Resolve regra para UF, NCM, regime e data; NCM específico tem precedência sobre regra geral |
+| `POST /parametros-fiscais/aliquotas` | Cria uma regra para a combinação e início de vigência |
+| `PATCH /parametros-fiscais/aliquotas/{id}` | Atualiza os campos informados |
+
+Percentuais são enviados como frações decimais (`0.18` = 18%) e validados conforme os limites do schema. O cadastro não oferece exclusão física para preservar o histórico de vigências. Os valores nos seeds de referência são demonstrativos e ainda precisam de homologação fiscal. A importação em massa não está incluída nesta etapa.
+
 `tipo` é `materias-primas` ou `embalagens`. Os campos vêm das tabelas existentes: `codigo`, `descricao`, `unidade_medida`, `ncm_codigo` e `ativo`. Código, descrição, unidade permitida e NCM de oito dígitos seguem limites e restrições já declarados no schema; as unidades padrão são `kg` para matéria-prima e `un` para embalagem. Não foi necessária nova tabela ou migration. A exclusão é lógica porque a convenção do projeto é inativar cadastros; a foreign key existente mantém a validação do NCM.
 
 Na listagem, `busca` (opcional, até 100 caracteres) pesquisa código, descrição e NCM; `ativo` e `unidade_medida` são filtros opcionais combináveis. A paginação usa `pagina` (padrão `1`) e `tamanho_pagina` (padrão `20`, máximo `100`). A resposta contém `registros`, `total`, `pagina`, `tamanho_pagina` e `total_paginas`; os registros são ordenados por descrição e, como desempate estável, por ID. Contagem, filtros e intervalo são executados pelo PostgREST em nome do usuário, então RLS continua aplicado.

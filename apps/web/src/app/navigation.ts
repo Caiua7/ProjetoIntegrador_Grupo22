@@ -1,7 +1,7 @@
 import type { IconName } from '../components/icons/Icon'
 
 /** Telas já implementadas; o resto do menu aparece desabilitado. */
-export type Screen = 'dashboard' | 'pricing-list' | 'new-pricing' | 'records'
+export type Screen = 'dashboard' | 'pricing-list' | 'new-pricing' | 'records' | 'taxes'
 
 export type NavItem = {
   id: string
@@ -13,13 +13,14 @@ export type NavItem = {
 
 export type NavGroup = { title: string, items: NavItem[] }
 
-export const IMPLEMENTED_SCREENS: readonly Screen[] = ['dashboard', 'pricing-list', 'new-pricing', 'records']
+export const IMPLEMENTED_SCREENS: readonly Screen[] = ['dashboard', 'pricing-list', 'new-pricing', 'records', 'taxes']
 
 export const SCREEN_HEADER: Record<Screen, { title: string, subtitle: string }> = {
   dashboard: { title: 'Painel', subtitle: 'Visão geral da sua carteira' },
   'pricing-list': { title: 'Precificações', subtitle: 'Cenários demonstrativos da carteira' },
   'new-pricing': { title: 'Nova precificação', subtitle: 'Cabeçalho comercial e fiscal do estudo' },
   records: { title: 'Matérias-primas e embalagens', subtitle: 'Cadastros de insumos' },
+  taxes: { title: 'Alíquotas fiscais', subtitle: 'Parâmetros fiscais por vigência' },
 }
 
 export const NAVIGATION: NavGroup[] = [

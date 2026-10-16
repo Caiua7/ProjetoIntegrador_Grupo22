@@ -13,6 +13,7 @@ import { Dashboard } from './features/dashboard/Dashboard'
 import { InsumosPage } from './features/cadastros/InsumosPage'
 import PricingCreate from './features/pricing/PricingCreate'
 import PricingList from './features/pricing/PricingList'
+import { TaxRatesPage } from './features/taxes/TaxRatesPage'
 
 function App() {
   return <AuthProvider><AuthGate /></AuthProvider>
@@ -53,6 +54,7 @@ function AppShell() {
       {current === 'pricing-list' && <PricingList onNewPricing={() => setScreen('new-pricing')} />}
       {current === 'new-pricing' && <PricingCreate onCancel={() => setScreen('pricing-list')} />}
       {current === 'records' && <InsumosPage canEdit={hasPermission('cadastro.editar')} />}
+      {current === 'taxes' && <TaxRatesPage canEdit={hasPermission('parametro_fiscal.editar')} />}
     </main>
   </div>
 }
