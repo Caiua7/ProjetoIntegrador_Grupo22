@@ -19,6 +19,15 @@ from pricing_core.contracts import (
     ParametrosImpostos,
     ParametrosProducao,
 )
+from pricing_core.cotacao import (
+    Cotacao,
+    CotacaoAmbigua,
+    CotacaoError,
+    CotacaoNaoEncontrada,
+    cotacoes_vigentes,
+    esta_vigente,
+    resolver_cotacao,
+)
 from pricing_core.encargo import taxa_encargo, valor_encargo
 from pricing_core.rentabilidade import Rentabilidade, derivar_rentabilidade
 
@@ -26,6 +35,10 @@ __all__ = [
     "CalculateMetadata",
     "CalculateRequest",
     "CalculateResponse",
+    "Cotacao",
+    "CotacaoAmbigua",
+    "CotacaoError",
+    "CotacaoNaoEncontrada",
     "DomainErrorCodigo",
     "DomainErrorResponse",
     "ENGINE_CONTRACT_VERSION",
@@ -37,7 +50,10 @@ __all__ = [
     "ParametrosImpostos",
     "ParametrosProducao",
     "Rentabilidade",
+    "cotacoes_vigentes",
     "derivar_rentabilidade",
+    "esta_vigente",
+    "resolver_cotacao",
     "taxa_encargo",
     "valor_encargo",
 ]
