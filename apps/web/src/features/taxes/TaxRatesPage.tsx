@@ -1,4 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react'
+import { DatePicker } from '../../components/form/DatePicker'
+import { Select } from '../../components/form/Select'
+import { Sigla } from '../../components/Sigla'
+import { GLOSSARIO } from '../../app/glossario'
 import {
   atualizarAliquota,
   criarAliquota,
@@ -186,29 +190,29 @@ export function TaxRatesPage({ canEdit }: { canEdit: boolean }) {
     <section className="form-card tax-filter-card" aria-label="Filtros das alíquotas">
       <div className="catalog-form tax-filters">
         <label className="field">UF de destino
-          <select value={filtro.uf_destino ?? ''} onChange={(e) => mudarFiltro('uf_destino', e.target.value)}><option value="">Todas as UFs</option>{ufs.map((uf) => <option key={uf}>{uf}</option>)}</select>
+          <Select value={filtro.uf_destino ?? ''} onChange={(v) => mudarFiltro('uf_destino', v)} options={[{ value: '', label: 'Todas as UFs' }, ...ufs.map((uf) => ({ value: uf, label: uf }))]} />
         </label>
         <label className="field">NCM específico
           <input inputMode="numeric" maxLength={8} placeholder="Omitir para todas" value={filtro.ncm_codigo ?? ''} onChange={(e) => mudarFiltro('ncm_codigo', e.target.value.replace(/\D/g, '').slice(0, 8))} />
         </label>
         <label className="field">Regime tributário
-          <select value={filtro.regime_tributario ?? ''} onChange={(e) => mudarFiltro('regime_tributario', e.target.value)}><option value="">Todos</option>{regimes.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}</select>
+          <Select value={filtro.regime_tributario ?? ''} onChange={(v) => mudarFiltro('regime_tributario', v)} options={[{ value: '', label: 'Todos' }, ...regimes]} />
         </label>
         <label className="field">Vigência até
-          <input type="date" value={filtro.vigencia_ate ?? ''} onChange={(e) => mudarFiltro('vigencia_ate', e.target.value)} />
+          <DatePicker value={filtro.vigencia_ate ?? ''} onChange={(v) => mudarFiltro('vigencia_ate', v)} />
         </label>
       </div>
-      <div className="tax-resolver"><label className="field">Data para consulta de vigência<input type="date" value={resolverData} onChange={(e) => setResolverData(e.target.value)} /></label><button className="button secondary" type="button" disabled={resolvendo} onClick={() => { void consultarAplicavel() }}>{resolvendo ? 'Consultando…' : 'Consultar aplicável'}</button></div>
+      <div className="tax-resolver"><label className="field">Data para consulta de vigência<DatePicker value={resolverData} onChange={setResolverData} /></label><button className="button secondary" type="button" disabled={resolvendo} onClick={() => { void consultarAplicavel() }}>{resolvendo ? 'Consultando…' : 'Consultar aplicável'}</button></div>
       {resolvida && <div className="pending-state tax-resolved" role="status"><span aria-hidden="true">✓</span><div><strong>Regra encontrada: {resolvida.ncm_codigo ? `NCM ${resolvida.ncm_codigo}` : 'regra geral da UF'}</strong><small>{resolvida.uf_destino} · {nomeRegime(resolvida.regime_tributario)} · vigente desde {new Date(`${resolvida.vigencia_inicio}T00:00:00`).toLocaleDateString('pt-BR')}</small></div></div>}
     </section>
 
     {formAberto && <section className="form-card catalog-form-card" aria-labelledby="tax-form-title">
       <div className="list-card-heading"><h3 id="tax-form-title">{editando ? 'Editar alíquota' : 'Nova alíquota e vigência'}</h3></div>
       <form className="catalog-form" onSubmit={(e) => { void salvar(e) }}>
-        <label className="field">UF de destino <b aria-hidden="true">*</b><select required value={rascunho.uf_destino} onChange={(e) => setRascunho({ ...rascunho, uf_destino: e.target.value })}><option value="">Selecione</option>{ufs.map((uf) => <option key={uf}>{uf}</option>)}</select></label>
+        <label className="field">UF de destino <b aria-hidden="true">*</b><Select required value={rascunho.uf_destino} onChange={(v) => setRascunho({ ...rascunho, uf_destino: v })} options={ufs.map((uf) => ({ value: uf, label: uf }))} /></label>
         <label className="field">NCM <small>(vazio = regra geral)</small><input inputMode="numeric" maxLength={8} value={rascunho.ncm_codigo ?? ''} onChange={(e) => setRascunho({ ...rascunho, ncm_codigo: e.target.value.replace(/\D/g, '').slice(0, 8) })} /></label>
-        <label className="field">Regime tributário <b aria-hidden="true">*</b><select required value={rascunho.regime_tributario} onChange={(e) => setRascunho({ ...rascunho, regime_tributario: e.target.value as RegimeTributario })}>{regimes.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}</select></label>
-        <label className="field">Início da vigência <b aria-hidden="true">*</b><input required type="date" value={rascunho.vigencia_inicio} onChange={(e) => setRascunho({ ...rascunho, vigencia_inicio: e.target.value })} /></label>
+        <label className="field">Regime tributário <b aria-hidden="true">*</b><Select required value={rascunho.regime_tributario} onChange={(v) => setRascunho({ ...rascunho, regime_tributario: v as RegimeTributario })} options={regimes} /></label>
+        <label className="field">Início da vigência <b aria-hidden="true">*</b><DatePicker required value={rascunho.vigencia_inicio} onChange={(v) => setRascunho({ ...rascunho, vigencia_inicio: v })} /></label>
         {taxas.map((taxa) => <label className="field" key={taxa.key}>{taxa.label} <b aria-hidden="true">*</b><input required type="number" min="0" max={taxa.max} step="0.0001" value={rascunho[taxa.key]} onChange={(e) => setRascunho({ ...rascunho, [taxa.key]: e.target.value })} /></label>)}
         <div className="catalog-form-actions"><button className="button secondary" type="button" disabled={salvando} onClick={() => setFormAberto(false)}>Cancelar</button><button className="button primary" type="submit" disabled={salvando}>{salvando ? 'Salvando…' : editando ? 'Salvar alterações' : 'Criar vigência'}</button></div>
       </form>
@@ -219,10 +223,17 @@ export function TaxRatesPage({ canEdit }: { canEdit: boolean }) {
       {carregando ? <div className="empty-list" role="status">Carregando alíquotas…</div>
         : linhas.length === 0 ? <div className="empty-list" role="status"><span className="empty-icon" aria-hidden="true">%</span><h3>Nenhuma alíquota encontrada</h3><p>Ajuste os filtros ou cadastre uma regra.</p>{canEdit && <button className="button primary" type="button" onClick={abrirNovo}>Criar alíquota</button>}</div>
           : <div className="table-scroll" role="region" aria-label="Lista de alíquotas fiscais" tabIndex={0}><table className="pricing-table tax-table"><caption className="sr-only">Alíquotas fiscais por UF, NCM, regime e vigência</caption>
-            <thead><tr><th scope="col">UF</th><th scope="col">NCM</th><th scope="col">Regime</th><th scope="col">Vigência</th>{taxas.map((t) => <th className="numeric" scope="col" key={t.key}>{t.label}</th>)}{canEdit && <th scope="col">Ações</th>}</tr></thead>
+            <thead><tr><th scope="col"><Sigla termo="UF" /></th><th scope="col"><Sigla termo="NCM" /></th><th scope="col">Regime</th><th scope="col">Vigência</th>{taxas.map((t) => <th className="numeric" scope="col" key={t.key}><RotuloTaxa label={t.label} /></th>)}{canEdit && <th scope="col">Ações</th>}</tr></thead>
             <tbody>{linhas.map((item) => <tr key={item.id}><th scope="row">{item.uf_destino}</th><td className="mono-cell">{item.ncm_codigo ?? 'Geral'}</td><td>{nomeRegime(item.regime_tributario)}</td><td className="mono-cell">{new Date(`${item.vigencia_inicio}T00:00:00`).toLocaleDateString('pt-BR')}</td>{taxas.map((t) => <td className="numeric mono-cell" key={t.key}>{paraPercentual(item[t.key])}%</td>)}{canEdit && <td><button className="button secondary" type="button" onClick={() => abrirEdicao(item)}>Editar</button></td>}</tr>)}</tbody>
           </table></div>}
     </section>
     <p className="list-footnote">A consulta aplicável prioriza a regra específica de NCM; sem ela, usa a regra geral da UF. A tela preserva as vigências cadastradas e não exclui o histórico.</p>
   </section>
+}
+
+/** "ICMS interno (%)" → sigla ICMS com explicação + o resto do rótulo. */
+function RotuloTaxa({ label }: { label: string }) {
+  const sigla = label.split(' ')[0]
+  if (!(sigla in GLOSSARIO)) return <>{label}</>
+  return <><Sigla termo={sigla as keyof typeof GLOSSARIO} />{label.slice(sigla.length)}</>
 }

@@ -1,22 +1,61 @@
 import { Icon } from '../../components/icons/Icon'
+import { Sigla } from '../../components/Sigla'
+import type { ListPreset } from '../pricing/listPreset'
+import { AttentionPanel } from './components/AttentionPanel'
+import { KpiCard } from './components/KpiCard'
+import { MarginChart } from './components/MarginChart'
+import { PolicyMeter } from './components/PolicyMeter'
+import { RecentPricings } from './components/RecentPricings'
+import { StatusOverview } from './components/StatusOverview'
+import { indicadores } from './dashboard.data'
+import './dashboard.css'
 
-export function Dashboard({ canCreate, onNewPricing }: { canCreate: boolean, onNewPricing: () => void }) {
-  return <section className="content">
-    <div className="welcome">
-      <div><span className="eyebrow">VISÃO GERAL</span><h2>Visão geral da precificação</h2>
-        <p>Acompanhe os cenários, a rentabilidade e as aprovações da sua carteira.</p></div>
-      {canCreate && <button className="button primary" onClick={onNewPricing}><Icon name="mais" size={16} /> Nova precificação</button>}
+type Props = {
+  nome: string
+  canCreate: boolean
+  onNewPricing: () => void
+  onOpenList: (preset?: ListPreset) => void
+}
+
+function saudacao(agora = new Date()) {
+  const hora = agora.getHours()
+  return hora < 12 ? 'Bom dia' : hora < 18 ? 'Boa tarde' : 'Boa noite'
+}
+
+function hoje() {
+  const texto = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })
+  return texto.charAt(0).toUpperCase() + texto.slice(1)
+}
+
+export function Dashboard({ nome, canCreate, onNewPricing, onOpenList }: Props) {
+  const kpi = indicadores()
+  const primeiroNome = nome.split(/\s+/)[0]
+
+  return <section className="content dash">
+    <header className="dash-intro">
+      <div>
+        <span className="dash-data">{hoje()}</span>
+        <h2>{saudacao()}, {primeiroNome}</h2>
+        <p>Rentabilidade da carteira, o que espera decisão e o que mudou por último. Clique em qualquer número para ver os cenários por trás dele.</p>
+      </div>
+      {canCreate && <button className="button primary" type="button" onClick={onNewPricing}><Icon name="mais" size={16} /> Nova precificação</button>}
+    </header>
+
+    <div className="dash-kpis">
+      <KpiCard titulo={<><Sigla termo="MaCo" /> média do mês</>} indicador={kpi.maco} onAbrir={onOpenList}
+        destaque={<PolicyMeter maco={kpi.maco.numero} />} />
+      <KpiCard titulo="Cenários no mês" indicador={kpi.cenarios} onAbrir={onOpenList} />
+      <KpiCard titulo="Aguardando aprovação" indicador={kpi.aprovacao} onAbrir={onOpenList} />
+      <KpiCard titulo={<><Sigla termo="ROB" /> aprovada</>} indicador={kpi.rob} onAbrir={onOpenList} />
     </div>
-    <div className="demo-notice"><span className="notice-dot" />Painel demonstrativo · os indicadores abaixo são dados ilustrativos do protótipo.</div>
-    <div className="metrics">
-      <article className="metric featured"><span>MaCo média — setembro</span><strong>26,8%</strong><small>Política mínima: 24% · 3 cenários abaixo</small></article>
-      <article className="metric"><span>Cenários no mês</span><strong>34</strong><small>6 a mais que agosto</small></article>
-      <article className="metric"><span>Aguardando aprovação</span><strong>7</strong><small>Mais antigo parado há 3 dias</small></article>
-      <article className="metric"><span>ROB aprovada — trimestre</span><strong>R$ 2,43 mi</strong><small>MaCo absoluta de R$ 490 mil</small></article>
+
+    <div className="dash-grade">
+      <MarginChart />
+      <AttentionPanel onAbrir={onOpenList} />
+      <StatusOverview onAbrir={onOpenList} />
+      <RecentPricings onAbrir={onOpenList} />
     </div>
-    {canCreate && <article className="panel">
-      <div><span className="eyebrow">PRÓXIMA ETAPA</span><h3>Comece um estudo de preço</h3><p>Informe os dados comerciais e fiscais para abrir uma nova precificação.</p></div>
-      <button className="button secondary" onClick={onNewPricing}>Criar precificação <Icon name="seta" size={16} /></button>
-    </article>}
+
+    <p className="dash-rodape"><span className="notice-dot" />Dados de demonstração: os indicadores passam a ser reais quando o cálculo de precificação estiver integrado.</p>
   </section>
 }

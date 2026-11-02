@@ -58,6 +58,10 @@ class AliquotaAtualizacao(BaseModel):
 
 
 class AliquotaResposta(AliquotaEntrada):
+    # A entrada proíbe campos extras; a resposta vem do banco com colunas que
+    # não expomos (created_by, updated_by) e só as ignora.
+    model_config = ConfigDict(extra="ignore")
+
     id: UUID
     created_at: datetime
     updated_at: datetime

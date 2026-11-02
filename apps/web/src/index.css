@@ -1,15 +1,19 @@
 :root {
-  /* Tipografia: Bricolage Grotesque nos títulos, Instrument Sans no texto,
-     JetBrains Mono nos números (tabulares, alinham em coluna). */
-  --f-titulo: 'Bricolage Grotesque', 'Instrument Sans', system-ui, sans-serif;
-  --f-texto: 'Instrument Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --f-numero: 'JetBrains Mono', ui-monospace, 'Cascadia Mono', monospace;
+  /* Tipografia, hospedada no próprio app (@fontsource, ver main.tsx):
+     Sora nos títulos (geométrica como o "eoPrice" da logo), Figtree no texto
+     e nos números (algarismos tabulares, alinham em coluna) e JetBrains Mono
+     só em códigos (PRC-2026-0148, NCM). */
+  --f-titulo: 'Sora Variable', 'Figtree Variable', system-ui, sans-serif;
+  --f-texto: 'Figtree Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --f-numero: 'Figtree Variable', system-ui, sans-serif;
+  --f-codigo: 'JetBrains Mono Variable', ui-monospace, 'Cascadia Mono', monospace;
   font-family: var(--f-texto);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   font-optical-sizing: auto;
+  font-variant-numeric: tabular-nums;
 }
 
 * { box-sizing: border-box; }

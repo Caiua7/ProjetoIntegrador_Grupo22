@@ -13,7 +13,6 @@ from uuid import UUID
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.infrastructure.database import get_db
@@ -58,28 +57,44 @@ def validar_token(access_token: str) -> UUID:
 
 
 def carregar_usuario(db: Session, usuario_id: UUID) -> dict | None:
-    linha = (
-        db.execute(
-            text(
-                """
-                SELECT u.nome, u.email, u.ativo, p.codigo AS perfil_codigo, p.nome AS perfil_nome,
-                       COALESCE(
-                           array_agg(pp.permissao_codigo) FILTER (WHERE pp.permissao_codigo IS NOT NULL),
-                           '{}'
-                       ) AS permissoes
-                FROM usuario u
-                JOIN perfil p ON p.id = u.perfil_id
-                LEFT JOIN perfil_permissao pp ON pp.perfil_id = p.id
-                WHERE u.id = :id
-                GROUP BY u.id, p.id
-                """
-            ),
-            {"id": usuario_id},
+    """Perfil e permissões do usuário.
+
+    Vai pela API REST do Supabase (HTTPS, porta 443) com a chave de serviço, e
+    não por conexão direta ao Postgres: redes de faculdade e de empresa
+    costumam bloquear as portas 5432/6543, e o login não pode depender delas.
+    `db` fica na assinatura por compatibilidade com quem substitui a função.
+    """
+    del db
+    try:
+        resposta = (
+            supabase_servico()
+            .table("usuario")
+            .select("nome, email, ativo, perfil:perfil_id(codigo, nome, perfil_permissao(permissao_codigo))")
+            .eq("id", str(usuario_id))
+            .limit(1)
+            .execute()
         )
-        .mappings()
-        .first()
-    )
-    return dict(linha) if linha else None
+    except RuntimeError:
+        raise
+    except Exception as erro:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Não foi possível carregar seu perfil agora. Tente de novo em instantes.",
+        ) from erro
+
+    linhas = resposta.data or []
+    if not linhas:
+        return None
+    linha = linhas[0]
+    perfil = linha.get("perfil") or {}
+    return {
+        "nome": linha["nome"],
+        "email": linha["email"],
+        "ativo": linha["ativo"],
+        "perfil_codigo": perfil.get("codigo", ""),
+        "perfil_nome": perfil.get("nome", ""),
+        "permissoes": sorted(item["permissao_codigo"] for item in perfil.get("perfil_permissao") or []),
+    }
 
 
 def usuario_atual(
