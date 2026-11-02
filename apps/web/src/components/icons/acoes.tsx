@@ -31,6 +31,16 @@ export const acoes = {
     <path className="a-haste" d="M8.5 10.5V7.5a3.5 3.5 0 0 1 7 0v3" />
     <path d="M12 14.5v2" />
   </>,
+  abaixo: <path className="a-seta" d="m6.5 9.5 5.5 5.5 5.5-5.5" />,
+  busca: <>
+    <circle className="a-lupa" cx="11" cy="11" r="6.5" />
+    <path d="m20 20-4.4-4.4" />
+  </>,
+  calendario: <>
+    <rect x="4" y="5.5" width="16" height="15" rx="2" />
+    <path d="M4 10h16M8.5 3.5v4M15.5 3.5v4" />
+    <circle className="a-ponto" cx="12" cy="15" r="1.2" fill="currentColor" stroke="none" />
+  </>,
   check: <path className="a-check" {...PL} d="m5.5 12.5 4 4 9-9" />,
   alerta: <>
     <circle cx="12" cy="12" r="8.5" />

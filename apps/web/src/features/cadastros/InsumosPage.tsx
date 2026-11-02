@@ -1,4 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
+import { Select } from '../../components/form/Select'
+import { Sigla } from '../../components/Sigla'
 import {
   atualizarInsumo,
   buscarNcm,
@@ -200,14 +202,12 @@ export function InsumosPage({ canEdit }: { canEdit: boolean }) {
         <input type="search" maxLength={100} value={busca} placeholder="Digite para pesquisar" onChange={(evento) => { setBusca(evento.target.value); setPagina(1); setCarregando(true); setErro(null); setErroLista(null) }} />
       </label>
       <label className="field">Situação
-        <select value={filtroAtivo} onChange={(evento) => { setFiltroAtivo(evento.target.value as FiltroAtivo); setPagina(1); setCarregando(true); setErro(null); setErroLista(null) }}>
-          <option value="todos">Todas</option><option value="ativos">Ativos</option><option value="inativos">Inativos</option>
-        </select>
+        <Select value={filtroAtivo} onChange={(valor) => { setFiltroAtivo(valor as FiltroAtivo); setPagina(1); setCarregando(true); setErro(null); setErroLista(null) }}
+          options={[{ value: 'todos', label: 'Todas' }, { value: 'ativos', label: 'Ativos' }, { value: 'inativos', label: 'Inativos' }]} />
       </label>
       <label className="field">Unidade
-        <select value={unidadeFiltro} onChange={(evento) => { setUnidadeFiltro(evento.target.value as FiltroUnidade); setPagina(1); setCarregando(true); setErro(null); setErroLista(null) }}>
-          <option value="todas">Todas</option>{unidades.map((unidade) => <option key={unidade} value={unidade}>{unidade}</option>)}
-        </select>
+        <Select value={unidadeFiltro} onChange={(valor) => { setUnidadeFiltro(valor as FiltroUnidade); setPagina(1); setCarregando(true); setErro(null); setErroLista(null) }}
+          options={[{ value: 'todas', label: 'Todas' }, ...unidades.map((unidade) => ({ value: unidade, label: unidade }))]} />
       </label>
     </div>
 
@@ -224,9 +224,8 @@ export function InsumosPage({ canEdit }: { canEdit: boolean }) {
           <input required maxLength={200} value={rascunho.descricao} onChange={(evento) => setRascunho({ ...rascunho, descricao: evento.target.value })} />
         </label>
         <label className="field">Unidade de medida <b aria-hidden="true">*</b>
-          <select required value={rascunho.unidade_medida} onChange={(evento) => setRascunho({ ...rascunho, unidade_medida: evento.target.value as Draft['unidade_medida'] })}>
-            {unidades.map((unidade) => <option key={unidade} value={unidade}>{unidade}</option>)}
-          </select>
+          <Select required value={rascunho.unidade_medida} onChange={(valor) => setRascunho({ ...rascunho, unidade_medida: valor as Draft['unidade_medida'] })}
+            options={unidades.map((unidade) => ({ value: unidade, label: unidade }))} />
         </label>
         <div className="field catalog-ncm-field">
           <label htmlFor="ncm-search">NCM <b aria-hidden="true">*</b></label>
@@ -260,7 +259,7 @@ export function InsumosPage({ canEdit }: { canEdit: boolean }) {
           : itens.length === 0 ? <div className="empty-list" role="status"><span className="empty-icon" aria-hidden="true">{String.fromCharCode(0x2315)}</span><h3>{'Nenhum cadastro encontrado'}</h3><p>{busca.trim() || filtroAtivo !== 'todos' || unidadeFiltro !== 'todas' ? 'A busca e os filtros atuais não encontraram registros.' : 'Esta lista ainda não possui registros.'}</p>{canEdit && !busca.trim() && filtroAtivo === 'todos' && unidadeFiltro === 'todas' && <button className="button primary" type="button" onClick={abrirNovo}>{'Criar primeiro cadastro'}</button>}</div>
             : <div className="table-scroll" role="region" aria-label={`Lista de ${rotulos[tipo].toLocaleLowerCase('pt-BR')}`} tabIndex={0}>
               <table className="pricing-table catalog-table"><caption className="sr-only">{rotulos[tipo]} {'cadastradas, incluindo código, descrição, unidade, NCM, situação e ações'}</caption>
-                <thead><tr><th scope="col">{'Código'}</th><th scope="col">{'Descrição'}</th><th scope="col">Unidade</th><th scope="col">NCM</th><th scope="col">{'Situação'}</th><th scope="col">{'Ações'}</th></tr></thead>
+                <thead><tr><th scope="col">{'Código'}</th><th scope="col">{'Descrição'}</th><th scope="col">Unidade</th><th scope="col"><Sigla termo="NCM" /></th><th scope="col">{'Situação'}</th><th scope="col">{'Ações'}</th></tr></thead>
                 <tbody>{itens.map((item) => <tr key={item.id}>
                   <th scope="row" className="code-cell">{item.codigo}</th><td>{item.descricao}</td><td>{item.unidade_medida}</td><td className="mono-cell">{item.ncm_codigo}</td><td><span className={`status-pill ${item.ativo ? 'status-approved' : 'status-neutral'}`}><i />{item.ativo ? 'Ativo' : 'Inativo'}</span></td>
                   <td className="catalog-actions"><button className="button secondary" type="button" disabled={carregandoDetalhe === item.id} onClick={() => { void mostrarDetalhes(item.id) }}>{carregandoDetalhe === item.id ? 'Abrindo…' : 'Visualizar'}</button>{canEdit && <><button className="button secondary" type="button" onClick={() => abrirEdicao(item)}>Editar</button><button className="button secondary" type="button" disabled={operandoId === item.id} onClick={() => { void alternarAtivo(item) }}>{operandoId === item.id ? 'Aguarde…' : item.ativo ? 'Inativar' : 'Reativar'}</button></>}</td>
@@ -269,9 +268,8 @@ export function InsumosPage({ canEdit }: { canEdit: boolean }) {
             </div>}
       {!carregando && !erroLista && paginaDados && paginaDados.total > 0 && <nav className="catalog-pagination" aria-label={'Paginação dos cadastros'}>
         <span>{'Mostrando'} {(pagina - 1) * tamanhoPagina + 1}–{Math.min(pagina * tamanhoPagina, paginaDados.total)} {'de'} {paginaDados.total}</span>
-        <label>{'Por página'} <select value={tamanhoPagina} onChange={(evento) => { setTamanhoPagina(Number(evento.target.value)); setPagina(1); setCarregando(true) }}>
-          {[10, 20, 50, 100].map((quantidade) => <option key={quantidade} value={quantidade}>{quantidade}</option>)}
-        </select></label>
+        <label>{'Por página'} <Select compacto value={String(tamanhoPagina)} onChange={(valor) => { setTamanhoPagina(Number(valor)); setPagina(1); setCarregando(true) }}
+          options={[10, 20, 50, 100].map((quantidade) => ({ value: String(quantidade), label: String(quantidade) }))} /></label>
         <button className="button secondary" type="button" aria-label={'Página anterior'} disabled={pagina <= 1} onClick={() => { setPagina((atual) => Math.max(1, atual - 1)); setCarregando(true) }}>{'Anterior'}</button>
         <span aria-live="polite">{'Página'} {pagina} {'de'} {paginaDados.total_paginas}</span>
         <button className="button secondary" type="button" aria-label={'Próxima página'} disabled={pagina >= paginaDados.total_paginas} onClick={() => { setPagina((atual) => Math.min(paginaDados.total_paginas, atual + 1)); setCarregando(true) }}>{'Próxima'}</button>

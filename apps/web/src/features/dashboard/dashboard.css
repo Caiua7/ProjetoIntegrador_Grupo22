@@ -1,0 +1,187 @@
+/* ═══ Painel ═══
+   Leitura de cima para baixo: saudação → 4 indicadores clicáveis → margem e
+   pendências → etapas → últimas movimentações. Superfícies sem borda pesada;
+   o que é clicável reage ao mouse (eleva e mostra a seta). */
+
+.dash { --ease: cubic-bezier(.2,.7,.2,1); --card-borda: color-mix(in srgb, var(--line) 70%, transparent); display: grid; gap: 22px; }
+
+/* ── Abertura ── */
+.dash-intro { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; animation: dash-entra .5s var(--ease) both; }
+.dash-data { color: var(--text-3); font-size: 13px; }
+.dash-intro h2 { margin: 6px 0 8px; font-size: clamp(26px, 2.4vw, 32px); letter-spacing: -1px; }
+.dash-intro p { max-width: 620px; margin: 0; color: var(--text-2); font-size: 14.5px; line-height: 1.55; }
+
+/* ── Indicadores ── */
+.dash-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+.kpi {
+  position: relative; display: flex; flex-direction: column; gap: 14px; min-width: 0; padding: 20px 20px 18px;
+  border: 1px solid var(--card-borda); border-radius: 16px; background: var(--surface);
+  transition: transform .25s var(--ease), border-color .2s, box-shadow .25s; animation: dash-entra .55s var(--ease) both;
+}
+.kpi:nth-child(2) { animation-delay: .05s; } .kpi:nth-child(3) { animation-delay: .1s; } .kpi:nth-child(4) { animation-delay: .15s; }
+.kpi:hover, .kpi:focus-within {
+  border-color: color-mix(in srgb, var(--brand) 45%, var(--line)); transform: translateY(-3px);
+  box-shadow: 0 18px 40px -22px color-mix(in srgb, var(--brand) 70%, transparent);
+}
+.kpi-destaque { background: radial-gradient(120% 90% at 0% 0%, var(--brand-wash), var(--surface) 62%); }
+.kpi-titulo { position: relative; z-index: 2; width: fit-content; color: var(--text-2); font-size: 13px; font-weight: 500; transition: opacity .15s; }
+.kpi-corpo { display: flex; min-width: 0; align-items: flex-end; justify-content: space-between; gap: 12px; }
+.kpi-valor { flex: 0 0 auto; font: 600 clamp(24px, 2vw, 32px)/1 var(--f-titulo); letter-spacing: -1.2px; white-space: nowrap; }
+.kpi-rodape { display: grid; gap: 3px; margin-top: auto; }
+.kpi-variacao { font-size: 12.5px; font-weight: 600; }
+.kpi-variacao.boa { color: var(--green); } .kpi-variacao.ruim { color: var(--error); } .kpi-variacao.neutra { color: var(--text-2); font-weight: 500; }
+.kpi-ajuda { color: var(--text-3); font-size: 12px; }
+/* botão que cobre o cartão: o rótulo aparece no hover, no canto de cima */
+.kpi-acao {
+  position: absolute; inset: 0; z-index: 1; display: flex; align-items: flex-start; justify-content: flex-end; gap: 5px; padding: 19px 18px 0;
+  border: 0; border-radius: inherit; background: transparent; color: var(--brand-light); font: 600 12px var(--f-texto); cursor: pointer;
+}
+.kpi-acao span { opacity: 0; transform: translateX(-4px); transition: opacity .2s, transform .25s var(--ease); }
+.kpi-acao .ic { opacity: .45; transition: opacity .2s, transform .25s var(--ease); }
+.kpi:hover .kpi-acao span, .kpi-acao:focus-visible span { opacity: 1; transform: none; }
+.kpi:hover .kpi-acao .ic, .kpi-acao:focus-visible .ic { opacity: 1; transform: translateX(2px); }
+.kpi-acao:focus-visible { outline: 2px solid var(--brand-light); outline-offset: 2px; }
+.kpi:is(:hover, :focus-within) .kpi-titulo { opacity: 0; }
+.kpi .regua .sigla { position: relative; z-index: 2; }
+
+.sparkline { flex: 0 1 88px; min-width: 40px; height: auto; overflow: visible; color: var(--brand-light); }
+.sparkline-linha { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1; stroke-dashoffset: 1; animation: dash-desenha 1.1s var(--ease) .35s forwards; }
+.sparkline-area { fill: currentColor; opacity: 0; animation: dash-area .6s ease 1s forwards; }
+.sparkline circle { fill: currentColor; opacity: 0; transform-box: fill-box; transform-origin: center; animation: dash-ponto .4s var(--ease) 1.3s forwards; }
+
+/* régua da política, no cartão de MaCo */
+.regua { display: grid; gap: 7px; }
+.regua-trilho { position: relative; height: 6px; border-radius: 99px; background: var(--surface-3); }
+.regua-preenchido { position: absolute; inset: 0 auto 0 0; border-radius: inherit; background: linear-gradient(90deg, color-mix(in srgb, var(--brand) 55%, transparent), var(--brand)); transform-origin: left; animation: dash-cresce-x 1.1s var(--ease) .3s both; }
+.regua-preenchido.abaixo { background: var(--warning); }
+.regua-meta { position: absolute; top: -4px; bottom: -4px; width: 2px; border-radius: 2px; background: var(--text); opacity: .7; }
+.regua small { color: var(--text-3); font-size: 12px; }
+
+/* ── Grade de cartões ── */
+.dash-grade {
+  display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(320px, 1fr); gap: 14px;
+  grid-template-areas: "grafico atencao" "status atencao" "recentes recentes";
+}
+.dash-grafico { grid-area: grafico; } .dash-atencao { grid-area: atencao; }
+.dash-status { grid-area: status; } .dash-recentes { grid-area: recentes; }
+.dash-card { min-width: 0; padding: 22px; border: 1px solid var(--card-borda); border-radius: 16px; background: var(--surface); animation: dash-entra .6s var(--ease) .12s both; }
+.dash-card-cabecalho { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; margin-bottom: 18px; }
+.dash-card-cabecalho h3 { margin: 0; font-size: 16px; letter-spacing: -.3px; }
+.dash-card-cabecalho p { margin: 4px 0 0; color: var(--text-3); font-size: 12.5px; }
+.link-acao { display: inline-flex; align-items: center; gap: 6px; padding: 0; border: 0; background: none; color: var(--brand-light); font: 600 12.5px var(--f-texto); white-space: nowrap; cursor: pointer; }
+.link-acao .ic { transition: transform .2s var(--ease); }
+.link-acao:hover .ic { transform: translateX(3px); }
+
+/* gráfico */
+.legenda { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px 14px; margin: 2px 0 0; padding: 0; color: var(--text-3); font-size: 12px; list-style: none; }
+.legenda li { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.legenda-barra { width: 9px; height: 9px; border-radius: 3px; background: var(--brand); }
+.legenda-barra.abaixo { background: var(--warning); }
+.legenda-linha { width: 14px; border-top: 2px dashed var(--error); }
+.grafico { display: grid; grid-template-columns: 34px 1fr; grid-template-rows: 190px auto; column-gap: 8px; }
+.grafico-eixo { position: relative; }
+.grafico-eixo span { position: absolute; right: 0; color: var(--text-3); font-size: 11px; transform: translateY(-50%); }
+.grafico-plano { position: relative; }
+.grafico-area { width: 100%; height: 190px; overflow: visible; }
+.grafico-grade { stroke: var(--line); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.grafico-barra { fill: var(--brand); transform-box: fill-box; transform-origin: bottom; transition: opacity .2s; animation: dash-cresce .8s var(--ease) both; }
+.grafico-barra.abaixo { fill: var(--warning); }
+.grafico-barra.apagada { opacity: .28; }
+.grafico-politica { stroke: var(--error); stroke-width: 1.5; stroke-dasharray: 5 4; vector-effect: non-scaling-stroke; }
+.grafico-alvos { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(6, 1fr); }
+.grafico-alvo { border: 0; border-radius: 8px; background: transparent; cursor: default; }
+.grafico-alvo:focus-visible { outline: 2px solid var(--brand-light); outline-offset: -2px; }
+.grafico-dica {
+  position: absolute; z-index: 3; display: grid; gap: 2px; width: max-content; padding: 9px 11px; border: 1px solid var(--line-strong);
+  border-radius: 10px; background: var(--surface); box-shadow: 0 14px 30px rgba(0,0,0,.28); color: var(--text-2); font-size: 12px;
+  pointer-events: none; transform: translate(-50%, calc(-100% - 10px)); animation: dash-aparece .15s ease;
+}
+.grafico-dica strong { color: var(--text); font: 600 16px var(--f-titulo); }
+.grafico-dica .boa { color: var(--green); } .grafico-dica .ruim { color: var(--warning); }
+.grafico-rotulos { display: grid; grid-column: 2; grid-template-columns: repeat(6, 1fr); margin: 10px 0 0; padding: 0; list-style: none; text-align: center; }
+.grafico-rotulos strong { display: block; font-size: 12.5px; font-weight: 600; transition: color .2s; }
+.grafico-rotulos span { color: var(--text-3); font-size: 11.5px; }
+.grafico-rotulos .ativo strong { color: var(--brand-light); }
+
+/* pendências */
+.dash-atencao { display: flex; flex-direction: column; }
+.contador { display: grid; min-width: 26px; height: 26px; place-items: center; padding: 0 7px; border-radius: 99px; background: var(--warning-wash); color: var(--warning); font-size: 12.5px; font-weight: 700; }
+.pendencias { display: grid; align-content: start; gap: 2px; margin: 0; padding: 0; list-style: none; }
+.pendencias li { animation: dash-entra .5s var(--ease) both; }
+.pendencia {
+  display: flex; width: 100%; align-items: center; gap: 12px; padding: 10px; border: 0; border-radius: 12px; background: transparent;
+  color: var(--text); text-align: left; cursor: pointer; transition: background .15s;
+}
+.pendencia:hover, .pendencia:focus-visible { background: var(--surface-2); }
+.pendencia:focus-visible { outline: 2px solid var(--brand-light); outline-offset: -2px; }
+.pendencia-icone { display: grid; width: 32px; height: 32px; flex: 0 0 32px; place-items: center; border-radius: 10px; }
+.pendencia.aviso .pendencia-icone { background: var(--warning-wash); color: var(--warning); }
+.pendencia.revisao .pendencia-icone { background: var(--review-wash); color: var(--review); }
+.pendencia.neutro .pendencia-icone { background: var(--surface-2); color: var(--text-2); }
+.pendencia-texto { flex: 1; min-width: 0; }
+.pendencia-texto strong, .pendencia-texto small { display: block; }
+.pendencia-texto strong { font-size: 13px; font-weight: 600; }
+.pendencia-texto small { margin-top: 2px; color: var(--text-3); font-size: 12px; }
+.pendencia-seta { flex: 0 0 auto; color: var(--text-3); opacity: 0; transform: translateX(-4px); transition: opacity .2s, transform .25s var(--ease); }
+:is(.pendencia, .status-item):is(:hover, :focus-visible) .pendencia-seta { color: var(--brand-light); opacity: 1; transform: none; }
+
+/* etapas */
+.status-barra { display: flex; height: 10px; gap: 3px; margin-bottom: 14px; overflow: hidden; border-radius: 99px; }
+.status-segmento { min-width: 6px; border-radius: 3px; transform-origin: left; animation: dash-cresce-x .8s var(--ease) both; }
+.status-segmento.draft, .status-ponto.draft { background: var(--text-3); }
+.status-segmento.approval, .status-ponto.approval { background: var(--review); }
+.status-segmento.approved, .status-ponto.approved { background: var(--green); }
+.status-segmento.rejected, .status-ponto.rejected { background: var(--error); }
+.status-lista { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px 10px; margin: 0; padding: 0; list-style: none; }
+.status-item {
+  display: flex; width: 100%; align-items: center; gap: 11px; padding: 10px; border: 0; border-radius: 12px; background: transparent;
+  color: var(--text); text-align: left; cursor: pointer; transition: background .15s;
+}
+.status-item:hover, .status-item:focus-visible { background: var(--surface-2); }
+.status-item:focus-visible { outline: 2px solid var(--brand-light); outline-offset: -2px; }
+.status-ponto { width: 9px; height: 9px; flex: 0 0 9px; border-radius: 50%; }
+.status-texto { flex: 1; min-width: 0; }
+.status-texto strong, .status-texto small { display: block; }
+.status-texto strong { font-size: 13px; font-weight: 600; }
+.status-texto small { margin-top: 1px; color: var(--text-3); font-size: 12px; }
+.status-numero { font: 600 18px var(--f-titulo); }
+
+/* tabela de recentes */
+.dash-tabela { width: 100%; min-width: 760px; border-collapse: collapse; font-size: 13px; }
+.dash-tabela th[scope='col'] { padding: 0 12px 10px; color: var(--text-3); font-size: 11.5px; font-weight: 600; text-align: left; white-space: nowrap; }
+.dash-tabela tbody tr { border-top: 1px solid var(--line); animation: dash-entra .45s var(--ease) both; }
+.linha-clicavel { cursor: pointer; transition: background .15s; }
+.linha-clicavel:hover { background: var(--surface-2); }
+.linha-clicavel:focus-visible { outline: 2px solid var(--brand-light); outline-offset: -2px; }
+.dash-tabela :is(td, th[scope='row']) { padding: 12px; text-align: left; vertical-align: middle; font-weight: 500; }
+.dash-tabela td:nth-child(2) { white-space: nowrap; }
+.dash-tabela small { display: block; margin-top: 2px; color: var(--text-3); font-size: 11.5px; font-weight: 400; }
+.dash-tabela .numeric { text-align: right; }
+.dash-tabela .codigo { color: var(--text-2); font: 500 12px var(--f-codigo); }
+.dash-tabela .valor { font-weight: 600; white-space: nowrap; }
+.dash-tabela .valor.abaixo { color: var(--warning); }
+.dash-tabela .quando { color: var(--text-3); white-space: nowrap; }
+
+/* aviso de demonstração, discreto no rodapé */
+.dash-rodape { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 0; color: var(--text-3); font-size: 12px; }
+
+@keyframes dash-entra { from { opacity: 0; transform: translateY(10px); } }
+@keyframes dash-cresce { from { transform: scaleY(0); } }
+@keyframes dash-cresce-x { from { transform: scaleX(0); } }
+@keyframes dash-desenha { to { stroke-dashoffset: 0; } }
+@keyframes dash-area { to { opacity: .1; } }
+@keyframes dash-aparece { from { opacity: 0; } }
+@keyframes dash-ponto { from { opacity: 0; transform: scale(.3); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .dash *, .dash { animation: none !important; transition: none !important; }
+  .sparkline-linha { stroke-dashoffset: 0; } .sparkline-area { opacity: .1; } .sparkline circle { opacity: 1; }
+}
+
+@media (max-width: 1250px) { .dash-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 1050px) { .dash-grade { grid-template-columns: 1fr; grid-template-areas: "grafico" "atencao" "status" "recentes"; } }
+@media (max-width: 620px) {
+  .dash-intro { align-items: flex-start; flex-direction: column; }
+  .dash-kpis, .status-lista { grid-template-columns: 1fr; }
+  .dash-card-cabecalho { flex-direction: column; }
+  .legenda { justify-content: flex-start; }
+}
