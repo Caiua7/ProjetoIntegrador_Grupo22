@@ -1,0 +1,38 @@
+# Blueprint do Render: API do NeoPrice em staging (issue #65).
+# O deploy só sai depois que os checks do CI passam no commit da main.
+services:
+  - type: web
+    name: neoprice-api-staging
+    runtime: python
+    plan: free
+    region: virginia
+    branch: main
+    autoDeployTrigger: checksPass
+    # instala da raiz porque requirements.txt usa ./packages/pricing-core
+    buildCommand: pip install -r apps/api/requirements.txt
+    startCommand: cd apps/api && uvicorn app.main:app --host 0.0.0.0 --port $PORT --no-access-log
+    healthCheckPath: /health
+    buildFilter:
+      paths:
+        - apps/api/**
+        - packages/pricing-core/**
+        - render.yaml
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.8"
+      - key: AMBIENTE
+        value: staging
+      - key: LOG_LEVEL
+        value: INFO
+      - key: CORS_ORIGINS
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: SENTRY_DSN
+        sync: false

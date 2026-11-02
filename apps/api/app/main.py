@@ -2,12 +2,16 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
+from app.core.observabilidade import CABECALHO_CORRELACAO, configurar_logs, configurar_sentry, instalar_correlacao
 from app.routers.auth import router as auth_router
 from app.routers.cadastros import router as cadastros_router
 from app.routers.calculate import router as calculate_router
 from app.routers.cotacoes import router as cotacoes_router
 from app.routers.health import router as health_router
 from app.routers.tax_rates import router as tax_rates_router
+
+configurar_logs(settings.LOG_LEVEL)
+configurar_sentry(settings.SENTRY_DSN, settings.AMBIENTE, settings.VERSAO)
 
 app = FastAPI(
     title="NeoPrice API",
@@ -24,7 +28,9 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=[CABECALHO_CORRELACAO],
 )
+instalar_correlacao(app)
 
 app.include_router(health_router)
 app.include_router(auth_router)

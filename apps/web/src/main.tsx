@@ -5,6 +5,9 @@ import '@fontsource-variable/sora'
 import '@fontsource-variable/jetbrains-mono'
 import './index.css'
 import App from './App.tsx'
+import { iniciarObservabilidade } from './app/observabilidade'
+
+iniciarObservabilidade()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

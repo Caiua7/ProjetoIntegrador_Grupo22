@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 ARQUIVO_ENV = Path(__file__).resolve().parents[2] / ".env"
@@ -13,6 +14,13 @@ class Settings(BaseSettings):
     DATABASE_URL: str = ""
 
     CORS_ORIGINS: str = "http://localhost:5173"
+
+    # observabilidade (issue #65); vazios em local e nos testes
+    AMBIENTE: str = "local"
+    SENTRY_DSN: str = ""
+    LOG_LEVEL: str = "INFO"
+    # o Render preenche RENDER_GIT_COMMIT; vira a "release" no Sentry
+    VERSAO: str = Field(default="", validation_alias=AliasChoices("VERSAO", "RENDER_GIT_COMMIT"))
 
     def get_cors_origins(self) -> list[str]:
         return [origem.strip() for origem in self.CORS_ORIGINS.split(",") if origem.strip()]
