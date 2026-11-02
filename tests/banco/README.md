@@ -12,6 +12,10 @@
 inserção, alteração (com diff) e exclusão registradas com o usuário, e a trilha
 recusando UPDATE, DELETE e TRUNCATE.
 
+`test_mp_fornecedor.py` cobre a issue #50: vínculo matéria-prima × fornecedor
+(um principal por MP, sem DELETE, RLS de cadastro, auditado) e os índices
+trigram da busca.
+
 `test_cadastro_usuario.py` cobre a issue #44: o cadastro no Supabase Auth cria
 a linha em `usuario`, inativa e com o perfil de menor alcance.
 
