@@ -1,3 +1,4 @@
+import './layout.css'
 import { isImplemented, type NavGroup, type Screen } from '../../app/navigation'
 import type { SessaoUsuario } from '../../services/apiClient'
 import { Icon } from '../icons/Icon'
@@ -32,12 +33,12 @@ export function Sidebar({ groups, current, usuario, theme, onNavigate, onSignOut
             type="button"
             disabled={!available}
             aria-current={active ? 'page' : undefined}
-            title={available ? undefined : 'Em breve'}
+            title={available ? item.description : `${item.description} (em breve)`}
             onClick={() => { if (isImplemented(item.id)) onNavigate(item.id) }}
           >
             <Icon name={item.icon} className="nav-icon" />
-            <span>{item.label}</span>
-            {!available && <span className="nav-soon">em breve</span>}
+            <span className="nav-label">{item.label}</span>
+            {!available && <span className="nav-soon" aria-label="em breve">breve</span>}
           </button>
         })}
       </section>)}

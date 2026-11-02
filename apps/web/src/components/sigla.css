@@ -1,0 +1,15 @@
+/* Sigla com tooltip: sublinhado pontilhado discreto e cartão com o nome por extenso. */
+.sigla { display: inline-flex; border-radius: 3px; cursor: help; outline: none; }
+.sigla abbr { text-decoration: underline dotted color-mix(in srgb, currentColor 50%, transparent); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+.sigla:focus-visible { outline: 2px solid var(--brand-light); outline-offset: 2px; }
+
+.sigla-dica {
+  position: fixed; z-index: 100; display: grid; gap: 3px; width: max-content; max-width: 260px; padding: 10px 12px;
+  border: 1px solid var(--line-strong); border-radius: 10px; background: var(--surface); box-shadow: 0 14px 34px rgba(0,0,0,.28);
+  color: var(--text-2); font: 400 12px/1.45 var(--f-texto); letter-spacing: 0; text-align: left; text-transform: none; white-space: normal;
+  pointer-events: none; transform: translate(-50%, calc(-100% - 9px)); animation: sigla-entra .14s ease-out;
+}
+.sigla-dica.abaixo { transform: translate(-50%, 9px); }
+.sigla-dica strong { color: var(--text); font-size: 12.5px; font-weight: 600; }
+@keyframes sigla-entra { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .sigla-dica { animation: none; } }

@@ -78,3 +78,38 @@ def test_exigir_permissao_barra_quem_nao_tem(dados):
     http = TestClient(app_teste)
     assert http.get("/aprovar", headers=TOKEN_VALIDO).status_code == 403
     assert http.get("/ler", headers=TOKEN_VALIDO).status_code == 200
+
+
+class _ConsultaUsuario:
+    def __init__(self, linhas):
+        self.linhas = linhas
+
+    def __getattr__(self, _nome):
+        return lambda *args, **kwargs: self
+
+    def execute(self):
+        return SimpleNamespace(data=self.linhas)
+
+
+def test_carregar_usuario_monta_perfil_e_permissoes(monkeypatch):
+    linha = {
+        "nome": "Rafael Costa",
+        "email": "rafael@empresa.com",
+        "ativo": True,
+        "perfil": {
+            "codigo": "analista_pricing",
+            "nome": "Analista de Pricing",
+            "perfil_permissao": [{"permissao_codigo": "precificacao.ler"}, {"permissao_codigo": "cadastro.ler"}],
+        },
+    }
+    servico = SimpleNamespace(table=lambda _nome: _ConsultaUsuario([linha]))
+    monkeypatch.setattr(auth, "supabase_servico", lambda: servico)
+    dados = auth.carregar_usuario(None, USUARIO_ID)
+    assert dados["perfil_codigo"] == "analista_pricing"
+    assert dados["permissoes"] == ["cadastro.ler", "precificacao.ler"]
+
+
+def test_carregar_usuario_sem_cadastro_devolve_none(monkeypatch):
+    servico = SimpleNamespace(table=lambda _nome: _ConsultaUsuario([]))
+    monkeypatch.setattr(auth, "supabase_servico", lambda: servico)
+    assert auth.carregar_usuario(None, USUARIO_ID) is None

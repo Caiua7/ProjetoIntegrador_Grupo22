@@ -1,6 +1,44 @@
 import { useState, type FormEvent } from 'react'
+import { Select, type Opcao } from '../../components/form/Select'
+import { Sigla } from '../../components/Sigla'
 
 type Props = { onCancel: () => void }
+
+const CLIENTES: Opcao[] = [
+  { value: 'nutrafit', label: 'Nutrafit Distribuidora', detalhe: 'SP · Full Service Nacional' },
+  { value: 'corpore', label: 'Corpore Suplementos', detalhe: 'MG · Full Service Nacional' },
+  { value: 'atlas', label: 'Atlas Nutrition LLC', detalhe: 'Exportação' },
+  { value: 'vitaprime', label: 'Vita Prime Indústria', detalhe: 'PR · Industrialização por Encomenda' },
+]
+const PRODUTOS: Opcao[] = [
+  { value: 'wpc80', label: 'WPC 80 — pote 600 g' },
+  { value: 'creatina', label: 'Creatina mono 300 g' },
+  { value: 'bcaa', label: 'BCAA 2:1:1 — 250 g' },
+]
+const MODALIDADES: Opcao[] = [
+  { value: 'full_service_nacional', label: 'Full Service Nacional', detalhe: 'Fabricamos e vendemos no Brasil' },
+  { value: 'full_service_exportacao', label: 'Full Service Exportação', detalhe: 'Fabricamos e vendemos para fora do país' },
+  { value: 'industrializacao_por_encomenda', label: 'Industrialização por Encomenda', detalhe: 'O cliente envia parte do material' },
+]
+const UFS: Opcao[] = [
+  ...['AC','AL','AM','BA','CE','DF','ES','GO','MA','MG','MS','MT','PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO'].map((uf) => ({ value: uf, label: uf })),
+  { value: 'EX', label: 'Exterior', detalhe: 'Venda para fora do país' },
+]
+const REGIMES: Opcao[] = [
+  { value: 'lucro_real', label: 'Lucro Real' },
+  { value: 'lucro_presumido', label: 'Lucro Presumido' },
+  { value: 'simples_nacional', label: 'Simples Nacional' },
+]
+const FRETES: Opcao[] = [
+  { value: 'cif', label: 'CIF', detalhe: 'Frete por conta do fabricante' },
+  { value: 'fob', label: 'FOB', detalhe: 'Frete por conta do cliente' },
+]
+
+/** Select de demonstração que guarda a própria escolha (o formulário ainda não envia nada). */
+function CampoSelect(props: { options: Opcao[], placeholder: string, required?: boolean }) {
+  const [valor, setValor] = useState('')
+  return <Select value={valor} onChange={setValor} {...props} />
+}
 
 function PricingCreate({ onCancel }: Props) {
   const [submitted, setSubmitted] = useState(false)
@@ -24,12 +62,12 @@ function PricingCreate({ onCancel }: Props) {
       <section className="form-card">
         <div className="card-heading"><span className="heading-icon" aria-hidden="true">▤</span><div><h3>Informações comerciais e fiscais</h3><p>Campos do cabeçalho previstos na US29</p></div></div>
         <div className="form-grid">
-          <label className="field"><span>Cliente <b>*</b></span><select defaultValue="" required><option value="" disabled>Selecione um cliente</option><option>Nutrafit Distribuidora — SP</option><option>Corpore Suplementos — MG</option><option>Atlas Nutrition LLC — Exportação</option><option>Vita Prime Indústria — PR</option></select></label>
-          <label className="field"><span>Produto <b>*</b></span><select defaultValue="" required><option value="" disabled>Selecione um produto</option><option>WPC 80 — pote 600 g</option><option>Creatina mono 300 g</option><option>BCAA 2:1:1 — 250 g</option></select></label>
-          <label className="field"><span>Modalidade comercial <b>*</b></span><select defaultValue="" required><option value="" disabled>Selecione a modalidade</option><option value="full_service_nacional">Full Service Nacional</option><option value="full_service_exportacao">Full Service Exportação</option><option value="industrializacao_por_encomenda">Industrialização por Encomenda</option></select></label>
-          <label className="field"><span>UF de destino <b>*</b></span><select defaultValue="" required><option value="" disabled>Selecione a UF</option>{['AC','AL','AM','BA','CE','DF','ES','GO','MA','MG','MS','MT','PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO'].map((uf) => <option key={uf}>{uf}</option>)}<option value="EX">Exterior</option></select></label>
-          <label className="field"><span>Regime tributário do cliente <b>*</b></span><select defaultValue="" required><option value="" disabled>Selecione o regime</option><option>Lucro Real</option><option>Lucro Presumido</option><option>Simples Nacional</option></select></label>
-          <label className="field"><span>Frete <b>*</b></span><select defaultValue="" required><option value="" disabled>Selecione a modalidade de frete</option><option value="cif">CIF — por conta do fabricante</option><option value="fob">FOB — por conta do cliente</option></select></label>
+          <label className="field"><span>Cliente <b>*</b></span><CampoSelect required placeholder="Selecione um cliente" options={CLIENTES} /></label>
+          <label className="field"><span>Produto <b>*</b></span><CampoSelect required placeholder="Selecione um produto" options={PRODUTOS} /></label>
+          <label className="field"><span>Modalidade comercial <b>*</b></span><CampoSelect required placeholder="Selecione a modalidade" options={MODALIDADES} /></label>
+          <label className="field"><span><Sigla termo="UF" /> de destino <b>*</b></span><CampoSelect required placeholder="Selecione a UF" options={UFS} /></label>
+          <label className="field"><span>Regime tributário do cliente <b>*</b></span><CampoSelect required placeholder="Selecione o regime" options={REGIMES} /></label>
+          <label className="field"><span>Frete <b>*</b></span><CampoSelect required placeholder="Selecione a modalidade de frete" options={FRETES} /></label>
           <label className="field"><span>Prazo médio de pagamento <small>(dias)</small></span><div className="input-suffix"><input type="number" min="0" step="1" placeholder="Ex.: 45" /><span>dias</span></div></label>
           <label className="field"><span>Volume negociado <small>(opcional)</small></span><input type="number" min="0" step="1" placeholder="Quantidade de unidades" /></label>
         </div>
