@@ -129,6 +129,8 @@ prototipo/             protótipo navegável
 
 A dependência só aponta para dentro: `web` → `api` → `pricing-core`. O `pricing-core` não importa nada das outras pastas.
 
+Staging (Vercel + Render), Sentry e logs com id de correlação: ver [docs/deploy.md](docs/deploy.md).
+
 ## Integração contínua
 
 Todo PR roda o workflow [CI](.github/workflows/ci.yml), e o merge na `main` exige todos os jobs verdes. A suíte do motor roda à parte, no workflow [Conformidade](.github/workflows/conformidade.yml).
