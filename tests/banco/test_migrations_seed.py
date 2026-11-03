@@ -28,6 +28,8 @@ TABELAS = [
     "perfil_permissao",
     "carteira",
     "precificacao",
+    "cambio",
+    "parametro_global",
 ]
 
 

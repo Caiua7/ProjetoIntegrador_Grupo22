@@ -7,6 +7,9 @@
   analista restrito a uma carteira não enxerga clientes nem precificações de
   outra, cada perfil só alcança o que a matriz de acesso permite e ninguém
   consegue se promover.
+- `test_cambio_parametros.py` (issue #49): câmbio e parâmetros globais por
+  vigência, com o histórico protegido: uma nova vigência vale para o cálculo
+  novo e o cálculo antigo, refeito pela sua data, encontra os mesmos valores.
 
 `test_auditoria.py` cobre o log imutável da issue #58: toda tabela auditada,
 inserção, alteração (com diff) e exclusão registradas com o usuário, e a trilha

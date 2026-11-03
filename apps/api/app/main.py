@@ -9,6 +9,7 @@ from app.routers.calculate import router as calculate_router
 from app.routers.cotacoes import router as cotacoes_router
 from app.routers.formulacoes import router as formulacoes_router
 from app.routers.health import router as health_router
+from app.routers.parametros_globais import router_cambio, router_parametros
 from app.routers.precificacoes import router as precificacoes_router
 from app.routers.tax_rates import router as tax_rates_router
 
@@ -42,3 +43,5 @@ app.include_router(precificacoes_router)
 app.include_router(calculate_router)
 app.include_router(tax_rates_router)
 app.include_router(cotacoes_router)
+app.include_router(router_cambio)
+app.include_router(router_parametros)
