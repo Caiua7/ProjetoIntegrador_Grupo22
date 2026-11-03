@@ -180,8 +180,8 @@ def test_analista_cria_precificacao_so_para_cliente_da_propria_carteira(conn, us
     cliente_sudeste = _id(conn, "cliente", "CLI-0001")
     cliente_sul = _id(conn, "cliente", "CLI-0004")
     inserir = (
-        "INSERT INTO precificacao (codigo, cliente_id, produto_id, modalidade_comercial) "
-        "VALUES (%s, %s, %s, 'full_service_nacional')"
+        "INSERT INTO precificacao (codigo, cliente_id, produto_id, modalidade_comercial, uf_destino, frete, regime_tributario) "
+        "VALUES (%s, %s, %s, 'full_service_nacional', 'SP', 'cif', 'lucro_real')"
     )
 
     with como(conn, usuarios["analista_sudeste"]):
