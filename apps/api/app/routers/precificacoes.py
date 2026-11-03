@@ -76,6 +76,8 @@ def _executar(operacao):
 
 @router.get("/opcoes", response_model=OpcoesResposta)
 def listar_opcoes(usuario: UsuarioAutenticado = Depends(exigir_permissao("precificacao.editar"))):
+    if not usuario.tem_permissao("cliente.ler") or not usuario.tem_permissao("cadastro.ler"):
+        raise HTTPException(403, "Seu perfil nao pode consultar clientes e produtos.")
     cliente = _cliente(usuario)
     clientes = _executar(
         lambda: (
@@ -104,7 +106,7 @@ def listar_precificacoes(
     consulta = (
         _cliente(usuario)
         .table("precificacao")
-        .select("*,cliente:cliente_id(razao_social),produto:produto_id(descricao)")
+        .select("*,cliente(razao_social),produto(descricao)")
         .order("updated_at", desc=True)
     )
     if status_filtro:

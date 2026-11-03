@@ -14,7 +14,11 @@ ALTER TABLE precificacao
     ADD CONSTRAINT ck_precificacao_frete CHECK (frete IS NULL OR frete IN ('cif', 'fob')),
     ADD CONSTRAINT ck_precificacao_regime CHECK (
         regime_tributario IS NULL OR regime_tributario IN ('lucro_real', 'lucro_presumido', 'simples_nacional')
-    );
+    ),
+    ADD CONSTRAINT ck_precificacao_cabecalho_completo CHECK (
+        uf_destino IS NOT NULL AND frete IS NOT NULL AND regime_tributario IS NOT NULL
+    ) NOT VALID;
 
 -- As colunas ficam nullable para preservar os registros legados. Novos
--- cabecalhos sao validados como completos pela API antes da insercao.
+-- NOT VALID preserva cabecalhos legados incompletos, enquanto o CHECK passa
+-- a ser aplicado a novas insercoes e atualizacoes feitas fora da API.
