@@ -90,13 +90,17 @@ class ClienteFalso:
         return ConsultaFalsa(self.banco, tabela)
 
     def rpc(self, nome, parametros):
-        assert nome == "salvar_itens_formulacao"
-        formulacao_id = parametros["p_formulacao_id"]
-        self.banco["formulacao_item"] = [
-            linha for linha in self.banco["formulacao_item"] if linha["formulacao_id"] != formulacao_id
-        ]
+        assert nome == "salvar_formulacao_produto"
+        if self.banco.get("falhar_rpc"):
+            erro = RuntimeError("Falha ao gravar um item")
+            erro.code = "23514"
+            raise erro
+        produto_id = parametros["p_produto_id"]
+        formulacao = next((linha for linha in self.banco["formulacao"] if linha["produto_id"] == produto_id), None)
+        formulacao_id = formulacao["id"] if formulacao else str(uuid4())
+        novas_linhas = []
         for ordem, item in enumerate(parametros["p_itens"]):
-            self.banco["formulacao_item"].append(
+            novas_linhas.append(
                 {
                     "id": str(uuid4()),
                     "formulacao_id": formulacao_id,
@@ -104,6 +108,14 @@ class ClienteFalso:
                     **item,
                 }
             )
+        if formulacao is None:
+            agora = datetime.now(UTC).isoformat()
+            self.banco["formulacao"].append(
+                {"id": formulacao_id, "produto_id": produto_id, "created_at": agora, "updated_at": agora}
+            )
+        self.banco["formulacao_item"] = [
+            linha for linha in self.banco["formulacao_item"] if linha["formulacao_id"] != formulacao_id
+        ] + novas_linhas
         return Resposta(None)
 
 
@@ -200,30 +212,62 @@ def test_lista_produtos_e_persiste_recupera_edita_e_remove_itens(ambiente):
                 "tipo_insumo": "materia_prima",
                 "materia_prima_id": str(MP_ID),
                 "embalagem_id": None,
-                "quantidade": 1.5,
+                "quantidade": "1.500000",
                 "unidade_medida": "kg",
-                "perda_percentual": 2.5,
+                "perda_percentual": "2.5000",
             }
         ]
     }
     salva = http.put(f"/formulacoes/{PRODUTO_ID}", headers=TOKEN, json=entrada)
     assert salva.status_code == 200
-    assert float(salva.json()["itens"][0]["quantidade"]) == 1.5
+    assert salva.json()["itens"][0]["quantidade"] == "1.500000"
+    assert salva.json()["itens"][0]["perda_percentual"] == "2.5000"
     assert len(banco["formulacao_item"]) == 1
 
-    entrada["itens"][0]["quantidade"] = 2.25
+    entrada["itens"][0]["quantidade"] = "2.250000"
     entrada["itens"][0]["perda_percentual"] = None
     atualizada = http.put(f"/formulacoes/{PRODUTO_ID}", headers=TOKEN, json=entrada)
     assert atualizada.status_code == 200
-    assert float(atualizada.json()["itens"][0]["quantidade"]) == 2.25
+    assert atualizada.json()["itens"][0]["quantidade"] == "2.250000"
     assert atualizada.json()["itens"][0]["perda_percentual"] is None
 
     recuperada = http.get(f"/formulacoes/{PRODUTO_ID}", headers=TOKEN)
     assert recuperada.status_code == 200
-    assert float(recuperada.json()["itens"][0]["quantidade"]) == 2.25
+    assert recuperada.json()["itens"][0]["quantidade"] == "2.250000"
     removidos = http.put(f"/formulacoes/{PRODUTO_ID}", headers=TOKEN, json={"itens": []})
     assert removidos.status_code == 200
     assert removidos.json()["itens"] == []
+
+
+def test_formulacao_preserva_precision_decimal_de_api(ambiente):
+    http, _banco, _usuario = ambiente
+    resposta = http.put(
+        f"/formulacoes/{PRODUTO_ID}",
+        headers=TOKEN,
+        json={
+            "itens": [
+                {
+                    "tipo_insumo": "materia_prima",
+                    "materia_prima_id": str(MP_ID),
+                    "quantidade": "12345678.123456",
+                    "unidade_medida": "kg",
+                    "perda_percentual": "99.9999",
+                }
+            ]
+        },
+    )
+    assert resposta.status_code == 200
+    assert resposta.json()["itens"][0]["quantidade"] == "12345678.123456"
+    assert resposta.json()["itens"][0]["perda_percentual"] == "99.9999"
+
+
+def test_falha_ao_salvar_item_nao_cria_cabecalho_parcial(ambiente):
+    http, banco, _usuario = ambiente
+    banco["falhar_rpc"] = True
+    resposta = http.put(f"/formulacoes/{PRODUTO_ID}", headers=TOKEN, json={"itens": []})
+    assert resposta.status_code == 422
+    assert banco["formulacao"] == []
+    assert banco["formulacao_item"] == []
 
 
 def test_formulacao_respeita_permissao_de_edicao(ambiente):

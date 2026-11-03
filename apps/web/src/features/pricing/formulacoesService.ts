@@ -8,9 +8,9 @@ export type FormulacaoItem = {
   tipo_insumo: TipoItem
   materia_prima_id: string | null
   embalagem_id: string | null
-  quantidade: number
+  quantidade: string
   unidade_medida: Unidade
-  perda_percentual: number | null
+  perda_percentual: string | null
   ordem?: number
 }
 export type Formulacao = { id: string, produto_id: string, created_at: string, updated_at: string, itens: FormulacaoItem[] }

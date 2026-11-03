@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { ApiError } from '../../services/apiClient'
 import { listarInsumos, type Insumo, type TipoInsumo } from '../cadastros/insumosService'
+import { normalizarDecimal, perdaValida, quantidadeValida } from './decimalInput'
 import type { ConsultaInsumos } from '../cadastros/insumosQuery'
 import { listarProdutos, obterFormulacao, salvarFormulacao, type FormulacaoItem, type Produto, type TipoItem, type Unidade } from './formulacoesService'
 
 type Draft = Omit<FormulacaoItem, 'quantidade' | 'perda_percentual'> & { quantidade: string, perda_percentual: string }
-type ItemDraft = Omit<FormulacaoItem, 'quantidade' | 'perda_percentual'> & { quantidade: string, perda_percentual: string }
+type ItemDraft = Draft
 const unidades: Unidade[] = ['kg', 'g', 'l', 'ml', 'un']
 const vazio = (tipo: TipoItem = 'materia_prima'): Draft => ({
   tipo_insumo: tipo, materia_prima_id: null, embalagem_id: null, quantidade: '', unidade_medida: tipo === 'embalagem' ? 'un' : 'kg', perda_percentual: '',
@@ -53,7 +54,7 @@ export function FormulationPage({ canEdit }: { canEdit: boolean }) {
     if (!produtoId) return
     let vigente = true
     obterFormulacao(produtoId).then((formulacao) => { if (vigente) setItens(formulacao.itens.map((item) => ({ ...item,
-      quantidade: String(item.quantidade), perda_percentual: item.perda_percentual === null ? '' : String(item.perda_percentual) }))) })
+      quantidade: item.quantidade, perda_percentual: item.perda_percentual ?? '' }))) })
       .catch((falha: unknown) => {
         if (!vigente) return
         if (falha instanceof ApiError && falha.status === 404) setItens([])
@@ -68,13 +69,12 @@ export function FormulationPage({ canEdit }: { canEdit: boolean }) {
   function mudarTipo(tipo_insumo: TipoItem) { setNovo({ ...vazio(tipo_insumo) }) }
   function adicionar() {
     const id = novo.tipo_insumo === 'materia_prima' ? novo.materia_prima_id : novo.embalagem_id
-    const quantidade = Number(novo.quantidade)
-    const perda = novo.perda_percentual === '' ? null : Number(novo.perda_percentual)
-    if (!id || !Number.isFinite(quantidade) || quantidade <= 0 || (perda !== null && (!Number.isFinite(perda) || perda < 0 || perda > 100))) {
+    if (!id || !quantidadeValida(novo.quantidade) || (novo.perda_percentual !== '' && !perdaValida(novo.perda_percentual))) {
       setErro('Selecione um insumo, informe quantidade maior que zero e perda entre 0 e 100%.'); return
     }
     setItens((atuais) => [...atuais, { tipo_insumo: novo.tipo_insumo, materia_prima_id: novo.tipo_insumo === 'materia_prima' ? id : null,
-      embalagem_id: novo.tipo_insumo === 'embalagem' ? id : null, quantidade: String(quantidade), unidade_medida: novo.unidade_medida, perda_percentual: perda === null ? '' : String(perda) }])
+      embalagem_id: novo.tipo_insumo === 'embalagem' ? id : null, quantidade: normalizarDecimal(novo.quantidade), unidade_medida: novo.unidade_medida,
+      perda_percentual: novo.perda_percentual === '' ? '' : normalizarDecimal(novo.perda_percentual) }])
     setNovo(vazio(novo.tipo_insumo)); setErro(null); setMensagem(null)
   }
   function editar(index: number, patch: Partial<ItemDraft>) {
@@ -82,15 +82,15 @@ export function FormulationPage({ canEdit }: { canEdit: boolean }) {
   }
   async function salvar() {
     if (!produtoId) return
-    if (itens.some((item) => !Number.isFinite(Number(item.quantidade)) || Number(item.quantidade) <= 0 ||
-      (item.perda_percentual !== '' && (!Number.isFinite(Number(item.perda_percentual)) || Number(item.perda_percentual) < 0 || Number(item.perda_percentual) > 100)))) {
+    if (itens.some((item) => !quantidadeValida(item.quantidade) ||
+      (item.perda_percentual !== '' && !perdaValida(item.perda_percentual)))) {
       setErro('Revise as quantidades e perdas antes de salvar.'); return
     }
     setSalvando(true); setErro(null); setMensagem(null)
     try { const salva = await salvarFormulacao(produtoId, itens.map((item) => ({ tipo_insumo: item.tipo_insumo,
-      materia_prima_id: item.materia_prima_id, embalagem_id: item.embalagem_id, quantidade: Number(item.quantidade),
-      unidade_medida: item.unidade_medida, perda_percentual: item.perda_percentual === '' ? null : Number(item.perda_percentual) })))
-      setItens(salva.itens.map((item) => ({ ...item, quantidade: String(item.quantidade), perda_percentual: item.perda_percentual === null ? '' : String(item.perda_percentual) })))
+      materia_prima_id: item.materia_prima_id, embalagem_id: item.embalagem_id, quantidade: normalizarDecimal(item.quantidade),
+      unidade_medida: item.unidade_medida, perda_percentual: item.perda_percentual === '' ? null : normalizarDecimal(item.perda_percentual) })))
+      setItens(salva.itens.map((item) => ({ ...item, quantidade: item.quantidade, perda_percentual: item.perda_percentual ?? '' })))
       setMensagem('Formulação salva e pronta para consulta.') }
     catch (falha) { setErro(falha instanceof Error ? falha.message : 'Não foi possível salvar a formulação.') }
     finally { setSalvando(false) }
@@ -116,9 +116,9 @@ export function FormulationPage({ canEdit }: { canEdit: boolean }) {
         <div className="formulation-add-grid">
           <label className="field">Tipo<select value={novo.tipo_insumo} onChange={(event) => mudarTipo(event.target.value as TipoItem)}><option value="materia_prima">Matéria-prima</option><option value="embalagem">Embalagem</option></select></label>
           <label className="field">Insumo<select value={novo.tipo_insumo === 'materia_prima' ? novo.materia_prima_id ?? '' : novo.embalagem_id ?? ''} onChange={(event) => { const found = opcoes.find((item) => item.id === event.target.value); setNovo({ ...novo, materia_prima_id: novo.tipo_insumo === 'materia_prima' ? event.target.value || null : null, embalagem_id: novo.tipo_insumo === 'embalagem' ? event.target.value || null : null, unidade_medida: found?.unidade_medida ?? novo.unidade_medida }) }}><option value="">Selecione um insumo</option>{opcoes.map((item) => <option key={item.id} value={item.id}>{item.codigo} — {item.descricao}</option>)}</select></label>
-          <label className="field">Quantidade<input type="number" min="0.000001" step="any" value={novo.quantidade} onChange={(event) => setNovo({ ...novo, quantidade: event.target.value })} /></label>
+          <label className="field">Quantidade<input type="text" inputMode="decimal" value={novo.quantidade} onChange={(event) => setNovo({ ...novo, quantidade: event.target.value })} /></label>
           <label className="field">Unidade<select value={novo.unidade_medida} onChange={(event) => setNovo({ ...novo, unidade_medida: event.target.value as Unidade })}>{unidades.map((unidade) => <option key={unidade}>{unidade}</option>)}</select></label>
-          <label className="field">Perda <small>(opcional, %)</small><input type="number" min="0" max="100" step="0.0001" value={novo.perda_percentual} onChange={(event) => setNovo({ ...novo, perda_percentual: event.target.value })} /></label>
+          <label className="field">Perda <small>(opcional, %)</small><input type="text" inputMode="decimal" value={novo.perda_percentual} onChange={(event) => setNovo({ ...novo, perda_percentual: event.target.value })} /></label>
           <button className="button primary formulation-add-button" type="button" onClick={adicionar}>Adicionar à composição</button>
         </div>
       </section>}
@@ -128,9 +128,9 @@ export function FormulationPage({ canEdit }: { canEdit: boolean }) {
           <table className="pricing-table formulation-table"><thead><tr><th>Tipo</th><th>Insumo</th><th>Quantidade</th><th>Unidade</th><th>Perda (%)</th>{canEdit && <th>Ações</th>}</tr></thead><tbody>
             {itens.map((item, index) => { const id = item.tipo_insumo === 'materia_prima' ? item.materia_prima_id : item.embalagem_id; const insumo = id ? insumosPorId.get(id) : undefined
               return <tr key={item.id ?? `${id}-${index}`}><td>{item.tipo_insumo === 'materia_prima' ? 'Matéria-prima' : 'Embalagem'}</td><td>{insumo ? `${insumo.codigo} — ${insumo.descricao}` : 'Insumo indisponível'}</td>
-                <td>{canEdit ? <input aria-label={`Quantidade de ${insumo?.descricao ?? 'insumo'}`} type="number" min="0.000001" step="any" value={item.quantidade} onChange={(event) => editar(index, { quantidade: event.target.value })} /> : item.quantidade}</td>
+                <td>{canEdit ? <input aria-label={`Quantidade de ${insumo?.descricao ?? 'insumo'}`} type="text" inputMode="decimal" value={item.quantidade} onChange={(event) => editar(index, { quantidade: event.target.value })} /> : item.quantidade}</td>
                 <td>{canEdit ? <select aria-label={`Unidade de ${insumo?.descricao ?? 'insumo'}`} value={item.unidade_medida} onChange={(event) => editar(index, { unidade_medida: event.target.value as Unidade })}>{unidades.map((unidade) => <option key={unidade}>{unidade}</option>)}</select> : item.unidade_medida}</td>
-                <td>{canEdit ? <input aria-label={`Perda de ${insumo?.descricao ?? 'insumo'}`} type="number" min="0" max="100" step="0.0001" value={item.perda_percentual} onChange={(event) => editar(index, { perda_percentual: event.target.value })} /> : item.perda_percentual || '—'}</td>
+                <td>{canEdit ? <input aria-label={`Perda de ${insumo?.descricao ?? 'insumo'}`} type="text" inputMode="decimal" value={item.perda_percentual} onChange={(event) => editar(index, { perda_percentual: event.target.value })} /> : item.perda_percentual || '—'}</td>
                 {canEdit && <td><button type="button" className="button secondary" onClick={() => { setItens((atuais) => atuais.filter((_, posicao) => posicao !== index)); setMensagem(null) }}>Remover</button></td>}</tr>
             })}
           </tbody></table></div>}
