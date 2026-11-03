@@ -2,11 +2,11 @@
 
 from datetime import datetime
 from decimal import Decimal
-from typing import Literal
+from typing import Annotated, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, PlainSerializer, model_validator
 
 from app.core.auth import UsuarioAutenticado, exigir_permissao
 from app.infrastructure.supabase_client import supabase_do_usuario
@@ -14,6 +14,10 @@ from app.infrastructure.supabase_client import supabase_do_usuario
 router = APIRouter(prefix="/formulacoes", tags=["formulacoes"])
 Unidade = Literal["kg", "g", "l", "ml", "un"]
 TipoItem = Literal["materia_prima", "embalagem"]
+DecimalComoString = Annotated[
+    Decimal,
+    PlainSerializer(lambda valor: format(valor, "f"), return_type=str, when_used="json"),
+]
 
 
 class ProdutoResposta(BaseModel):
@@ -52,7 +56,18 @@ class FormulacaoResposta(BaseModel):
     produto_id: UUID
     created_at: datetime
     updated_at: datetime
-    itens: list[dict]
+    itens: list["ItemResposta"]
+
+
+class ItemResposta(BaseModel):
+    id: UUID
+    tipo_insumo: TipoItem
+    materia_prima_id: UUID | None
+    embalagem_id: UUID | None
+    quantidade: DecimalComoString
+    unidade_medida: Unidade
+    perda_percentual: DecimalComoString | None
+    ordem: int
 
 
 def _cliente(usuario: UsuarioAutenticado):
@@ -69,6 +84,8 @@ def _executar(operacao):
         codigo = str(getattr(erro, "code", ""))
         if codigo == "42501":
             raise HTTPException(403, "Seu perfil não pode alterar esta formulação.") from erro
+        if codigo == "P0002":
+            raise HTTPException(404, "Produto ativo não encontrado.") from erro
         if codigo in {"23503", "23514", "22P02", "22023", "22003"}:
             raise HTTPException(422, "Um ou mais itens da formulação são inválidos.") from erro
         raise HTTPException(503, "Não foi possível acessar a base de formulações.") from erro
@@ -126,36 +143,12 @@ def salvar_formulacao(
     )
     if not produto.data:
         raise HTTPException(404, "Produto ativo não encontrado.")
-    existente = _executar(
-        lambda: cliente.table("formulacao").select("id").eq("produto_id", str(produto_id)).limit(1).execute()
-    )
-    if existente.data:
-        formulacao_id = existente.data[0]["id"]
-    else:
-        criada = _executar(
-            lambda: (
-                cliente.table("formulacao")
-                .insert(
-                    {
-                        "produto_id": str(produto_id),
-                        "created_by": str(usuario.id),
-                        "updated_by": str(usuario.id),
-                    }
-                )
-                .select("id")
-                .execute()
-            )
-        )
-        if not criada.data:
-            raise HTTPException(503, "A formulação não foi retornada após a gravação.")
-        formulacao_id = criada.data[0]["id"]
-
     itens = [item.model_dump(mode="json") for item in entrada.itens]
     _executar(
         lambda: cliente.rpc(
-            "salvar_itens_formulacao",
+            "salvar_formulacao_produto",
             {
-                "p_formulacao_id": formulacao_id,
+                "p_produto_id": str(produto_id),
                 "p_itens": itens,
             },
         ).execute()
