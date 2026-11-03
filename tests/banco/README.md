@@ -7,6 +7,9 @@
   analista restrito a uma carteira não enxerga clientes nem precificações de
   outra, cada perfil só alcança o que a matriz de acesso permite e ninguém
   consegue se promover.
+- `test_importacao_aliquotas.py` (issue #48): a importação em massa de alíquotas
+  grava o lote inteiro ou nada, respeita o RLS, só altera o que mudou e é
+  reexecutável sem efeito.
 
 `test_auditoria.py` cobre o log imutável da issue #58: toda tabela auditada,
 inserção, alteração (com diff) e exclusão registradas com o usuário, e a trilha

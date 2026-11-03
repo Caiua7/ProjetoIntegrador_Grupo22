@@ -3,7 +3,8 @@ INSERT INTO aliquota_fiscal (
     pis_percentual, cofins_percentual, icms_percentual, ipi_percentual,
     icms_interno_percentual, fcp_percentual, mva_percentual
 ) VALUES
-    ('SP', '21069030', 'lucro_real', DATE '2026-09-01', 0.0165, 0.076, 0.12, 0, 0.18, 0.02, 0.4134)
+    ('SP', '21069030', 'lucro_real', DATE '2026-09-01', 0.0165, 0.076, 0.12, 0, 0.18, 0.02, 0.4134),
+    ('MG', '21069030', 'lucro_presumido', DATE '2026-09-01', 0.0165, 0.076, 0.12, 0, 0.18, 0, 0.3896)
 ON CONFLICT (uf_destino, ncm_codigo, regime_tributario, vigencia_inicio) DO UPDATE SET
     pis_percentual = EXCLUDED.pis_percentual,
     cofins_percentual = EXCLUDED.cofins_percentual,
