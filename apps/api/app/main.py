@@ -7,6 +7,7 @@ from app.routers.auth import router as auth_router
 from app.routers.cadastros import router as cadastros_router
 from app.routers.calculate import router as calculate_router
 from app.routers.cotacoes import router as cotacoes_router
+from app.routers.formulacoes import router as formulacoes_router
 from app.routers.health import router as health_router
 from app.routers.tax_rates import router as tax_rates_router
 
@@ -35,6 +36,7 @@ instalar_correlacao(app)
 app.include_router(health_router)
 app.include_router(auth_router)
 app.include_router(cadastros_router)
+app.include_router(formulacoes_router)
 app.include_router(calculate_router)
 app.include_router(tax_rates_router)
 app.include_router(cotacoes_router)

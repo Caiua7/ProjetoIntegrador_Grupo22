@@ -1,7 +1,7 @@
 import type { IconName } from '../components/icons/Icon'
 
 /** Telas já implementadas; o resto do menu aparece desabilitado. */
-export type Screen = 'dashboard' | 'pricing-list' | 'new-pricing' | 'records' | 'taxes'
+export type Screen = 'dashboard' | 'pricing-list' | 'new-pricing' | 'formulation' | 'records' | 'taxes'
 
 export type NavItem = {
   id: string
@@ -15,12 +15,13 @@ export type NavItem = {
 
 export type NavGroup = { title: string, items: NavItem[] }
 
-export const IMPLEMENTED_SCREENS: readonly Screen[] = ['dashboard', 'pricing-list', 'new-pricing', 'records', 'taxes']
+export const IMPLEMENTED_SCREENS: readonly Screen[] = ['dashboard', 'pricing-list', 'new-pricing', 'formulation', 'records', 'taxes']
 
 export const SCREEN_HEADER: Record<Screen, { title: string, subtitle: string }> = {
   dashboard: { title: 'Painel', subtitle: 'Visão geral da sua carteira' },
   'pricing-list': { title: 'Precificações', subtitle: 'Cenários demonstrativos da carteira' },
   'new-pricing': { title: 'Nova precificação', subtitle: 'Cabeçalho comercial e fiscal do estudo' },
+  formulation: { title: 'Formulação', subtitle: 'Composição de matérias-primas e embalagens por produto' },
   records: { title: 'Matérias-primas e embalagens', subtitle: 'Cadastros de insumos' },
   taxes: { title: 'Alíquotas fiscais', subtitle: 'Parâmetros fiscais por vigência' },
 }
@@ -30,6 +31,7 @@ export const NAVIGATION: NavGroup[] = [
     { id: 'dashboard', label: 'Painel', icon: 'painel', permission: null, description: 'Resumo da carteira: margem, pendências e últimas movimentações' },
     { id: 'pricing-list', label: 'Precificações', icon: 'precificacoes', permission: 'precificacao.ler', description: 'Todos os estudos de preço, com status e margem' },
     { id: 'new-pricing', label: 'Nova precificação', icon: 'nova', permission: 'precificacao.editar', description: 'Abrir um estudo de preço para um cliente e produto' },
+    { id: 'formulation', label: 'Formulações', icon: 'cenario', permission: 'precificacao.ler', description: 'Gerenciar a composição de matérias-primas e embalagens dos produtos' },
     { id: 'scenario', label: 'Cenário aberto', icon: 'cenario', permission: 'precificacao.ler', description: 'Detalhe de um cenário: custos, impostos e margens' },
     { id: 'inverse', label: 'Modo inverso', icon: 'inverso', permission: 'precificacao.editar', description: 'Informe a margem desejada e descubra o preço' },
     { id: 'compare', label: 'Comparar cenários', icon: 'comparar', permission: 'precificacao.ler', description: 'Compare versões e cenários lado a lado' },
