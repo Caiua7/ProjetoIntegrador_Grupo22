@@ -87,3 +87,7 @@ END;
 $$;
 REVOKE EXECUTE ON FUNCTION salvar_itens_formulacao(UUID, JSONB) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION salvar_itens_formulacao(UUID, JSONB) TO authenticated;
+
+-- Gatilhos padronizados: INSERT, UPDATE e DELETE, mais bloqueio de TRUNCATE.
+SELECT habilitar_auditoria('formulacao');
+SELECT habilitar_auditoria('formulacao_item');

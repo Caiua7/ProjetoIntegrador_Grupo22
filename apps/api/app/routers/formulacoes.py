@@ -76,21 +76,36 @@ def _executar(operacao):
 
 @router.get("/produtos", response_model=list[ProdutoResposta])
 def listar_produtos(usuario: UsuarioAutenticado = Depends(exigir_permissao("cadastro.ler"))):
-    resposta = _executar(lambda: _cliente(usuario).table("produto").select(
-        "id,codigo,descricao,categoria,peso_liquido_g"
-    ).eq("ativo", True).order("descricao").execute())
+    resposta = _executar(
+        lambda: (
+            _cliente(usuario)
+            .table("produto")
+            .select("id,codigo,descricao,categoria,peso_liquido_g")
+            .eq("ativo", True)
+            .order("descricao")
+            .execute()
+        )
+    )
     return resposta.data or []
 
 
 def _obter_formulacao(produto_id: UUID, usuario: UsuarioAutenticado):
     cliente = _cliente(usuario)
-    resposta = _executar(lambda: cliente.table("formulacao").select("*").eq("produto_id", str(produto_id)).limit(1).execute())
+    resposta = _executar(
+        lambda: cliente.table("formulacao").select("*").eq("produto_id", str(produto_id)).limit(1).execute()
+    )
     if not resposta.data:
         raise HTTPException(404, "Este produto ainda não possui formulação.")
     formulacao = resposta.data[0]
-    itens = _executar(lambda: cliente.table("formulacao_item").select(
-        "id,tipo_insumo,materia_prima_id,embalagem_id,quantidade,unidade_medida,perda_percentual,ordem"
-    ).eq("formulacao_id", formulacao["id"]).order("ordem").execute())
+    itens = _executar(
+        lambda: (
+            cliente.table("formulacao_item")
+            .select("id,tipo_insumo,materia_prima_id,embalagem_id,quantidade,unidade_medida,perda_percentual,ordem")
+            .eq("formulacao_id", formulacao["id"])
+            .order("ordem")
+            .execute()
+        )
+    )
     return {**formulacao, "itens": itens.data or []}
 
 
@@ -106,22 +121,43 @@ def salvar_formulacao(
     usuario: UsuarioAutenticado = Depends(exigir_permissao("precificacao.editar")),
 ):
     cliente = _cliente(usuario)
-    produto = _executar(lambda: cliente.table("produto").select("id").eq("id", str(produto_id)).eq("ativo", True).limit(1).execute())
+    produto = _executar(
+        lambda: cliente.table("produto").select("id").eq("id", str(produto_id)).eq("ativo", True).limit(1).execute()
+    )
     if not produto.data:
         raise HTTPException(404, "Produto ativo não encontrado.")
-    existente = _executar(lambda: cliente.table("formulacao").select("id").eq("produto_id", str(produto_id)).limit(1).execute())
+    existente = _executar(
+        lambda: cliente.table("formulacao").select("id").eq("produto_id", str(produto_id)).limit(1).execute()
+    )
     if existente.data:
         formulacao_id = existente.data[0]["id"]
     else:
-        criada = _executar(lambda: cliente.table("formulacao").insert({
-            "produto_id": str(produto_id), "created_by": str(usuario.id), "updated_by": str(usuario.id),
-        }).select("id").execute())
+        criada = _executar(
+            lambda: (
+                cliente.table("formulacao")
+                .insert(
+                    {
+                        "produto_id": str(produto_id),
+                        "created_by": str(usuario.id),
+                        "updated_by": str(usuario.id),
+                    }
+                )
+                .select("id")
+                .execute()
+            )
+        )
         if not criada.data:
             raise HTTPException(503, "A formulação não foi retornada após a gravação.")
         formulacao_id = criada.data[0]["id"]
 
     itens = [item.model_dump(mode="json") for item in entrada.itens]
-    _executar(lambda: cliente.rpc("salvar_itens_formulacao", {
-        "p_formulacao_id": formulacao_id, "p_itens": itens,
-    }).execute())
+    _executar(
+        lambda: cliente.rpc(
+            "salvar_itens_formulacao",
+            {
+                "p_formulacao_id": formulacao_id,
+                "p_itens": itens,
+            },
+        ).execute()
+    )
     return _obter_formulacao(produto_id, usuario)

@@ -68,7 +68,8 @@ class ConsultaFalsa:
             linhas.append(linha)
             return Resposta([deepcopy(linha)])
         encontradas = [
-            linha for linha in linhas
+            linha
+            for linha in linhas
             if all(str(linha.get(campo)) == valor for campo, valor in self.filtros)
             and (self.tabela != "produto" or linha.get("ativo", True))
         ]
@@ -95,22 +96,43 @@ class ClienteFalso:
             linha for linha in self.banco["formulacao_item"] if linha["formulacao_id"] != formulacao_id
         ]
         for ordem, item in enumerate(parametros["p_itens"]):
-            self.banco["formulacao_item"].append({
-                "id": str(uuid4()), "formulacao_id": formulacao_id, "ordem": ordem, **item,
-            })
+            self.banco["formulacao_item"].append(
+                {
+                    "id": str(uuid4()),
+                    "formulacao_id": formulacao_id,
+                    "ordem": ordem,
+                    **item,
+                }
+            )
         return Resposta(None)
 
 
 @pytest.fixture
 def ambiente(monkeypatch):
     banco = {
-        "produto": [{"id": str(PRODUTO_ID), "codigo": "P-01", "descricao": "Produto teste",
-                     "categoria": "Proteína", "peso_liquido_g": "500", "ativo": True}],
-        "materia_prima": [], "embalagem": [], "formulacao": [], "formulacao_item": [],
+        "produto": [
+            {
+                "id": str(PRODUTO_ID),
+                "codigo": "P-01",
+                "descricao": "Produto teste",
+                "categoria": "Proteína",
+                "peso_liquido_g": "500",
+                "ativo": True,
+            }
+        ],
+        "materia_prima": [],
+        "embalagem": [],
+        "formulacao": [],
+        "formulacao_item": [],
     }
-    dados_usuario = {"nome": "Analista", "email": "analista@example.com", "ativo": True,
-                     "perfil_codigo": "analista_pricing", "perfil_nome": "Analista de Pricing",
-                     "permissoes": ["cadastro.ler", "precificacao.ler", "precificacao.editar"]}
+    dados_usuario = {
+        "nome": "Analista",
+        "email": "analista@example.com",
+        "ativo": True,
+        "perfil_codigo": "analista_pricing",
+        "perfil_nome": "Analista de Pricing",
+        "permissoes": ["cadastro.ler", "precificacao.ler", "precificacao.editar"],
+    }
     monkeypatch.setattr(auth, "validar_token", lambda _token: USUARIO_ID)
     monkeypatch.setattr(auth, "carregar_usuario", lambda _db, _id: dados_usuario)
     monkeypatch.setattr(formulacoes, "supabase_do_usuario", lambda _token: ClienteFalso(banco))
@@ -141,16 +163,22 @@ def test_rejeita_quantidade_nao_positiva(quantidade):
 def test_rejeita_perda_fora_da_faixa(perda):
     with pytest.raises(ValidationError):
         ItemEntrada(
-            tipo_insumo="embalagem", embalagem_id=uuid4(), quantidade=1,
-            unidade_medida="un", perda_percentual=perda,
+            tipo_insumo="embalagem",
+            embalagem_id=uuid4(),
+            quantidade=1,
+            unidade_medida="un",
+            perda_percentual=perda,
         )
 
 
 def test_rejeita_referencias_de_tipo_inconsistente():
     with pytest.raises(ValidationError):
         ItemEntrada(
-            tipo_insumo="materia_prima", materia_prima_id=uuid4(), embalagem_id=uuid4(),
-            quantidade=1, unidade_medida="kg",
+            tipo_insumo="materia_prima",
+            materia_prima_id=uuid4(),
+            embalagem_id=uuid4(),
+            quantidade=1,
+            unidade_medida="kg",
         )
 
 
@@ -166,9 +194,18 @@ def test_lista_produtos_e_persiste_recupera_edita_e_remove_itens(ambiente):
     assert produtos.json()[0]["id"] == str(PRODUTO_ID)
     assert http.get(f"/formulacoes/{PRODUTO_ID}", headers=TOKEN).status_code == 404
 
-    entrada = {"itens": [{"tipo_insumo": "materia_prima", "materia_prima_id": str(MP_ID),
-                           "embalagem_id": None, "quantidade": 1.5, "unidade_medida": "kg",
-                           "perda_percentual": 2.5}]}
+    entrada = {
+        "itens": [
+            {
+                "tipo_insumo": "materia_prima",
+                "materia_prima_id": str(MP_ID),
+                "embalagem_id": None,
+                "quantidade": 1.5,
+                "unidade_medida": "kg",
+                "perda_percentual": 2.5,
+            }
+        ]
+    }
     salva = http.put(f"/formulacoes/{PRODUTO_ID}", headers=TOKEN, json=entrada)
     assert salva.status_code == 200
     assert float(salva.json()["itens"][0]["quantidade"]) == 1.5
@@ -198,10 +235,20 @@ def test_formulacao_respeita_permissao_de_edicao(ambiente):
 
 def test_formulacao_rejeita_quantidade_invalida_na_api(ambiente):
     http, _banco, _usuario = ambiente
-    resposta = http.put(f"/formulacoes/{PRODUTO_ID}", headers=TOKEN, json={"itens": [{
-        "tipo_insumo": "materia_prima", "materia_prima_id": str(MP_ID), "quantidade": 0,
-        "unidade_medida": "kg",
-    }]})
+    resposta = http.put(
+        f"/formulacoes/{PRODUTO_ID}",
+        headers=TOKEN,
+        json={
+            "itens": [
+                {
+                    "tipo_insumo": "materia_prima",
+                    "materia_prima_id": str(MP_ID),
+                    "quantidade": 0,
+                    "unidade_medida": "kg",
+                }
+            ]
+        },
+    )
     assert resposta.status_code == 422
 
 
