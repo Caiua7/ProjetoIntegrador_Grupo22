@@ -37,6 +37,13 @@ async function send(path: string, init: RequestInit, token: string | null, reque
 
 function detailMessage(body: unknown, fallback: string): string {
   if (body && typeof body === 'object' && 'detail' in body && typeof body.detail === 'string') return body.detail
+  if (body && typeof body === 'object' && 'detail' in body && body.detail && typeof body.detail === 'object') {
+    const detalhe = body.detail
+    if ('mensagem' in detalhe && typeof detalhe.mensagem === 'string') {
+      const codigo = 'codigo' in detalhe && typeof detalhe.codigo === 'string' ? `${detalhe.codigo}: ` : ''
+      return `${codigo}${detalhe.mensagem}`
+    }
+  }
   return fallback
 }
 
