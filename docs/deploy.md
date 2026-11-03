@@ -3,19 +3,22 @@
 Issue #65. O staging existe para o PO validar o NeoPrice sem depender da máquina
 de ninguém. Todo merge na `main` atualiza o staging sozinho.
 
-| Peça | Onde roda | Como atualiza |
-|---|---|---|
-| Front (`apps/web`) | Vercel | push na `main` → build do Vite → publicado |
-| API (`apps/api`) | Render (`render.yaml`) | push na `main` → espera os checks do CI passarem → deploy |
-| Banco e login | Supabase (o mesmo projeto do desenvolvimento) | migrations aplicadas como hoje |
-| Erros | Sentry (um projeto para o front e outro para a API) | automático quando há DSN |
+| Peça | Endereço | Conta / dono | Como atualiza |
+|---|---|---|---|
+| Front (`apps/web`) | https://neoprice.vercel.app | Vercel, time *ProjetoIntegrador_Grupo22* (Caiuã) | push na `main` → build do Vite → publicado |
+| API (`apps/api`) | https://neoprice-api-staging.onrender.com | Render, Blueprint `neoprice-staging` (Felipe) | push na `main` → espera os checks do CI → deploy |
+| Banco e login | projeto Supabase do desenvolvimento | Supabase | migrations aplicadas pelo `supabase db push` ou pelo SQL Editor |
+| Erros | Sentry, projetos `neoprice-web` e `neoprice-api` | Sentry (Felipe) | automático quando há DSN |
+
+Medido na primeira publicação (02/11/2026): API em 1m43s e front em ~1 min depois do merge,
+dentro do critério de aceite de 6 min.
 
 ## Ambientes
 
 | Ambiente | Front | API | Variável `AMBIENTE` |
 |---|---|---|---|
 | Local | `http://localhost:5173` | `http://localhost:8000` | `local` |
-| Staging | URL da Vercel | URL do Render | `staging` |
+| Staging | `https://neoprice.vercel.app` | `https://neoprice-api-staging.onrender.com` | `staging` |
 
 Local e testes não mandam nada para o Sentry: sem DSN, ele fica desligado.
 
@@ -27,7 +30,9 @@ Local e testes não mandam nada para o Sentry: sem DSN, ele fica desligado.
 3. Guardar o DSN de cada um (Settings → Client Keys).
 
 ### 2. API no Render
-1. Criar conta em render.com com o GitHub e dar acesso ao repositório.
+1. Criar conta em render.com com o GitHub e dar acesso ao repositório. O repositório é de conta
+   pessoal (Caiua7): só o dono instala o app do Render nele (`github.com/apps/render` →
+   Configure → Caiua7 → *Only select repositories*).
 2. **New → Blueprint** → escolher o repositório. O Render lê o `render.yaml` da raiz.
 3. Preencher as variáveis marcadas como secretas:
    - `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_KEY`, `DATABASE_URL`: as mesmas do `apps/api/.env`
@@ -40,16 +45,35 @@ Antes de apresentar, abra o sistema um minuto antes.
 
 ### 3. Front na Vercel
 1. Criar conta em vercel.com com o GitHub → **Add New → Project** → importar o repositório.
+   A Vercel só importa repositórios das contas em que você entra, então o projeto precisa ser
+   criado pelo dono do repositório (hoje, na Vercel do Caiuã).
 2. **Root Directory**: `apps/web` (o `vercel.json` dali já define build, saída e rotas).
 3. Variáveis de ambiente:
    - `VITE_NEOPRICE_SUPABASE_URL`, `VITE_NEOPRICE_SUPABASE_ANON_KEY`: as mesmas do `apps/web/.env.local`
    - `VITE_NEOPRICE_API_URL`: URL do Render, sem barra no fim
    - `VITE_SENTRY_DSN`: DSN do projeto **neoprice-web**
    - `VITE_AMBIENTE`: `staging`
+
+   Atalho: monte um `apps/web/.env.staging` (ignorado pelo git) com as 5 linhas e use
+   **Import .env**. Os valores `VITE_` são públicos (vão no JavaScript do site); a
+   `SUPABASE_SERVICE_KEY` e a `DATABASE_URL` nunca vão para a Vercel.
 4. Deploy. Depois volte ao Render e ajuste `CORS_ORIGINS` com a URL final.
 
+   **Trocou uma variável `VITE_`? Faça Redeploy** (Deployments → ⋯ → Redeploy). O Vite grava
+   as variáveis no build; só salvar não muda o site.
+
 ### 4. Supabase
-Em **Authentication → URL Configuration**, adicionar a URL da Vercel em *Site URL* e *Redirect URLs*.
+Em **Authentication → URL Configuration**: *Site URL* `https://neoprice.vercel.app`; em
+*Redirect URLs*, `https://neoprice.vercel.app/**` e `http://localhost:5173/**`.
+
+## Problemas conhecidos
+
+| Sintoma | Causa | O que fazer |
+|---|---|---|
+| Login falha com `ERR_NAME_NOT_RESOLVED` em `*.supabase.co` | O Supabase gratuito pausou o projeto (~7 dias sem acesso) | Dono do projeto: dashboard → **Restore project**. O workflow `manter-staging-ativo.yml` faz um acesso a cada 3 dias para evitar a pausa |
+| Depois do login, chamada para `localhost:8000` | `VITE_NEOPRICE_API_URL` vazia ou errada na Vercel | Corrigir a variável e fazer **Redeploy** |
+| Chamada à API bloqueada por CORS | `CORS_ORIGINS` do Render sem a URL do front | Render → Environment → `CORS_ORIGINS=https://neoprice.vercel.app` |
+| Primeira chamada demora ~50 s | API do Render gratuito estava dormindo | Normal; abrir o sistema um minuto antes de apresentar |
 
 ## Rastrear um problema (id de correlação)
 
