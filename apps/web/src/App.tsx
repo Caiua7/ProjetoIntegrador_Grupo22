@@ -11,6 +11,7 @@ import PasswordRecoveryPage from './features/auth/PasswordRecoveryPage'
 import { useAuth } from './features/auth/useAuth'
 import { Dashboard } from './features/dashboard/Dashboard'
 import { InsumosPage } from './features/cadastros/InsumosPage'
+import { FormulationPage } from './features/pricing/FormulationPage'
 import PricingCreate from './features/pricing/PricingCreate'
 import PricingList from './features/pricing/PricingList'
 import type { ListPreset } from './features/pricing/listPreset'
@@ -62,6 +63,7 @@ function AppShell() {
         onNewPricing={() => setScreen('new-pricing')} onOpenList={openList} />}
       {current === 'pricing-list' && <PricingList key={listPreset.key} preset={listPreset.preset} onNewPricing={() => setScreen('new-pricing')} />}
       {current === 'new-pricing' && <PricingCreate onCancel={() => setScreen('pricing-list')} />}
+      {current === 'formulation' && <FormulationPage canEdit={hasPermission('precificacao.editar')} />}
       {current === 'records' && <InsumosPage canEdit={hasPermission('cadastro.editar')} />}
       {current === 'taxes' && <TaxRatesPage canEdit={hasPermission('parametro_fiscal.editar')} />}
     </main>
