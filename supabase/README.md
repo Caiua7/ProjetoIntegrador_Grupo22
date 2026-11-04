@@ -49,6 +49,7 @@ Os seeds podem rodar quantas vezes for preciso: cada `INSERT` usa `ON CONFLICT` 
 | `auditoria` | `id` | Trilha imutável de toda inserção, alteração e exclusão, com usuário e diff |
 | `cambio` | moeda e data | Taxa em reais por unidade da moeda, com margem de segurança e origem (manual ou PTAX) |
 | `parametro_global` | código e início de vigência | Perda, taxa financeira mensal, prazo médio padrão e desvio máximo de cotação |
+| `cenario` | precificação e versão | Versões imutáveis do cenário: entrada e resultado do motor, volume, versão do motor e data do cálculo |
 
 ## Convenções
 
@@ -67,6 +68,14 @@ Em `aliquota_fiscal`, a linha com `ncm_codigo` nulo é a regra geral da UF; uma 
 A importação em massa (`POST /parametros-fiscais/aliquotas/importacao`) lê um CSV com as colunas `uf;ncm;regime;vigencia;pis;cofins;icms;ipi;icms_interno;fcp;mva`, com os percentuais escritos como a área fiscal escreve (`18` ou `18,00` para 18%). A API valida linha a linha e aponta o número da linha com erro; a gravação é da função `importar_aliquotas`, que grava o lote inteiro ou nada, passa pelo RLS (`parametro_fiscal.editar`) e só toca as regras que mudaram. A primeira chamada é sempre uma simulação, que conta o que seria criado ou alterado sem gravar.
 
 Os valores do seed são parâmetros de simulação para desenvolvimento, ainda não homologados com o PO: as premissas estão no cabeçalho de `seed/referencia/05_aliquota_fiscal.sql`.
+
+## Cenários versionados
+
+Cada gravação de cenário cria uma nova versão em `cenario`, numerada em sequência por precificação pela função `salvar_cenario`. Uma versão salva não pode ser alterada nem excluída por nenhum papel, nem pelo backend: o gatilho `impedir_alteracao_cenario` recusa (erro `23001`) e corrigir é salvar uma nova versão. A vigente é a de maior número. Cada versão guarda a entrada do motor, o resultado calculado pela API, o volume, a `versao_motor` e a `data_calculo`, a data em que câmbio e parâmetros globais valiam.
+
+A versão guarda custo e margem, então ler `cenario` exige `custo.ler` e o alcance da precificação. Quem só negocia, como a executiva de contas, lê a visão `cenario_preco`: versão, volume e preço, sem custo nem margem.
+
+API: `GET/POST /precificacoes/{id}/cenarios`, `GET .../{versao}`, `POST .../{versao}/duplicar`, `GET .../comparacao?de=&para=` e `GET .../precos`.
 
 ## Câmbio e parâmetros globais
 
