@@ -51,7 +51,7 @@ def test_schema_sobe_populado(conn):
     assert contagem["ncm"] >= 10000
     assert contagem["cep"] >= 10
     # 27 UFs × 3 regimes de regra geral + a regra de ST da carga de dev
-    assert contagem["aliquota_fiscal"] == 27 * 3 + 1
+    assert contagem["aliquota_fiscal"] == 27 * 3 + 2
     assert all(total > 0 for total in contagem.values()), contagem
 
 

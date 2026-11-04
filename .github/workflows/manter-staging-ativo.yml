@@ -1,0 +1,31 @@
+name: Manter staging ativo
+
+# O Supabase gratuito pausa o projeto após ~7 dias sem acesso e o endereço sai
+# do ar (aconteceu em 02/11/2026). A cada 3 dias este job faz uma leitura
+# simples no banco e acorda a API do Render. A chave anon é pública por
+# natureza (já vai no JavaScript do front); o RLS decide o que ela lê.
+on:
+  schedule:
+    - cron: "17 11 */3 * *"
+  workflow_dispatch:
+
+permissions: {}
+
+env:
+  SUPABASE_URL: https://theocydxrxpzzltgjzeo.supabase.co
+  SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRoZW9jeWR4cnhwenpsdGdqemVvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIwMTU4NzAsImV4cCI6MjEwNzU5MTg3MH0.wEA03sMrb3vWt9R-_BYD6gfyyvysRblU0mD4kwC51fk
+  API_URL: https://neoprice-api-staging.onrender.com
+
+jobs:
+  ping:
+    name: Ping no Supabase e na API
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Supabase (leitura na tabela uf)
+        run: >
+          curl --fail --silent --show-error --retry 3 --retry-delay 10
+          "$SUPABASE_URL/rest/v1/uf?select=sigla&limit=1"
+          -H "apikey: $SUPABASE_ANON_KEY"
+      - name: API de staging
+        run: curl --fail --silent --show-error --retry 3 --retry-delay 20 --max-time 90 "$API_URL/health"
