@@ -47,6 +47,8 @@ Os seeds podem rodar quantas vezes for preciso: cada `INSERT` usa `ON CONFLICT` 
 | `usuario_carteira` | usuário e carteira | Carteiras que cada usuário atende |
 | `precificacao` | `codigo` | Cabeçalho mínimo da precificação (completado na US29) |
 | `auditoria` | `id` | Trilha imutável de toda inserção, alteração e exclusão, com usuário e diff |
+| `cambio` | moeda e data | Taxa em reais por unidade da moeda, com margem de segurança e origem (manual ou PTAX) |
+| `parametro_global` | código e início de vigência | Perda, taxa financeira mensal, prazo médio padrão e desvio máximo de cotação |
 
 ## Convenções
 
@@ -65,6 +67,14 @@ Em `aliquota_fiscal`, a linha com `ncm_codigo` nulo é a regra geral da UF; uma 
 A importação em massa (`POST /parametros-fiscais/aliquotas/importacao`) lê um CSV com as colunas `uf;ncm;regime;vigencia;pis;cofins;icms;ipi;icms_interno;fcp;mva`, com os percentuais escritos como a área fiscal escreve (`18` ou `18,00` para 18%). A API valida linha a linha e aponta o número da linha com erro; a gravação é da função `importar_aliquotas`, que grava o lote inteiro ou nada, passa pelo RLS (`parametro_fiscal.editar`) e só toca as regras que mudaram. A primeira chamada é sempre uma simulação, que conta o que seria criado ou alterado sem gravar.
 
 Os valores do seed são parâmetros de simulação para desenvolvimento, ainda não homologados com o PO: as premissas estão no cabeçalho de `seed/referencia/05_aliquota_fiscal.sql`.
+
+## Câmbio e parâmetros globais
+
+Os dois são históricos por data: o valor vigente em uma data é o de data mais recente que não seja posterior a ela (`GET /cambios/vigente` e `GET /parametros-globais/vigentes`). O câmbio que entra no custo é `taxa × (1 + margem_seguranca_percentual)`.
+
+Pela aplicação (papel `authenticated`), o passado é imutável: o gatilho `proteger_historico_vigente` recusa criar, alterar ou apagar valor com data anterior a hoje (erro `23001`, que a API devolve como 409). Mudar um parâmetro é cadastrar uma nova vigência; assim um cálculo refeito pela sua data encontra os mesmos valores. Cargas de sistema (seed, migration) não passam por essa trava.
+
+Quem edita: câmbio, `cambio.editar` (suprimentos e administrador); parâmetros, `parametro_global.editar` (pricing e administrador).
 
 ## Atualizar os dados de referência
 

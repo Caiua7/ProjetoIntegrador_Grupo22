@@ -7,6 +7,9 @@
   analista restrito a uma carteira não enxerga clientes nem precificações de
   outra, cada perfil só alcança o que a matriz de acesso permite e ninguém
   consegue se promover.
+- `test_cambio_parametros.py` (issue #49): câmbio e parâmetros globais por
+  vigência, com o histórico protegido: uma nova vigência vale para o cálculo
+  novo e o cálculo antigo, refeito pela sua data, encontra os mesmos valores.
 - `test_importacao_aliquotas.py` (issue #48): a importação em massa de alíquotas
   grava o lote inteiro ou nada, respeita o RLS, só altera o que mudou e é
   reexecutável sem efeito.

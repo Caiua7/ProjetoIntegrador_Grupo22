@@ -31,7 +31,11 @@ INSERT INTO permissao (codigo, descricao) VALUES
     ('precificacao.editar',     'Criar e alterar precificações das carteiras a que tem acesso'),
     ('precificacao.aprovar',    'Aprovar ou reprovar precificações das carteiras a que tem acesso'),
     ('carteira.todas',          'Alcançar todas as carteiras, inclusive clientes sem carteira'),
-    ('acesso.administrar',      'Administrar usuários, perfis, permissões e carteiras')
+    ('acesso.administrar',      'Administrar usuários, perfis, permissões e carteiras'),
+    ('cambio.ler',              'Consultar o câmbio por moeda e data'),
+    ('cambio.editar',           'Cadastrar e corrigir câmbio de hoje em diante'),
+    ('parametro_global.ler',    'Consultar perda, taxa financeira, prazo padrão e desvio de cotação'),
+    ('parametro_global.editar', 'Cadastrar novas vigências dos parâmetros globais')
 ON CONFLICT (codigo) DO UPDATE SET
     descricao = EXCLUDED.descricao
 WHERE permissao.descricao IS DISTINCT FROM EXCLUDED.descricao;
@@ -73,7 +77,20 @@ FROM (VALUES
     ('administrador',        'cliente.editar'),
     ('administrador',        'precificacao.ler'),
     ('administrador',        'carteira.todas'),
-    ('administrador',        'acesso.administrar')
+    ('administrador',        'acesso.administrar'),
+
+    ('analista_pricing',     'cambio.ler'),
+    ('analista_pricing',     'parametro_global.ler'),
+    ('analista_pricing',     'parametro_global.editar'),
+    ('gerente_comercial',    'cambio.ler'),
+    ('gerente_comercial',    'parametro_global.ler'),
+    ('analista_suprimentos', 'cambio.ler'),
+    ('analista_suprimentos', 'cambio.editar'),
+    ('analista_suprimentos', 'parametro_global.ler'),
+    ('administrador',        'cambio.ler'),
+    ('administrador',        'cambio.editar'),
+    ('administrador',        'parametro_global.ler'),
+    ('administrador',        'parametro_global.editar')
 ) AS m (perfil_codigo, permissao_codigo)
 JOIN perfil p ON p.codigo = m.perfil_codigo
 ON CONFLICT (perfil_id, permissao_codigo) DO NOTHING;
