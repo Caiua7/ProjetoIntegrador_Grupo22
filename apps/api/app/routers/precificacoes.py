@@ -123,7 +123,7 @@ def criar_precificacao(
     dados = entrada.model_dump(mode="json")
     codigo = f"PRC-{uuid4().hex[:12].upper()}"
     dados.update({"codigo": codigo, "created_by": str(usuario.id), "updated_by": str(usuario.id)})
-    resposta = _executar(lambda: _cliente(usuario).table("precificacao").insert(dados).select("*").execute())
+    resposta = _executar(lambda: _cliente(usuario).table("precificacao").insert(dados).execute())
     if not resposta.data:
         raise HTTPException(503, "A precificacao nao foi retornada apos a gravacao.")
     return resposta.data[0]

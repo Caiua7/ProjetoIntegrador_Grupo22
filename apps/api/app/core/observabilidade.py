@@ -15,7 +15,7 @@ from contextvars import ContextVar
 from datetime import UTC, datetime
 
 from fastapi import FastAPI, Request
-from starlette.responses import Response
+from starlette.responses import JSONResponse, Response
 
 CABECALHO_CORRELACAO = "X-Request-ID"
 _ID_VALIDO = re.compile(r"^[A-Za-z0-9._-]{1,64}$")
@@ -102,9 +102,19 @@ def instalar_correlacao(app: FastAPI) -> None:
             status_code = resposta.status_code
             resposta.headers[CABECALHO_CORRELACAO] = correlacao_id
             return resposta
-        except Exception:
+        except Exception as erro:
             logger.exception("erro não tratado")
-            raise
+            try:
+                import sentry_sdk
+
+                sentry_sdk.capture_exception(erro)
+            except ImportError:
+                pass
+            return JSONResponse(
+                {"detail": "Erro interno no NeoPrice. Informe o código ao suporte.", "request_id": correlacao_id},
+                status_code=500,
+                headers={CABECALHO_CORRELACAO: correlacao_id},
+            )
         finally:
             logger.info(
                 "requisição",

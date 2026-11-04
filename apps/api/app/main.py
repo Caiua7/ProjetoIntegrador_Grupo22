@@ -25,6 +25,10 @@ app = FastAPI(
     ),
 )
 
+# A correlação fica por dentro do CORS: ela transforma exceção não tratada em
+# resposta 500, e o CORS ainda põe os cabeçalhos nela. Sem isso o navegador
+# bloqueia a resposta e o front acusa "API fora do ar" em vez do erro real.
+instalar_correlacao(app)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.get_cors_origins(),
@@ -33,7 +37,6 @@ app.add_middleware(
     allow_headers=["*"],
     expose_headers=[CABECALHO_CORRELACAO],
 )
-instalar_correlacao(app)
 
 app.include_router(health_router)
 app.include_router(auth_router)

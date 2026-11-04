@@ -220,9 +220,7 @@ def criar_insumo(
     dados["unidade_medida"] = entrada.unidade_medida or ("kg" if tipo == "materias-primas" else "un")
     dados["created_by"] = str(usuario.id)
     dados["updated_by"] = str(usuario.id)
-    resposta = _executar(
-        lambda: supabase_do_usuario(usuario.access_token).table(_tabela(tipo)).insert(dados).select("*").execute()
-    )
+    resposta = _executar(lambda: supabase_do_usuario(usuario.access_token).table(_tabela(tipo)).insert(dados).execute())
     if not resposta.data:
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "O cadastro não foi retornado após a gravação.")
     return resposta.data[0]

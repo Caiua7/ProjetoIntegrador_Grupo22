@@ -30,3 +30,24 @@ def test_log_sai_em_json_com_dados_extras():
     assert evento["msg"] == "requisição"
     assert evento["status"] == 200
     assert evento["nivel"] == "INFO"
+
+
+def test_erro_nao_tratado_vira_500_com_cors_e_id():
+    from fastapi import APIRouter
+
+    rota = APIRouter()
+
+    @rota.get("/_teste/explode")
+    def explode():
+        raise RuntimeError("falha de teste")
+
+    app.include_router(rota)
+    origem = "http://localhost:5173"
+    resposta = TestClient(app, raise_server_exceptions=False).get(
+        "/_teste/explode", headers={"Origin": origem, "X-Request-ID": "abc-123"}
+    )
+
+    assert resposta.status_code == 500
+    assert resposta.headers["access-control-allow-origin"] == origem
+    assert resposta.headers["x-request-id"] == "abc-123"
+    assert resposta.json()["request_id"] == "abc-123"
