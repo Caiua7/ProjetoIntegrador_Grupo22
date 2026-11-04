@@ -197,7 +197,7 @@ def criar_aliquota(
 ) -> dict:
     dados = entrada.model_dump(mode="json")
     dados.update(created_by=str(usuario.id), updated_by=str(usuario.id))
-    resposta = _executar(lambda: _consulta_base(usuario).insert(dados).select("*").execute())
+    resposta = _executar(lambda: _consulta_base(usuario).insert(dados).execute())
     if not resposta.data:
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "A alíquota não foi retornada após a gravação.")
     return resposta.data[0]
@@ -211,7 +211,7 @@ def atualizar_aliquota(
 ) -> dict:
     dados = entrada.model_dump(exclude_unset=True, mode="json")
     dados["updated_by"] = str(usuario.id)
-    resposta = _executar(lambda: _consulta_base(usuario).update(dados).eq("id", str(aliquota_id)).select("*").execute())
+    resposta = _executar(lambda: _consulta_base(usuario).update(dados).eq("id", str(aliquota_id)).execute())
     if not resposta.data:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Alíquota não encontrada.")
     return resposta.data[0]
