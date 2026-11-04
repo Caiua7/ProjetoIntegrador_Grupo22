@@ -141,3 +141,29 @@ def test_opcoes_exigem_permissao_de_leitura_dos_cadastros(ambiente):
     usuario["permissoes"] = ["precificacao.editar"]
     resposta = cliente.get("/precificacoes/opcoes", headers=TOKEN)
     assert resposta.status_code == 403
+
+
+def test_lista_precificacao_legada_sem_cabecalho_completo(ambiente):
+    cliente, banco, _usuario = ambiente
+    agora = datetime.now(UTC).isoformat()
+    banco["precificacao"] = [
+        {
+            "id": str(uuid4()),
+            "codigo": "PRC-2026-0148",
+            "cliente_id": str(CLIENTE_ID),
+            "produto_id": str(PRODUTO_ID),
+            "modalidade_comercial": "full_service_nacional",
+            "uf_destino": None,
+            "frete": None,
+            "regime_tributario": None,
+            "status": "em_aprovacao",
+            "created_at": agora,
+            "updated_at": agora,
+        }
+    ]
+
+    resposta = cliente.get("/precificacoes", headers=TOKEN)
+
+    assert resposta.status_code == 200
+    assert resposta.json()[0]["uf_destino"] is None
+    assert resposta.json()[0]["frete"] is None

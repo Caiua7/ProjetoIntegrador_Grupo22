@@ -34,9 +34,10 @@ class PrecificacaoResposta(BaseModel):
     cliente_id: UUID
     produto_id: UUID
     modalidade_comercial: Modalidade
-    uf_destino: str
-    frete: Frete
-    regime_tributario: Regime
+    # vazios nas precificações anteriores à migration 20261103000001
+    uf_destino: str | None = None
+    frete: Frete | None = None
+    regime_tributario: Regime | None = None
     status: str
     created_at: datetime
     updated_at: datetime
