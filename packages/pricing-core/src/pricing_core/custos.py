@@ -1,4 +1,3 @@
-
 """Cálculos de custos do produto conforme a seção 2.3 do planejamento."""
 
 from collections.abc import Iterable
@@ -38,10 +37,7 @@ def calcular_custo_mp(materias_primas: Iterable[ItemInsumo]) -> Decimal:
 
         custo_total = sum(
             (
-                item.preco_negociado
-                * item.cambio
-                * (Decimal("1") + item.margem_seguranca_percentual)
-                * item.quantidade
+                item.preco_negociado * item.cambio * (Decimal("1") + item.margem_seguranca_percentual) * item.quantidade
                 for item in materias_primas
             ),
             Decimal("0"),
@@ -96,11 +92,7 @@ def calcular_custo_perda(
     with localcontext() as contexto:
         contexto.prec = PRECISAO
 
-        custo_base = (
-            custo_mp_decimal
-            + custo_embalagem_decimal
-            - material_cliente_decimal
-        )
+        custo_base = custo_mp_decimal + custo_embalagem_decimal - material_cliente_decimal
         custo_total = custo_base * perda_decimal
 
     return custo_total
@@ -119,10 +111,7 @@ def calcular_custo_mod(
         "produtividade",
     )
 
-    if (
-        isinstance(numero_funcionarios, bool)
-        or not isinstance(numero_funcionarios, int)
-    ):
+    if isinstance(numero_funcionarios, bool) or not isinstance(numero_funcionarios, int):
         raise TypeError("numero_funcionarios deve ser um número inteiro.")
 
     if numero_funcionarios < 0:
@@ -131,9 +120,7 @@ def calcular_custo_mod(
     with localcontext() as contexto:
         contexto.prec = PRECISAO
 
-        custo_total = (
-            taxa_mod_decimal / produtividade_decimal
-        ) * numero_funcionarios
+        custo_total = (taxa_mod_decimal / produtividade_decimal) * numero_funcionarios
 
     return custo_total
 
@@ -180,11 +167,7 @@ def calcular_custo_total(
         contexto.prec = PRECISAO
 
         custo_total = (
-            custo_mp_decimal
-            + custo_embalagem_decimal
-            + custo_perda_decimal
-            + custo_mod_decimal
-            + custo_ggf_decimal
+            custo_mp_decimal + custo_embalagem_decimal + custo_perda_decimal + custo_mod_decimal + custo_ggf_decimal
         )
 
     return custo_total
