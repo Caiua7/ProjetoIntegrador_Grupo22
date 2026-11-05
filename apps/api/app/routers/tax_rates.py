@@ -113,7 +113,7 @@ def _erro_persistencia(erro: Exception) -> HTTPException:
         return HTTPException(status.HTTP_409_CONFLICT, "Já existe uma alíquota para esta UF, NCM, regime e vigência.")
     if codigo in {"23503", "23514", "22001", "22003", "22P02"} or codigo_http == 400:
         return HTTPException(
-            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
             "Os dados informados não são válidos para esta alíquota.",
         )
     if codigo == "42501" or codigo_http == 403:
@@ -230,7 +230,7 @@ def importar_aliquotas(
     if erros:
         if not entrada.simular:
             raise HTTPException(
-                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status.HTTP_422_UNPROCESSABLE_CONTENT,
                 f"A planilha tem {len(erros)} linha(s) com erro; nada foi importado. Valide antes de confirmar.",
             )
         return ImportacaoResposta(simulacao=True, linhas_validas=len(leitura.aliquotas), erros=erros)

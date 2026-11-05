@@ -156,7 +156,7 @@ def _erro_persistencia(erro: Exception, recurso: str) -> HTTPException:
         return HTTPException(status.HTTP_409_CONFLICT, f"Já existe {recurso} para esta data.")
     if codigo in {"23503", "23514", "22001", "22003", "22P02"} or codigo_http == 400:
         return HTTPException(
-            status.HTTP_422_UNPROCESSABLE_ENTITY, f"Os dados informados não são válidos para {recurso}."
+            status.HTTP_422_UNPROCESSABLE_CONTENT, f"Os dados informados não são válidos para {recurso}."
         )
     if codigo == "42501" or codigo_http == 403:
         return HTTPException(status.HTTP_403_FORBIDDEN, f"Seu perfil não pode acessar ou alterar {recurso}.")
