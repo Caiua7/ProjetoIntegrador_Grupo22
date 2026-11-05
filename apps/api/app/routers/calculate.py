@@ -46,7 +46,7 @@ def _arredondar(valor: Decimal) -> Decimal:
 
 def _erro_denominador(mensagem: str, detalhes: dict) -> None:
     raise HTTPException(
-        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
         detail=DomainErrorResponse(
             codigo=DomainErrorCodigo.DENOMINADOR_INVALIDO,
             mensagem=mensagem,

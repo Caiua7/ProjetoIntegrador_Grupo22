@@ -119,7 +119,7 @@ def _erro(erro: Exception) -> HTTPException:
     if codigo == "P0002":
         return HTTPException(status.HTTP_404_NOT_FOUND, "Precificação não encontrada.")
     if codigo in {"22023", "23503", "23514", "22P02", "22003"}:
-        return HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, mensagem)
+        return HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, mensagem)
     if codigo == "23505":
         return HTTPException(status.HTTP_409_CONFLICT, "Outra versão foi salva ao mesmo tempo; tente de novo.")
     if codigo == "23001":
@@ -240,7 +240,7 @@ def comparar_versoes(
     usuario: UsuarioAutenticado = Depends(exigir_permissao("custo.ler")),
 ) -> dict:
     if de == para:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Escolha duas versões diferentes para comparar.")
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Escolha duas versões diferentes para comparar.")
     indicadores = comparar_cenarios(
         _versao(usuario, precificacao_id, de),
         _versao(usuario, precificacao_id, para),
