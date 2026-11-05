@@ -81,6 +81,6 @@ A carga de desenvolvimento cria três carteiras (`CART-SUDESTE`, `CART-SUL`, `CA
 ## Pendências
 
 - **Login (US03).** A criação automática da linha em `usuario` quando alguém se cadastra no Supabase Auth fica com a story de login.
-- **Tabela `precificacao`.** Hoje tem só o cabeçalho mínimo que a regra de acesso precisa. Cenários e demais tabelas filhas (US29 em diante) devem herdar o recorte com `usuario_acessa_cliente(...)` a partir da precificação.
-- **Custo dentro da precificação.** A executiva de contas lê precificações, mas não tem `custo.ler`. Quando os cenários guardarem custo e margem, esses campos precisam ficar em tabela ou visão protegida por `custo.ler`.
+- **Tabelas filhas da precificação.** Devem herdar o recorte da precificação, como `cenario` faz: a política consulta a `precificacao` pai, que já aplica permissão e carteira.
+- **Custo dentro da precificação.** Resolvido na #63: a tabela `cenario` exige `custo.ler`, e a executiva de contas lê só o preço de cada versão pela visão `cenario_preco`.
 - **Staging.** As políticas foram testadas em um PostgreSQL com `auth.uid()` simulado; falta validar em um projeto Supabase real.
