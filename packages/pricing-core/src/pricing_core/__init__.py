@@ -28,6 +28,14 @@ from pricing_core.cotacao import (
     esta_vigente,
     resolver_cotacao,
 )
+from pricing_core.custos import (
+    calcular_custo_embalagem,
+    calcular_custo_ggf,
+    calcular_custo_mod,
+    calcular_custo_mp,
+    calcular_custo_perda,
+    calcular_custo_total,
+)
 from pricing_core.encargo import taxa_encargo, valor_encargo
 from pricing_core.rentabilidade import Rentabilidade, derivar_rentabilidade
 
@@ -50,6 +58,12 @@ __all__ = [
     "ParametrosImpostos",
     "ParametrosProducao",
     "Rentabilidade",
+    "calcular_custo_embalagem",
+    "calcular_custo_ggf",
+    "calcular_custo_mod",
+    "calcular_custo_mp",
+    "calcular_custo_perda",
+    "calcular_custo_total",
     "cotacoes_vigentes",
     "derivar_rentabilidade",
     "esta_vigente",
