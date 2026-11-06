@@ -237,6 +237,37 @@
 .tax-table th, .tax-table td { white-space: nowrap; }
 .tax-content .demo-notice { margin-bottom: 14px; }
 @media (max-width: 850px) { .tax-filters { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+
+/* Câmbio e parâmetros globais (#49) */
+.exchange-content .demo-notice { margin-bottom: 14px; }
+.exchange-ref { min-width: 190px; }
+.exchange-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; margin: 4px 0 16px; }
+.exchange-card { display: flex; flex-direction: column; gap: 8px; min-width: 0; padding: 13px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.exchange-card header { display: flex; flex-direction: column; gap: 2px; }
+.exchange-card header strong { font-size: 14px; }
+.exchange-card header small { color: var(--text-3); font-size: 11px; }
+.exchange-card dl { display: grid; gap: 6px; margin: 0; }
+.exchange-card dl > div { display: flex; justify-content: space-between; gap: 8px; }
+.exchange-card dt { color: var(--text-3); font-size: 11px; }
+.exchange-card dd { margin: 0; }
+.exchange-highlight { padding-top: 6px; border-top: 1px dashed var(--line); }
+.exchange-highlight dd { color: var(--brand-light); }
+.exchange-value { margin: 0; font-size: 20px; }
+.exchange-desc { flex: 1; margin: 0; color: var(--text-3); font-size: 11px; line-height: 1.45; }
+.exchange-card .button { align-self: flex-start; min-height: 30px; padding-inline: 10px; font-size: 11px; }
+.exchange-card-missing { border-color: rgba(255,107,107,.3); }
+.exchange-card-missing .exchange-value { color: var(--error); }
+.exchange-empty { grid-column: 1 / -1; margin: 0; color: var(--text-3); font-size: 12px; }
+.exchange-form { margin: 0 0 16px; padding: 14px; border: 1px solid var(--line); border-radius: 10px; }
+.exchange-form h4 { grid-column: 1 / -1; margin: 0; font-size: 13px; }
+.exchange-history-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin: 4px 0 10px; }
+.exchange-history-heading h4 { margin: 0; font-size: 13px; }
+.exchange-history-heading .field { min-width: 150px; }
+.exchange-table { min-width: 640px; }
+.exchange-table th, .exchange-table td { white-space: nowrap; }
+.exchange-current { background: var(--brand-wash); }
+.exchange-locked { color: var(--text-3); font-size: 11px; }
+@media (max-width: 700px) { .exchange-content .list-intro { flex-direction: column; align-items: stretch; } }
 @media (max-width: 620px) { .tax-filters { grid-template-columns: 1fr; } .tax-resolver { align-items: stretch; flex-direction: column; } .tax-resolver .field { min-width: 0; } }
 
 @media (max-width: 620px) {
