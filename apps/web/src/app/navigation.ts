@@ -1,7 +1,7 @@
 import type { IconName } from '../components/icons/Icon'
 
 /** Telas já implementadas; o resto do menu aparece desabilitado. */
-export type Screen = 'dashboard' | 'pricing-list' | 'new-pricing' | 'formulation' | 'records' | 'taxes'
+export type Screen = 'dashboard' | 'pricing-list' | 'new-pricing' | 'formulation' | 'records' | 'taxes' | 'exchange'
 
 export type NavItem = {
   id: string
@@ -15,7 +15,7 @@ export type NavItem = {
 
 export type NavGroup = { title: string, items: NavItem[] }
 
-export const IMPLEMENTED_SCREENS: readonly Screen[] = ['dashboard', 'pricing-list', 'new-pricing', 'formulation', 'records', 'taxes']
+export const IMPLEMENTED_SCREENS: readonly Screen[] = ['dashboard', 'pricing-list', 'new-pricing', 'formulation', 'records', 'taxes', 'exchange']
 
 export const SCREEN_HEADER: Record<Screen, { title: string, subtitle: string }> = {
   dashboard: { title: 'Painel', subtitle: 'Visão geral da sua carteira' },
@@ -24,6 +24,7 @@ export const SCREEN_HEADER: Record<Screen, { title: string, subtitle: string }> 
   formulation: { title: 'Formulação', subtitle: 'Composição de matérias-primas e embalagens por produto' },
   records: { title: 'Matérias-primas e embalagens', subtitle: 'Cadastros de insumos' },
   taxes: { title: 'Alíquotas fiscais', subtitle: 'Parâmetros fiscais por vigência' },
+  exchange: { title: 'Câmbio e parâmetros', subtitle: 'Câmbio por moeda e parâmetros globais do cálculo' },
 }
 
 export const NAVIGATION: NavGroup[] = [
@@ -47,6 +48,7 @@ export const NAVIGATION: NavGroup[] = [
     { id: 'records', label: 'Matérias-primas e embalagens', icon: 'cadastros', permission: 'cadastro.ler', description: 'Matérias-primas e embalagens usadas nos produtos' },
     { id: 'quotes', label: 'Cotações', icon: 'cotacoes', permission: 'custo.ler', description: 'Preços negociados com fornecedores, por faixa de volume' },
     { id: 'import-quotes', label: 'Importar cotações', icon: 'importar', permission: 'custo.editar', description: 'Carregue cotações a partir de planilha' },
+    { id: 'exchange', label: 'Câmbio e parâmetros', icon: 'cambio', permission: 'cambio.ler', description: 'Câmbio por moeda e parâmetros globais, com vigência por data' },
     { id: 'taxes', label: 'Tributos', icon: 'tributos', permission: 'parametro_fiscal.ler', description: 'Alíquotas de impostos por estado, NCM e regime' },
   ] },
   { title: 'Sistema', items: [

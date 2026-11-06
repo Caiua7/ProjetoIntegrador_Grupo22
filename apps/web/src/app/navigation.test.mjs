@@ -29,3 +29,10 @@ test('cadastros de insumos exigem leitura para abrir e edição para manter regi
   const ids = navigationFor(perfil('cadastro.ler')).flatMap((grupo) => grupo.items.map((item) => item.id))
   assert.ok(ids.includes('records'))
 })
+
+test('câmbio e parâmetros abre com cambio.ler e fica em Cadastros', () => {
+  assert.equal(canOpen('exchange', perfil()), false)
+  assert.equal(canOpen('exchange', perfil('cambio.ler')), true)
+  const cadastros = navigationFor(perfil('cambio.ler')).find((grupo) => grupo.title === 'Cadastros')
+  assert.deepEqual(cadastros?.items.map((item) => item.id), ['exchange'])
+})
