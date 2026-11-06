@@ -252,3 +252,16 @@
 
 .neoprice :is(h1, h2, h3) { font-family: var(--f-titulo); }
 .filter-chip.aviso.selected { border-color: var(--warning); background: var(--warning-wash); color: var(--warning); }
+
+/* Cotações vigentes e simulador por volume (US25/US28) */
+.quotes-filters { grid-template-columns: minmax(0,1fr) minmax(0,1.4fr) minmax(0,.7fr); }
+.quotes-sim { grid-template-columns: minmax(0,.7fr) minmax(0,1.3fr) auto; align-items: end; }
+.quotes-sim .catalog-form-actions { grid-column: auto; padding-top: 0; }
+.quotes-result { margin-top: 14px; }
+.quotes-result small { display: block; }
+.quotes-total { margin-top: 6px; color: var(--text-2); }
+.quotes-total b { color: var(--text); }
+.quotes-table { min-width: 720px; }
+.quotes-table th, .quotes-table td { white-space: nowrap; }
+.quotes-resolved { background: var(--green-wash); box-shadow: inset 3px 0 0 var(--green); }
+@media (max-width: 850px) { .quotes-filters, .quotes-sim { grid-template-columns: minmax(0,1fr); } }
