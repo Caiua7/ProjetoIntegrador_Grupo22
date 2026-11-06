@@ -37,6 +37,7 @@ from pricing_core.custos import (
     calcular_custo_total,
 )
 from pricing_core.encargo import taxa_encargo, valor_encargo
+from pricing_core.preco_liquido_mp import preco_liquido_mp
 from pricing_core.rentabilidade import Rentabilidade, derivar_rentabilidade
 
 __all__ = [
@@ -67,6 +68,7 @@ __all__ = [
     "cotacoes_vigentes",
     "derivar_rentabilidade",
     "esta_vigente",
+    "preco_liquido_mp",
     "resolver_cotacao",
     "taxa_encargo",
     "valor_encargo",
