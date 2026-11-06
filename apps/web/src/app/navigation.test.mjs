@@ -29,3 +29,8 @@ test('cadastros de insumos exigem leitura para abrir e edição para manter regi
   const ids = navigationFor(perfil('cadastro.ler')).flatMap((grupo) => grupo.items.map((item) => item.id))
   assert.ok(ids.includes('records'))
 })
+
+test('cotações abre com custo.ler', () => {
+  assert.equal(canOpen('quotes', perfil('cadastro.ler')), false)
+  assert.equal(canOpen('quotes', perfil('custo.ler')), true)
+})

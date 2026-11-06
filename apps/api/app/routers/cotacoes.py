@@ -1,4 +1,9 @@
-"""Consulta e resolução da cotação vigente de matéria-prima (US25)."""
+"""Consulta e resolução da cotação vigente de matéria-prima (US25).
+
+As respostas trazem o código e o nome do fornecedor quando o perfil enxerga o
+cadastro de fornecedores (`cadastro.ler`); sem isso, os campos vêm nulos e a
+cotação continua valendo. O nome é só exibição: nunca decide a resolução.
+"""
 
 from collections.abc import Callable
 from dataclasses import asdict
@@ -32,6 +37,8 @@ class CotacaoResposta(BaseModel):
     validade_inicio: date
     validade_fim: date | None
     prazo_entrega_dias: int
+    fornecedor_codigo: str | None = None
+    fornecedor_nome: str | None = None
 
 
 def _erro_persistencia(erro: Exception) -> HTTPException:
@@ -85,6 +92,38 @@ def _carregar_vigentes(usuario: UsuarioAutenticado, materia_prima_id: UUID, data
     return [_para_cotacao(linha) for linha in resposta.data or []]
 
 
+def _fornecedores(usuario: UsuarioAutenticado, ids: set[str]) -> dict[str, dict]:
+    """Código e nome dos fornecedores; vazio se o perfil não lê o cadastro ou a consulta falha."""
+    if not ids:
+        return {}
+    try:
+        resposta = (
+            supabase_do_usuario(usuario.access_token)
+            .table("fornecedor")
+            .select("id,codigo,razao_social,nome_fantasia")
+            .in_("id", sorted(ids))
+            .execute()
+        )
+    except Exception:
+        return {}
+    return {str(linha["id"]): linha for linha in resposta.data or []}
+
+
+def _com_fornecedor(cotacoes: list[Cotacao], usuario: UsuarioAutenticado) -> list[dict]:
+    fornecedores = _fornecedores(usuario, {c.fornecedor_id for c in cotacoes})
+    resultado = []
+    for cotacao in cotacoes:
+        fornecedor = fornecedores.get(str(cotacao.fornecedor_id), {})
+        resultado.append(
+            {
+                **asdict(cotacao),
+                "fornecedor_codigo": fornecedor.get("codigo"),
+                "fornecedor_nome": fornecedor.get("nome_fantasia") or fornecedor.get("razao_social"),
+            }
+        )
+    return resultado
+
+
 @router.get("/vigentes", response_model=list[CotacaoResposta])
 def listar_vigentes(
     materia_prima_id: UUID,
@@ -92,7 +131,7 @@ def listar_vigentes(
     usuario: UsuarioAutenticado = Depends(exigir_permissao("custo.ler")),
 ) -> list[dict]:
     cotacoes = _carregar_vigentes(usuario, materia_prima_id, data_referencia)
-    return [asdict(c) for c in cotacoes_vigentes(cotacoes, str(materia_prima_id), data_referencia)]
+    return _com_fornecedor(cotacoes_vigentes(cotacoes, str(materia_prima_id), data_referencia), usuario)
 
 
 @router.get("/resolver", response_model=CotacaoResposta)
@@ -116,4 +155,4 @@ def resolver(
         raise HTTPException(status.HTTP_404_NOT_FOUND, str(erro)) from erro
     except CotacaoAmbigua as erro:
         raise HTTPException(status.HTTP_409_CONFLICT, str(erro)) from erro
-    return asdict(escolhida)
+    return _com_fornecedor([escolhida], usuario)[0]

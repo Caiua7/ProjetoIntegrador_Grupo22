@@ -11,6 +11,7 @@ import PasswordRecoveryPage from './features/auth/PasswordRecoveryPage'
 import { useAuth } from './features/auth/useAuth'
 import { Dashboard } from './features/dashboard/Dashboard'
 import { InsumosPage } from './features/cadastros/InsumosPage'
+import { QuotesPage } from './features/cotacoes/QuotesPage'
 import { FormulationPage } from './features/pricing/FormulationPage'
 import PricingCreate from './features/pricing/PricingCreate'
 import PricingList from './features/pricing/PricingList'
@@ -67,6 +68,7 @@ function AppShell() {
       {current === 'formulation' && <FormulationPage canEdit={hasPermission('precificacao.editar')} />}
       {current === 'records' && <InsumosPage canEdit={hasPermission('cadastro.editar')} />}
       {current === 'taxes' && <TaxRatesPage canEdit={hasPermission('parametro_fiscal.editar')} />}
+      {current === 'quotes' && <QuotesPage />}
     </main>
   </div>
 }
