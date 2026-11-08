@@ -54,7 +54,7 @@ CREATE FUNCTION avaliar_submissao_precificacao(p_usuario_id UUID, p_precificacao
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public, pg_temp
+SET search_path FROM CURRENT
 AS $$
 DECLARE
     v_status VARCHAR(20);
@@ -156,7 +156,7 @@ CREATE FUNCTION submeter_precificacao(p_usuario_id UUID, p_precificacao_id UUID)
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public, pg_temp
+SET search_path FROM CURRENT
 AS $$
 DECLARE
     v_avaliacao JSONB;
@@ -234,7 +234,7 @@ CREATE FUNCTION impedir_aprovacao_de_demo()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public, pg_temp
+SET search_path FROM CURRENT
 AS $$
 DECLARE
     v_pendente BOOLEAN;

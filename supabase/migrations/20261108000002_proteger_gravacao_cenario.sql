@@ -26,7 +26,7 @@ CREATE FUNCTION salvar_cenario_seguro(
 RETURNS cenario
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public, pg_temp
+SET search_path FROM CURRENT
 AS $$
 DECLARE
     v_versao      INTEGER;

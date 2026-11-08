@@ -12,7 +12,7 @@ CREATE OR REPLACE FUNCTION salvar_formulacao_produto(p_produto_id UUID, p_itens 
 RETURNS VOID
 LANGUAGE plpgsql
 SECURITY INVOKER
-SET search_path = public, pg_temp
+SET search_path FROM CURRENT
 AS $$
 DECLARE
     v_formulacao_id UUID;
