@@ -1,7 +1,7 @@
 import type { IconName } from '../components/icons/Icon'
 
 /** Telas já implementadas; o resto do menu aparece desabilitado. */
-export type Screen = 'dashboard' | 'pricing-list' | 'new-pricing' | 'formulation' | 'records' | 'taxes' | 'exchange'
+export type Screen = 'dashboard' | 'pricing-list' | 'new-pricing' | 'formulation' | 'records' | 'taxes' | 'exchange' | 'quotes'
 
 export type NavItem = {
   id: string
@@ -15,7 +15,7 @@ export type NavItem = {
 
 export type NavGroup = { title: string, items: NavItem[] }
 
-export const IMPLEMENTED_SCREENS: readonly Screen[] = ['dashboard', 'pricing-list', 'new-pricing', 'formulation', 'records', 'taxes', 'exchange']
+export const IMPLEMENTED_SCREENS: readonly Screen[] = ['dashboard', 'pricing-list', 'new-pricing', 'formulation', 'records', 'taxes', 'exchange', 'quotes']
 
 export const SCREEN_HEADER: Record<Screen, { title: string, subtitle: string }> = {
   dashboard: { title: 'Painel', subtitle: 'Visão geral da sua carteira' },
@@ -24,6 +24,7 @@ export const SCREEN_HEADER: Record<Screen, { title: string, subtitle: string }> 
   formulation: { title: 'Formulação', subtitle: 'Composição de matérias-primas e embalagens por produto' },
   records: { title: 'Matérias-primas e embalagens', subtitle: 'Cadastros de insumos' },
   taxes: { title: 'Alíquotas fiscais', subtitle: 'Parâmetros fiscais por vigência' },
+  quotes: { title: 'Cotações', subtitle: 'Cotações vigentes por faixa de volume' },
   exchange: { title: 'Câmbio e parâmetros', subtitle: 'Câmbio por moeda e parâmetros globais do cálculo' },
 }
 

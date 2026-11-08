@@ -30,6 +30,11 @@ test('cadastros de insumos exigem leitura para abrir e edição para manter regi
   assert.ok(ids.includes('records'))
 })
 
+test('cotações abre com custo.ler', () => {
+  assert.equal(canOpen('quotes', perfil('cadastro.ler')), false)
+  assert.equal(canOpen('quotes', perfil('custo.ler')), true)
+})
+
 test('câmbio e parâmetros abre com cambio.ler e fica em Cadastros', () => {
   assert.equal(canOpen('exchange', perfil()), false)
   assert.equal(canOpen('exchange', perfil('cambio.ler')), true)

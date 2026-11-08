@@ -39,14 +39,40 @@ class ChamadaRpcFalsa:
         return RespostaFalsa(deepcopy(self.cliente.linhas))
 
 
+class ConsultaFornecedorFalsa:
+    def __init__(self, cliente):
+        self.cliente = cliente
+        self.ids: list[str] = []
+
+    def select(self, _colunas):
+        return self
+
+    def in_(self, _coluna, ids):
+        self.ids = ids
+        return self
+
+    def execute(self):
+        self.cliente.consultas_fornecedor.append(self.ids)
+        if self.cliente.erro_fornecedor:
+            raise self.cliente.erro_fornecedor
+        return RespostaFalsa([f for f in self.cliente.fornecedores if f["id"] in self.ids])
+
+
 class ClienteFalso:
     def __init__(self):
         self.linhas: list[dict] = []
         self.erro: Exception | None = None
         self.chamadas: list[tuple[str, dict]] = []
+        self.fornecedores: list[dict] = []
+        self.erro_fornecedor: Exception | None = None
+        self.consultas_fornecedor: list[list[str]] = []
 
     def rpc(self, nome, parametros):
         return ChamadaRpcFalsa(self, nome, parametros)
+
+    def table(self, nome):
+        assert nome == "fornecedor"
+        return ConsultaFornecedorFalsa(self)
 
 
 def linha(**campos) -> dict:
@@ -216,3 +242,52 @@ def test_falhas_do_banco_viram_403_e_503(ambiente):
 
     cliente.erro = RuntimeError("conexão perdida")
     assert http.get("/cotacoes/vigentes", headers=TOKEN, params=PARAMS).status_code == 503
+
+
+def test_traz_codigo_e_nome_do_fornecedor(ambiente):
+    http, cliente, _usuario = ambiente
+    cliente.linhas = [linha(fornecedor_id=str(FORNECEDOR_A)), linha(fornecedor_id=str(FORNECEDOR_B), volume_minimo=100)]
+    cliente.fornecedores = [
+        {"id": str(FORNECEDOR_A), "codigo": "F001", "razao_social": "Alfa Químicos Ltda", "nome_fantasia": "Alfa"},
+        {"id": str(FORNECEDOR_B), "codigo": "F002", "razao_social": "Beta Insumos S.A.", "nome_fantasia": None},
+    ]
+
+    vigentes = http.get("/cotacoes/vigentes", headers=TOKEN, params=PARAMS).json()
+    resolvida = http.get("/cotacoes/resolver", headers=TOKEN, params={**PARAMS, "quantidade": "150"}).json()
+
+    assert [(c["fornecedor_codigo"], c["fornecedor_nome"]) for c in vigentes] == [
+        ("F001", "Alfa"),
+        ("F002", "Beta Insumos S.A."),
+    ]
+    assert (resolvida["fornecedor_codigo"], resolvida["fornecedor_nome"]) == ("F002", "Beta Insumos S.A.")
+    assert cliente.consultas_fornecedor[0] == sorted([str(FORNECEDOR_A), str(FORNECEDOR_B)])
+
+
+def test_sem_leitura_do_cadastro_o_fornecedor_vem_nulo_e_a_cotacao_vale(ambiente):
+    http, cliente, _usuario = ambiente
+    cliente.linhas = [linha()]
+    cliente.fornecedores = []  # RLS esconde o cadastro de quem não tem cadastro.ler
+
+    resposta = http.get("/cotacoes/vigentes", headers=TOKEN, params=PARAMS)
+
+    assert resposta.status_code == 200
+    assert resposta.json()[0]["fornecedor_nome"] is None
+    assert resposta.json()[0]["fornecedor_codigo"] is None
+
+
+def test_falha_ao_buscar_fornecedor_nao_derruba_a_resolucao(ambiente):
+    http, cliente, _usuario = ambiente
+    cliente.linhas = [linha()]
+    cliente.erro_fornecedor = RuntimeError("conexão perdida")
+
+    resposta = http.get("/cotacoes/resolver", headers=TOKEN, params={**PARAMS, "quantidade": "10"})
+
+    assert resposta.status_code == 200
+    assert resposta.json()["fornecedor_nome"] is None
+
+
+def test_lista_vazia_nao_consulta_fornecedor(ambiente):
+    http, cliente, _usuario = ambiente
+
+    assert http.get("/cotacoes/vigentes", headers=TOKEN, params=PARAMS).json() == []
+    assert cliente.consultas_fornecedor == []
