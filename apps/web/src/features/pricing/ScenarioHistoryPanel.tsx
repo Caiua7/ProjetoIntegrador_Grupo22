@@ -1,11 +1,14 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { ApiError } from '../../services/apiClient'
 import { arredondarCentavos } from './centavos'
+import { calcularCenario } from './calculateService'
+import type { CalculateRequest, CalculateResponse } from '../../types/calculate.generated'
 import {
   compararCenarios,
   consultarCenario,
   duplicarCenario,
   listarCenarios,
+  salvarCenario,
   type CenarioDetalhe,
   type CenarioResumo,
   type ComparacaoCenarios,
@@ -64,6 +67,38 @@ function ScenarioHistoryPanel({ precificacaoId, codigo, canViewCost, canEdit, on
   const [repetirDetalhe, setRepetirDetalhe] = useState(0)
   const [repetirComparacao, setRepetirComparacao] = useState(0)
   const [duplicando, setDuplicando] = useState<number | null>(null)
+  const [entradaJson, setEntradaJson] = useState('')
+  const [volume, setVolume] = useState('')
+  const [observacao, setObservacao] = useState('')
+  const [simulando, setSimulando] = useState(false)
+  const [salvandoCenario, setSalvandoCenario] = useState(false)
+  const [resultadoSimulacao, setResultadoSimulacao] = useState<CalculateResponse | null>(null)
+  const [erroSimulacao, setErroSimulacao] = useState<string | null>(null)
+  const [entradaCalculada, setEntradaCalculada] = useState<CalculateRequest | null>(null)
+
+  async function simular(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setErroSimulacao(null); setResultadoSimulacao(null); setEntradaCalculada(null); setSimulando(true)
+    try {
+      const entrada = JSON.parse(entradaJson) as CalculateRequest
+      const resposta = await calcularCenario(entrada)
+      setResultadoSimulacao(resposta)
+      setEntradaCalculada(entrada)
+    } catch (falha) {
+      setErroSimulacao(falha instanceof ApiError ? falha.message : falha instanceof SyntaxError ? 'A entrada precisa ser um JSON válido no formato de POST /calculate.' : 'Não foi possível executar a simulação.')
+    } finally { setSimulando(false) }
+  }
+
+  async function persistirSimulacao() {
+    if (!entradaCalculada || !resultadoSimulacao || resultadoSimulacao.metadata.is_mock) return
+    setErroSimulacao(null); setSalvandoCenario(true)
+    try {
+      await salvarCenario(precificacaoId, { entrada: entradaCalculada, volume: volume || null, observacao: observacao || null })
+      await atualizar()
+      setResultadoSimulacao(null); setEntradaCalculada(null); setEntradaJson(''); setVolume(''); setObservacao('')
+    } catch (falha) { setErroSimulacao(falha instanceof ApiError ? falha.message : 'Não foi possível salvar o cenário.') }
+    finally { setSalvandoCenario(false) }
+  }
 
   async function atualizar(): Promise<CenarioResumo[] | null> {
     setErro(null)
@@ -144,6 +179,31 @@ function ScenarioHistoryPanel({ precificacaoId, codigo, canViewCost, canEdit, on
 
   return <section className="form-card scenario-history" aria-labelledby="scenario-history-title">
     <div className="list-card-heading"><div><span className="heading-icon" aria-hidden="true">◷</span><h3 id="scenario-history-title">Cenários de {codigo}</h3></div><button className="button secondary" type="button" onClick={onClose}>Fechar</button></div>
+    {canEdit && <section className="scenario-simulation" aria-label="Simular com o motor de precificação">
+      <h4>Nova simulação</h4>
+      <p className="field-hint">Informe a entrada completa conforme o contrato de <code>POST /calculate</code>. Os valores são enviados à API; nenhum cálculo é feito no navegador.</p>
+      <form onSubmit={(event) => { void simular(event) }}>
+        <label className="field">Entrada JSON<textarea rows={12} required value={entradaJson} onChange={(event) => setEntradaJson(event.target.value)} placeholder="Cole aqui o objeto CalculateRequest com materiais_primas, embalagens, producao, impostos e comercial." /></label>
+        <div className="scenario-compare-controls">
+          <label className="field">Volume negociado (opcional)<input inputMode="decimal" value={volume} onChange={(event) => setVolume(event.target.value)} /></label>
+          <label className="field">Observação (opcional)<input maxLength={500} value={observacao} onChange={(event) => setObservacao(event.target.value)} /></label>
+        </div>
+        <button className="button primary" type="submit" disabled={simulando || salvandoCenario}>{simulando ? 'Calculando…' : 'Calcular no motor'}</button>
+      </form>
+      {erroSimulacao && <p className="catalog-error" role="alert">{erroSimulacao}</p>}
+      {resultadoSimulacao && <div className="scenario-detail" aria-live="polite">
+        {resultadoSimulacao.metadata.is_mock && <p className="catalog-error" role="status">A API identificou este resultado como mock. Ele não será tratado como resultado real nem poderá ser salvo.</p>}
+        <p className="field-hint">Motor {resultadoSimulacao.metadata.versao_motor} · {resultadoSimulacao.metadata.is_mock ? 'demonstrativo' : 'resposta da API'}</p>
+        <dl className="scenario-result-grid">{([
+          ['preco_bruto_sem_ipi_sem_encargo', 'PBsIPIsEncargo'], ['preco_bruto_sem_ipi', 'PBsIPI'], ['preco_bruto_com_ipi', 'PBcIPI'], ['preco_bruto', 'PB'], ['receita_operacional_liquida', 'ROL'], ['margem_contribuicao_valor', 'MaCo'],
+          ['custo_mp', 'Custo MP'], ['custo_embalagem', 'Custo embalagem'], ['custo_perda', 'Custo perda'], ['custo_mod', 'Custo MOD'], ['custo_ggf', 'Custo GGF'], ['custo_total', 'Custo total'],
+        ] as const).map(([key, label]) => <div key={key}><dt>{label}</dt><dd>{moeda(resultadoSimulacao[key])}</dd></div>)}
+          <div><dt>MaCo percentual</dt><dd>{percentual(resultadoSimulacao.margem_contribuicao_percentual)}</dd></div>
+        </dl>
+        <div className="scenario-tax-list"><h4>Impostos destacados</h4>{Object.entries(resultadoSimulacao.impostos_destacados).map(([key, value]) => <p key={key}>{key.replaceAll('_', ' ')}: {moeda(value)}</p>)}</div>
+        {!resultadoSimulacao.metadata.is_mock && <button className="button secondary" type="button" disabled={salvandoCenario} onClick={() => { void persistirSimulacao() }}>{salvandoCenario ? 'Salvando versão…' : 'Salvar como nova versão'}</button>}
+      </div>}
+    </section>}
     {erro && <div className="catalog-error" role="alert"><p>{erro}</p>{versoes.length === 0 && <button className="button secondary" type="button" onClick={() => { void atualizar() }}>Tentar novamente</button>}</div>}
     {carregando ? <div className="empty-list" role="status">Carregando versões…</div> : erro && versoes.length === 0 ? null : versoes.length === 0 ? <div className="empty-list" role="status"><h3>Nenhum cenário salvo</h3><p>As versões aparecerão aqui quando forem persistidas pela API.</p></div> : <>
       <div className="table-scroll" role="region" aria-label="Histórico de cenários" tabIndex={0}>
@@ -158,7 +218,7 @@ function ScenarioHistoryPanel({ precificacaoId, codigo, canViewCost, canEdit, on
             </td>
           </tr>)}</tbody></table>
       </div>
-      {canEdit && versoes.some((item) => item.versao_motor?.includes('mock')) && <p className="field-hint">Duplicar recalcula a versao pela API. O motor atual esta identificado como mock; os resultados permanecem demonstrativos.</p>}
+      {canEdit && versoes.some((item) => item.versao_motor?.includes('mock')) && <p className="field-hint">Há versões históricas calculadas por uma versão mock do motor. Duplicar recalcula a versão pela API com o motor atual.</p>}
       {canViewCost && versoes.length > 1 && <section className="scenario-compare" aria-label="Comparar cenários">
         <h4>Comparar versões</h4><div className="scenario-compare-controls">
           <label className="field">De<select value={de} onChange={(event) => { setErroComparacao(null); setDe(event.target.value) }}>{versoes.map((item) => <option key={item.versao} value={item.versao}>v{item.versao}</option>)}</select></label>

@@ -19,7 +19,7 @@ export const IMPLEMENTED_SCREENS: readonly Screen[] = ['dashboard', 'pricing-lis
 
 export const SCREEN_HEADER: Record<Screen, { title: string, subtitle: string }> = {
   dashboard: { title: 'Painel', subtitle: 'Visão geral da sua carteira' },
-  'pricing-list': { title: 'Precificações', subtitle: 'Cenários demonstrativos da carteira' },
+  'pricing-list': { title: 'Precificações', subtitle: 'Precificações e cenários persistidos da carteira' },
   'new-pricing': { title: 'Nova precificação', subtitle: 'Cabeçalho comercial e fiscal do estudo' },
   formulation: { title: 'Formulação', subtitle: 'Composição de matérias-primas e embalagens por produto' },
   records: { title: 'Matérias-primas e embalagens', subtitle: 'Cadastros de insumos' },

@@ -22,8 +22,8 @@ app = FastAPI(
     title="NeoPrice API",
     version="0.1.0",
     description=(
-        "API do NeoPrice. O endpoint /calculate está publicado como MOCK "
-        "nesta fase (Sprint 1) — ver docs/contrato-calculate.md."
+        "API do NeoPrice. O endpoint /calculate executa o pricing-core; "
+        "consulte docs/contrato-calculate.md para as premissas ainda pendentes de homologação."
     ),
 )
 

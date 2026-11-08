@@ -12,7 +12,7 @@
 // direto, ou você reintroduz o mesmo problema de arredondamento que o
 // motor foi desenhado para evitar (ver README.md, seção "Arquitetura").
 
-export const ENGINE_CONTRACT_VERSION = "0.1.0-mock";
+export const ENGINE_CONTRACT_VERSION = "0.2.0";
 
 export type ModalidadeComercial =
   | "full_service_nacional"
@@ -86,7 +86,7 @@ export interface IsencaoMaoDeObraInfo {
 export interface CalculateMetadata {
   versao_motor: string;
   calculado_em: string; // ISO 8601
-  /** true enquanto o motor real (US16/US19, Sprint 3) não estiver integrado */
+  /** Indica se esta resposta específica foi produzida por um mock. */
   is_mock: boolean;
 }
 

@@ -1,5 +1,6 @@
 import { apiFetch } from '../../services/apiClient'
-import { caminhoComparacaoCenarios, caminhoDetalheCenario, caminhoDuplicacaoCenario, caminhoListaCenarios } from './cenariosPaths'
+import { caminhoComparacaoCenarios, caminhoDetalheCenario, caminhoDuplicacaoCenario, caminhoListaCenarios, caminhoSalvarCenario } from './cenariosPaths'
+import type { CalculateRequest } from '../../types/calculate.generated'
 
 export type CenarioResumo = {
   id?: string
@@ -35,6 +36,8 @@ export type CenarioDetalhe = CenarioResumo & {
   rentabilidade: RentabilidadeCenario | null
 }
 
+export type NovaVersaoCenario = { entrada: CalculateRequest, volume?: string | null, observacao?: string | null }
+
 export type IndicadorCenario = {
   codigo: string
   rotulo: string
@@ -65,4 +68,9 @@ export const duplicarCenario = (precificacaoId: string, versao: number) =>
   apiFetch<CenarioDetalhe>(caminhoDuplicacaoCenario(precificacaoId, versao), {
     method: 'POST',
     body: JSON.stringify({}),
+  })
+
+export const salvarCenario = (precificacaoId: string, corpo: NovaVersaoCenario) =>
+  apiFetch<CenarioDetalhe>(caminhoSalvarCenario(precificacaoId), {
+    method: 'POST', body: JSON.stringify(corpo),
   })

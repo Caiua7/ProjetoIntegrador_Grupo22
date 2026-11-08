@@ -3,6 +3,8 @@ const base = (precificacaoId: string) => `/precificacoes/${encodeURIComponent(pr
 export const caminhoListaCenarios = (precificacaoId: string, podeVerCusto: boolean) =>
   `${base(precificacaoId)}${podeVerCusto ? '' : '/precos'}`
 
+export const caminhoSalvarCenario = (precificacaoId: string) => base(precificacaoId)
+
 export const caminhoDetalheCenario = (precificacaoId: string, versao: number) =>
   `${base(precificacaoId)}/${versao}`
 

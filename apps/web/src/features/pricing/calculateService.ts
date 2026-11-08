@@ -1,7 +1,7 @@
 import { apiFetch } from '../../services/apiClient'
 import type { CalculateRequest, CalculateResponse } from '../../types/calculate.generated'
 
-/** A API atual retorna metadata.is_mock=true; o chamador deve sinalizar isso ao usuário. */
+/** Executa o motor real da API. Premissas ainda não homologadas pelo PO seguem sinalizadas na resposta. */
 export function calcularCenario(entrada: CalculateRequest): Promise<CalculateResponse> {
   return apiFetch<CalculateResponse>('/calculate', {
     method: 'POST', body: JSON.stringify(entrada),
