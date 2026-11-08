@@ -59,7 +59,7 @@ Regras que valem para todos:
 - Usuário inativo, ou autenticado mas sem linha em `usuario`, não enxerga nada.
 - Ninguém apaga cadastro nem precificação pelo papel `authenticated`: cadastro é inativado e o histórico de precificação não se apaga (RF09).
 - Cada usuário lê o próprio cadastro e as próprias carteiras; só `acesso.administrar` altera perfil, permissão ou carteira de alguém, o que impede o usuário de se promover.
-- Quem tem `precificacao.aprovar` altera a precificação para mudar o status. A regra de quais transições de status são válidas é do workflow de aprovação, não do RLS.
+- Quem tem `precificacao.aprovar` decide a precificação da sua carteira. Pela aplicação, o status só vira `aprovado` ou `reprovado` registrando a decisão em `decidir_aprovacao`, com responsável, data e comentário obrigatório na reprovação (ver [aprovacao.md](aprovacao.md)).
 
 ## Como dar acesso a um usuário
 
