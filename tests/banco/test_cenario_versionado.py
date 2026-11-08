@@ -29,20 +29,27 @@ USUARIOS = {
 ENTRADA = {"cliente_uf": "SP", "comercial": {"margem_desejada_percentual": "0.30"}}
 
 
-def _resultado(preco_bruto: str) -> dict:
+def _resultado(preco_bruto: str, *, mock: bool = False) -> dict:
     return {
         "preco_bruto": preco_bruto,
         "preco_bruto_sem_ipi": "52.18",
         "custo_total": "32.46",
         "margem_contribuicao_valor": "11.67",
         "margem_contribuicao_percentual": "0.284",
-        "metadata": {"versao_motor": "0.1.0-mock"},
+        "metadata": {
+            "versao_motor": "0.3.0",
+            "is_mock": mock,
+            "origem": "demonstracao" if mock else "pricing_core",
+        },
     }
 
 
 @pytest.fixture
 def tx(conn):
     with conn.transaction(force_rollback=True):
+        # Os testes versionam cenários em uma negociação aberta. A fixture
+        # de desenvolvimento mantém PRC-0148 em aprovação para testes do fluxo.
+        conn.execute("UPDATE precificacao SET status = 'em_preenchimento' WHERE codigo = 'PRC-2026-0148'")
         for usuario_id, (perfil, carteira) in USUARIOS.items():
             conn.execute(
                 "INSERT INTO usuario (id, nome, email, perfil_id) SELECT %s, %s, %s, id FROM perfil WHERE codigo = %s",
@@ -71,12 +78,30 @@ def _precificacao(conn, codigo: str) -> str:
     return str(conn.execute("SELECT id FROM precificacao WHERE codigo = %s", [codigo]).fetchone()[0])
 
 
-def _salvar(conn, precificacao_id: str, preco_bruto: str = "57.94", volume=None, origem_id=None) -> dict:
-    with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
-        return cur.execute(
-            "SELECT * FROM salvar_cenario(%s, %s::jsonb, %s::jsonb, '0.1.0-mock', %s, NULL, %s)",
-            [precificacao_id, json.dumps(ENTRADA), json.dumps(_resultado(preco_bruto)), volume, origem_id],
-        ).fetchone()
+def _salvar(conn, precificacao_id: str, preco_bruto: str = "57.94", volume=None, origem_id=None, *, mock=False) -> dict:
+    claims = json.loads(conn.execute("SELECT current_setting('request.jwt.claims', true)").fetchone()[0])
+    usuario_id = claims["sub"]
+    papel_anterior = conn.execute("SELECT current_user").fetchone()[0]
+    conn.execute("RESET ROLE")
+    conn.execute("SET LOCAL ROLE service_role")
+    try:
+        # Isola erros esperados no savepoint antes que o finally restaure o papel.
+        with conn.transaction(), conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
+            return cur.execute(
+                "SELECT * FROM salvar_cenario_seguro(%s, %s, %s::jsonb, %s::jsonb, '0.3.0', %s, NULL, %s)",
+                [
+                    usuario_id,
+                    precificacao_id,
+                    json.dumps(ENTRADA),
+                    json.dumps(_resultado(preco_bruto, mock=mock)),
+                    volume,
+                    origem_id,
+                ],
+            ).fetchone()
+    finally:
+        conn.execute("RESET ROLE")
+        if papel_anterior in {"anon", "authenticated", "service_role"}:
+            conn.execute(f"SET LOCAL ROLE {papel_anterior}")
 
 
 def _foto(conn, cenario_id) -> str:
@@ -206,7 +231,7 @@ def test_executiva_ve_o_preco_mas_nao_o_custo(tx):
             precos = cur.execute(
                 "SELECT * FROM cenario_preco WHERE precificacao_id = %s ORDER BY versao", [prc]
             ).fetchall()
-        with pytest.raises(psycopg.errors.NoDataFound), tx.transaction():
+        with pytest.raises(psycopg.errors.InsufficientPrivilege), tx.transaction():
             _salvar(tx, prc)
 
     assert [(linha["versao"], str(linha["preco_bruto"]), linha["vigente"]) for linha in precos] == [
@@ -219,3 +244,27 @@ def test_executiva_ve_o_preco_mas_nao_o_custo(tx):
 def test_anonimo_nao_ve_precos(tx):
     with como(tx, uuid.uuid4(), papel="anon"):
         _recusa(tx, psycopg.errors.InsufficientPrivilege, "SELECT count(*) FROM cenario_preco")
+
+
+def test_authenticated_nao_pode_chamar_rpc_privilegiado_nem_inserir_cenario_direto(tx):
+    prc = _precificacao(tx, "PRC-2026-0148")
+    with como(tx, ANALISTA_SUDESTE):
+        _recusa(
+            tx,
+            psycopg.errors.InsufficientPrivilege,
+            "SELECT * FROM salvar_cenario_seguro(%s, %s, %s::jsonb, %s::jsonb, '0.3.0', NULL, NULL, NULL)",
+            [str(ANALISTA_SUDESTE), prc, json.dumps(ENTRADA), json.dumps(_resultado("57.94"))],
+        )
+        _recusa(
+            tx,
+            psycopg.errors.InsufficientPrivilege,
+            "INSERT INTO cenario (precificacao_id, versao, versao_motor, entrada, resultado) "
+            "VALUES (%s, 999, '0.3.0', %s::jsonb, %s::jsonb)",
+            [prc, json.dumps(ENTRADA), json.dumps(_resultado("57.94"))],
+        )
+
+
+def test_backend_rpc_recusa_resultado_mock_mesmo_quando_service_role_chama(tx):
+    prc = _precificacao(tx, "PRC-2026-0148")
+    with como(tx, ANALISTA_SUDESTE), pytest.raises(psycopg.errors.InvalidParameterValue), tx.transaction():
+        _salvar(tx, prc, mock=True)

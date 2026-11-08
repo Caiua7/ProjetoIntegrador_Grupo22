@@ -12,7 +12,7 @@
 // direto, ou você reintroduz o mesmo problema de arredondamento que o
 // motor foi desenhado para evitar (ver README.md, seção "Arquitetura").
 
-export const ENGINE_CONTRACT_VERSION = "0.1.0-mock";
+export const ENGINE_CONTRACT_VERSION = "0.3.0";
 
 export type ModalidadeComercial =
   | "full_service_nacional"
@@ -22,6 +22,7 @@ export type ModalidadeComercial =
 export interface ItemInsumo {
   codigo: string;
   descricao?: string | null;
+  origem_material?: "fabricante" | "cliente" | null;
   preco_negociado: string;
   moeda: string;
   cambio: string;
@@ -86,8 +87,12 @@ export interface IsencaoMaoDeObraInfo {
 export interface CalculateMetadata {
   versao_motor: string;
   calculado_em: string; // ISO 8601
-  /** true enquanto o motor real (US16/US19, Sprint 3) não estiver integrado */
+  /** Indica se esta resposta específica foi produzida por um mock. */
   is_mock: boolean;
+  origem: "pricing_core" | "demonstracao";
+  classificacao: "real" | "parcialmente_simulado" | "inteiramente_simulado";
+  parametros_simulados: string[];
+  dados_recebidos_nao_verificados: boolean;
 }
 
 export interface CalculateResponse {
@@ -112,6 +117,20 @@ export interface CalculateResponse {
   impostos_destacados: ImpostosDestacados;
   metadata: CalculateMetadata;
 }
+
+/** Variante devolvida a usuÃ¡rios sem custo.ler; mantÃ©m preÃ§o e tributos destacados. */
+export type CalculateResponseSemCustos = Pick<CalculateResponse,
+  | "preco_bruto_sem_ipi_sem_encargo"
+  | "preco_bruto_sem_ipi"
+  | "preco_bruto_com_ipi"
+  | "preco_bruto"
+  | "preco_indicado"
+  | "receita_operacional_liquida"
+  | "impostos_destacados"
+  | "metadata"
+>;
+
+export type CalculateResponseAutorizada = CalculateResponse | CalculateResponseSemCustos;
 
 export type DomainErrorCodigo = "DENOMINADOR_INVALIDO" | "ENTRADA_INVALIDA";
 

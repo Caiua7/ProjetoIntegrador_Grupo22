@@ -8,6 +8,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.core import auth
+from app.core.config import settings
 from app.infrastructure.database import get_db
 from app.main import app
 from app.routers import cenarios
@@ -141,6 +142,7 @@ def ambiente(monkeypatch):
         auth, "carregar_usuario", lambda _db, usuario_id: dados_usuario if usuario_id == USUARIO_ID else None
     )
     monkeypatch.setattr(cenarios, "supabase_do_usuario", lambda _token: cliente)
+    monkeypatch.setattr(cenarios, "supabase_servico", lambda: cliente)
     app.dependency_overrides[get_db] = lambda: None
     yield TestClient(app), cliente, dados_usuario
     app.dependency_overrides.clear()
@@ -165,8 +167,9 @@ def test_nova_versao_e_calculada_pelo_motor_e_vira_a_vigente(ambiente):
     corpo = resposta.json()
     assert (corpo["versao"], corpo["vigente"], corpo["volume"]) == (1, True, "42000")
     [(nome, parametros)] = cliente.chamadas
-    assert nome == "salvar_cenario"
+    assert nome == "salvar_cenario_seguro"
     assert parametros["p_precificacao_id"] == str(PRECIFICACAO_ID)
+    assert parametros["p_usuario_id"] == str(USUARIO_ID)
     assert parametros["p_versao_motor"] == parametros["p_resultado"]["metadata"]["versao_motor"]
     assert Decimal(parametros["p_resultado"]["preco_bruto"]) > 0
 
@@ -178,6 +181,107 @@ def test_resultado_vem_do_motor_e_nao_do_cliente(ambiente):
 
     assert resposta.status_code == 422
     assert cliente.chamadas == []
+
+
+def test_calculate_exige_usuario_autenticado(ambiente):
+    http, _cliente, _usuario = ambiente
+    assert http.post("/calculate", json=ENTRADA).status_code == 401
+
+
+def test_calculate_sem_custo_ler_devolve_preco_sem_campos_de_custo(ambiente):
+    http, _cliente, usuario = ambiente
+    usuario["permissoes"] = ["precificacao.ler"]
+
+    resposta = http.post("/calculate", headers=TOKEN, json=ENTRADA)
+
+    assert resposta.status_code == 200
+    corpo = resposta.json()
+    assert corpo["preco_bruto"]
+    assert corpo["impostos_destacados"]
+    assert (
+        not {
+            "custo_mp",
+            "custo_embalagem",
+            "custo_perda",
+            "custo_mod",
+            "custo_ggf",
+            "custo_total",
+            "margem_contribuicao_valor",
+            "margem_contribuicao_percentual",
+            "encargo_financeiro_valor",
+            "encargo_financeiro_percentual",
+            "isencao_mao_de_obra",
+            "denominador",
+        }
+        & corpo.keys()
+    )
+
+
+def test_calculate_com_custo_ler_preserva_resposta_completa(ambiente):
+    http, _cliente, usuario = ambiente
+    usuario["permissoes"] = ["precificacao.ler", "custo.ler"]
+
+    resposta = http.post("/calculate", headers=TOKEN, json=ENTRADA)
+
+    assert resposta.status_code == 200
+    assert {"custo_mp", "custo_total", "margem_contribuicao_valor"} <= resposta.json().keys()
+
+
+def test_modo_demo_desativado_por_padrao_nao_serve_resultados(ambiente, monkeypatch):
+    http, _cliente, _usuario = ambiente
+    monkeypatch.setattr(settings, "DEMO_CALCULATION_ENABLED", False)
+    resposta = http.post("/calculate/demo", headers=TOKEN, json={"dados": {}})
+    assert resposta.status_code == 404
+
+
+def test_calculo_demo_marca_origem_assuncoes_e_nao_e_persistivel(ambiente, monkeypatch):
+    http, cliente, _usuario = ambiente
+    monkeypatch.setattr(settings, "DEMO_CALCULATION_ENABLED", True)
+    resposta = http.post("/calculate/demo", headers=TOKEN, json={"dados": {"cliente_uf": "SP"}})
+    assert resposta.status_code == 200
+    resultado = resposta.json()
+    assert resultado["metadata"]["is_mock"] is True
+    assert resultado["metadata"]["origem"] == "demonstracao"
+    assert resultado["metadata"]["classificacao"] == "parcialmente_simulado"
+    assert resultado["metadata"]["parametros_simulados"]
+    assert resultado["metadata"]["dados_recebidos_nao_verificados"] is True
+    assert cliente.chamadas == []
+
+
+def test_calculo_demo_totalmente_mock_usa_defaults_centrais(ambiente, monkeypatch):
+    http, _cliente, _usuario = ambiente
+    monkeypatch.setattr(settings, "DEMO_CALCULATION_ENABLED", True)
+    resposta = http.post("/calculate/demo", headers=TOKEN, json={})
+    assert resposta.status_code == 200
+    metadata = resposta.json()["metadata"]
+    assert metadata["is_mock"] is True
+    assert metadata["classificacao"] == "inteiramente_simulado"
+    assert metadata["parametros_simulados"]
+
+
+def test_persistencia_recusa_resultado_mock_produzido_no_backend(ambiente, monkeypatch):
+    http, cliente, _usuario = ambiente
+    real = cenarios.calculate(cenarios.CalculateRequest.model_validate(ENTRADA))
+    simulado = real.model_copy(update={"metadata": real.metadata.model_copy(update={"is_mock": True})})
+    monkeypatch.setattr(cenarios, "calculate", lambda _entrada: simulado)
+
+    resposta = _salvar(http, cliente)
+
+    assert resposta.status_code == 409
+    assert "mock" in resposta.json()["detail"].lower()
+    assert cliente.chamadas == []
+
+
+def test_persistencia_para_usuario_sem_custo_ler_retira_custos_da_resposta(ambiente):
+    http, cliente, usuario = ambiente
+    usuario["permissoes"] = ["precificacao.editar", "precificacao.ler"]
+
+    resposta = _salvar(http, cliente)
+
+    assert resposta.status_code == 201
+    corpo = resposta.json()
+    assert corpo["preco_bruto"]
+    assert not {"resultado", "entrada", "custo_total", "margem_contribuicao_valor", "rentabilidade"} & corpo.keys()
 
 
 def test_entrada_que_o_motor_recusa_nao_vira_versao(ambiente):

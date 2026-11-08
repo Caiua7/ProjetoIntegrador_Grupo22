@@ -15,6 +15,8 @@ export type Cambio = {
   updated_at: string
 }
 
+export type CambioVigente = Cambio & { taxa_com_margem: string }
+
 export type CambioEntrada = Pick<Cambio, 'moeda' | 'data_referencia' | 'taxa' | 'margem_seguranca_percentual' | 'fonte'>
 export type CambioPatch = Partial<Pick<Cambio, 'taxa' | 'margem_seguranca_percentual' | 'fonte'>>
 
@@ -50,6 +52,10 @@ function query(params: Record<string, string | undefined>): string {
 
 export function listarCambios(filtro: { moeda?: string, data_ate?: string } = {}): Promise<Cambio[]> {
   return apiFetch<Cambio[]>(`/cambios${query(filtro)}`)
+}
+
+export function consultarCambioVigente(moeda: string): Promise<CambioVigente> {
+  return apiFetch<CambioVigente>(`/cambios/vigente${query({ moeda })}`)
 }
 
 export function criarCambio(entrada: CambioEntrada): Promise<Cambio> {

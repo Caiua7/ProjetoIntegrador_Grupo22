@@ -1,13 +1,8 @@
+import { useEffect, useState } from 'react'
 import { Icon } from '../../components/icons/Icon'
-import { Sigla } from '../../components/Sigla'
+import { ApiError } from '../../services/apiClient'
+import { listarPrecificacoes, type Precificacao } from '../pricing/precificacoesService'
 import type { ListPreset } from '../pricing/listPreset'
-import { AttentionPanel } from './components/AttentionPanel'
-import { KpiCard } from './components/KpiCard'
-import { MarginChart } from './components/MarginChart'
-import { PolicyMeter } from './components/PolicyMeter'
-import { RecentPricings } from './components/RecentPricings'
-import { StatusOverview } from './components/StatusOverview'
-import { indicadores } from './dashboard.data'
 import './dashboard.css'
 
 type Props = {
@@ -16,6 +11,15 @@ type Props = {
   onNewPricing: () => void
   onOpenList: (preset?: ListPreset) => void
 }
+
+const statusLabel: Record<Precificacao['status'], string> = {
+  em_preenchimento: 'Em preenchimento',
+  em_aprovacao: 'Em aprovação',
+  aprovado: 'Aprovado',
+  reprovado: 'Reprovado',
+}
+const statusOrder: Precificacao['status'][] = ['em_preenchimento', 'em_aprovacao', 'aprovado', 'reprovado']
+const dataHora = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
 
 function saudacao(agora = new Date()) {
   const hora = agora.getHours()
@@ -28,34 +32,52 @@ function hoje() {
 }
 
 export function Dashboard({ nome, canCreate, onNewPricing, onOpenList }: Props) {
-  const kpi = indicadores()
+  const [items, setItems] = useState<Precificacao[]>([])
+  const [carregando, setCarregando] = useState(true)
+  const [erro, setErro] = useState<string | null>(null)
   const primeiroNome = nome.split(/\s+/)[0]
+
+  useEffect(() => {
+    let vigente = true
+    listarPrecificacoes().then((lista) => { if (vigente) setItems(lista) })
+      .catch((falha: unknown) => {
+        if (vigente) setErro(falha instanceof ApiError ? falha.message : 'Não foi possível carregar os dados da carteira.')
+      }).finally(() => { if (vigente) setCarregando(false) })
+    return () => { vigente = false }
+  }, [])
+
+  const contagem = Object.fromEntries(statusOrder.map((status) => [status, items.filter((item) => item.status === status).length])) as Record<Precificacao['status'], number>
 
   return <section className="content dash">
     <header className="dash-intro">
       <div>
         <span className="dash-data">{hoje()}</span>
         <h2>{saudacao()}, {primeiroNome}</h2>
-        <p>Rentabilidade da carteira, o que espera decisão e o que mudou por último. Clique em qualquer número para ver os cenários por trás dele.</p>
+        <p>Resumo das precificações persistidas na sua carteira.</p>
       </div>
       {canCreate && <button className="button primary" type="button" onClick={onNewPricing}><Icon name="mais" size={16} /> Nova precificação</button>}
     </header>
 
-    <div className="dash-kpis">
-      <KpiCard titulo={<><Sigla termo="MaCo" /> média do mês</>} indicador={kpi.maco} onAbrir={onOpenList}
-        destaque={<PolicyMeter maco={kpi.maco.numero} />} />
-      <KpiCard titulo="Cenários no mês" indicador={kpi.cenarios} onAbrir={onOpenList} />
-      <KpiCard titulo="Aguardando aprovação" indicador={kpi.aprovacao} onAbrir={onOpenList} />
-      <KpiCard titulo={<><Sigla termo="ROB" /> aprovada</>} indicador={kpi.rob} onAbrir={onOpenList} />
-    </div>
-
-    <div className="dash-grade">
-      <MarginChart />
-      <AttentionPanel onAbrir={onOpenList} />
-      <StatusOverview onAbrir={onOpenList} />
-      <RecentPricings onAbrir={onOpenList} />
-    </div>
-
-    <p className="dash-rodape"><span className="notice-dot" />Dados de demonstração: os indicadores passam a ser reais quando o cálculo de precificação estiver integrado.</p>
+    {erro && <p className="catalog-error" role="alert">{erro}</p>}
+    {carregando ? <p role="status">Carregando precificações…</p> : <>
+      <div className="dash-real-kpis" aria-label="Contagem real de precificações">
+        {statusOrder.map((status) => <button className="dash-real-card" key={status} type="button" onClick={() => onOpenList({ status })}>
+          <span>{statusLabel[status]}</span><strong>{contagem[status]}</strong>
+        </button>)}
+      </div>
+      <section className="form-card dash-real-list">
+        <div className="list-card-heading"><div><h3>Precificações atualizadas recentemente</h3><p>Dados retornados pela API.</p></div>
+          <button className="link-acao" type="button" onClick={() => onOpenList({})}>Ver todas <Icon name="seta" size={14} /></button>
+        </div>
+        {items.length === 0 ? <div className="empty-list"><h3>Nenhuma precificação encontrada</h3><p>Quando houver registros na sua carteira, eles aparecerão aqui.</p></div> :
+          <div className="table-scroll"><table className="pricing-table"><thead><tr><th>Código</th><th>Cliente</th><th>Produto</th><th>Status</th><th>Atualizada</th></tr></thead><tbody>
+            {items.slice(0, 8).map((item) => <tr key={item.id}>
+              <th scope="row" className="code-cell">{item.codigo}</th><td>{item.cliente?.razao_social ?? item.cliente_id}</td>
+              <td>{item.produto?.descricao ?? item.produto_id}</td><td>{statusLabel[item.status]}</td>
+              <td>{dataHora.format(new Date(item.updated_at))}</td>
+            </tr>)}
+          </tbody></table></div>}
+      </section>
+    </>}
   </section>
 }

@@ -4,6 +4,12 @@
    o que é clicável reage ao mouse (eleva e mostra a seta). */
 
 .dash { --ease: cubic-bezier(.2,.7,.2,1); --card-borda: color-mix(in srgb, var(--line) 70%, transparent); display: grid; gap: 22px; }
+.dash-real-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+.dash-real-card { display: grid; gap: 12px; padding: 20px; border: 1px solid var(--card-borda); border-radius: 14px; background: var(--surface); color: var(--text); text-align: left; cursor: pointer; }
+.dash-real-card:hover, .dash-real-card:focus-visible { border-color: var(--brand-light); outline: none; }
+.dash-real-card span { color: var(--text-2); font-size: 13px; }
+.dash-real-card strong { font: 600 30px var(--f-titulo); }
+.dash-real-list .list-card-heading p { margin: 4px 0 0; color: var(--text-3); font-size: 12.5px; }
 
 /* ── Abertura ── */
 .dash-intro { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; animation: dash-entra .5s var(--ease) both; }
@@ -178,10 +184,11 @@
 }
 
 @media (max-width: 1250px) { .dash-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 900px) { .dash-real-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 1050px) { .dash-grade { grid-template-columns: 1fr; grid-template-areas: "grafico" "atencao" "status" "recentes"; } }
 @media (max-width: 620px) {
   .dash-intro { align-items: flex-start; flex-direction: column; }
-  .dash-kpis, .status-lista { grid-template-columns: 1fr; }
+  .dash-kpis, .dash-real-kpis, .status-lista { grid-template-columns: 1fr; }
   .dash-card-cabecalho { flex-direction: column; }
   .legenda { justify-content: flex-start; }
 }

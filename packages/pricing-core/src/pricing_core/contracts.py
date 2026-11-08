@@ -42,12 +42,12 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from decimal import Decimal
 from enum import Enum
-from typing import Annotated
+from typing import Annotated, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, PlainSerializer, model_validator
 
-ENGINE_CONTRACT_VERSION = "0.2.0"
+ENGINE_CONTRACT_VERSION = "0.3.0"
 
 DecimalComoString = Annotated[
     Decimal,
@@ -75,6 +75,9 @@ class ItemInsumo(BaseModel):
 
     codigo: str = Field(..., min_length=1, description="Código do insumo no cadastro mestre (RF03)")
     descricao: str | None = None
+    origem_material: Literal["fabricante", "cliente"] | None = Field(
+        default=None, description="Origem informada no editor; o motor atual aceita apenas uma origem global"
+    )
     preco_negociado: DecimalComoString = Field(..., ge=0, description="PrecoNeg — preço cotado, na moeda de origem")
     moeda: str = Field("BRL", min_length=3, max_length=3, description="Código ISO da moeda da cotação")
     cambio: DecimalComoString = Field(Decimal("1"), gt=0, description="Câmbio da moeda de origem para BRL")
@@ -146,6 +149,15 @@ class CalculateRequest(BaseModel):
     def _exige_ao_menos_um_insumo(self) -> CalculateRequest:
         if not self.materiais_primas and not self.embalagens:
             raise ValueError("informe ao menos um item em materiais_primas ou embalagens")
+        origens = {item.origem_material for item in (*self.materiais_primas, *self.embalagens) if item.origem_material}
+        if len(origens) > 1:
+            raise ValueError("o motor real ainda não suporta origens de material diferentes no mesmo cenário")
+        if origens == {"cliente"} and not self.material_fornecido_pelo_cliente:
+            raise ValueError("marque material_fornecido_pelo_cliente para itens cuja origem seja cliente")
+        if origens == {"fabricante"} and self.material_fornecido_pelo_cliente:
+            raise ValueError("a origem dos itens e material_fornecido_pelo_cliente não correspondem")
+        if self.material_fornecido_pelo_cliente and "valor_material_cliente" not in self.model_fields_set:
+            raise ValueError("informe valor_material_cliente para calcular material fornecido pelo cliente")
         return self
 
 
@@ -166,6 +178,10 @@ class CalculateMetadata(BaseModel):
     versao_motor: str = ENGINE_CONTRACT_VERSION
     calculado_em: datetime = Field(default_factory=lambda: datetime.now(UTC))
     is_mock: bool = Field(..., description="Indica se o resultado foi produzido por um mock ou pelo motor real")
+    origem: Literal["pricing_core", "demonstracao"] = "pricing_core"
+    classificacao: Literal["real", "parcialmente_simulado", "inteiramente_simulado"] = "real"
+    parametros_simulados: list[str] = Field(default_factory=list)
+    dados_recebidos_nao_verificados: bool = False
 
 
 class CalculateResponse(BaseModel):
@@ -198,6 +214,19 @@ class CalculateResponse(BaseModel):
     isencao_mao_de_obra: IsencaoMaoDeObraInfo
     impostos_destacados: ImpostosDestacados
 
+    metadata: CalculateMetadata
+
+
+class CalculateResponseSemCustos(BaseModel):
+    """Resposta de cálculo para quem pode consultar preços, mas não custos."""
+
+    preco_bruto_sem_ipi_sem_encargo: DecimalComoString
+    preco_bruto_sem_ipi: DecimalComoString
+    preco_bruto_com_ipi: DecimalComoString
+    preco_bruto: DecimalComoString
+    preco_indicado: DecimalComoString
+    receita_operacional_liquida: DecimalComoString
+    impostos_destacados: ImpostosDestacados
     metadata: CalculateMetadata
 
 
