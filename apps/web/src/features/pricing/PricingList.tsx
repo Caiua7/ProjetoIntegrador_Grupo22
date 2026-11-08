@@ -6,17 +6,22 @@ import type { ListPreset } from './listPreset'
 import ScenarioHistoryPanel from './ScenarioHistoryPanel'
 import { registrarDecisao, type DecisaoAprovacao } from './aprovacoesService'
 
-type Props = { onNewPricing: () => void, preset?: ListPreset, canViewCost: boolean, canEdit: boolean, canApprove: boolean }
+type Props = { onNewPricing: () => void, preset?: ListPreset, canViewCost: boolean, canEdit: boolean, canApprove: boolean,
+  canReadCatalog: boolean, canReadCambio: boolean, canReadParametros: boolean, canReadImpostos: boolean }
 const statusLabel: Record<Precificacao['status'], string> = {
   em_preenchimento: 'Em preenchimento', em_aprovacao: 'Em aprovação', aprovado: 'Aprovado', reprovado: 'Reprovado',
 }
 const dataHora = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
 
-function PricingList({ onNewPricing, canViewCost, canEdit, canApprove }: Props) {
+function PricingList({ onNewPricing, preset, canViewCost, canEdit, canApprove, canReadCatalog, canReadCambio, canReadParametros, canReadImpostos }: Props) {
   const [items, setItems] = useState<Precificacao[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [status, setStatus] = useState<'all' | Precificacao['status']>('all')
+  const statusPreset: Record<string, 'all' | Precificacao['status']> = {
+    all: 'all', draft: 'em_preenchimento', approval: 'em_aprovacao', approved: 'aprovado', rejected: 'reprovado',
+    em_preenchimento: 'em_preenchimento', em_aprovacao: 'em_aprovacao', aprovado: 'aprovado', reprovado: 'reprovado',
+  }
+  const [status, setStatus] = useState<'all' | Precificacao['status']>(statusPreset[preset?.status ?? 'all'] ?? 'all')
   const [cenarioPrecificacao, setCenarioPrecificacao] = useState<Precificacao | null>(null)
   const [decisaoPrecificacao, setDecisaoPrecificacao] = useState<Precificacao | null>(null)
   const [decisao, setDecisao] = useState<DecisaoAprovacao>('aprovado')
@@ -53,8 +58,9 @@ function PricingList({ onNewPricing, canViewCost, canEdit, canApprove }: Props) 
     <section className="form-card pricing-list-card"><div className="list-card-heading"><div><span className="heading-icon" aria-hidden="true"><Icon name="precificacoes" size={16} /></span><h3>Precificações</h3></div><span className="list-scope">Dados da API</span></div>
       {loading ? <div className="empty-list" role="status">Carregando precificações…</div> : rows.length ? <div className="table-scroll" role="region" aria-label="Precificações persistidas" tabIndex={0}><table className="pricing-table"><thead><tr><th>Código</th><th>Cliente</th><th>Produto</th><th>Modalidade</th><th>Destino</th><th>Frete</th><th>Regime</th><th>Status</th><th>Atualizada</th><th>Cenários</th>{canApprove && <th>Decisão</th>}</tr></thead><tbody>{rows.map((item) => <tr key={item.id}><th scope="row" className="code-cell">{item.codigo}</th><td>{item.cliente?.razao_social ?? item.cliente_id}</td><td>{item.produto?.descricao ?? item.produto_id}</td><td>{item.modalidade_comercial}</td><td>{item.uf_destino ?? '—'}</td><td>{item.frete?.toUpperCase() ?? '—'}</td><td>{item.regime_tributario?.replaceAll('_', ' ') ?? '—'}</td><td>{statusLabel[item.status]}</td><td>{dataHora.format(new Date(item.updated_at))}</td><td><button className="button secondary" type="button" onClick={() => setCenarioPrecificacao(item)} aria-label={`Ver cenários da precificação ${item.codigo}`}>Ver cenários</button></td>{canApprove && <td>{item.status === 'em_aprovacao' && <button className="button secondary" type="button" onClick={() => { setDecisaoPrecificacao(item); setDecisao('aprovado'); setComentario(''); setErroDecisao(null) }}>Decidir</button>}</td>}</tr>)}</tbody></table></div> : <div className="empty-list" role="status"><h3>{items.length ? 'Nenhuma precificação neste status' : 'Nenhuma precificação encontrada'}</h3><p>{items.length ? 'Escolha outro status para consultar os registros.' : 'Crie uma precificação para começar.'}</p><button className="button secondary" type="button" onClick={onNewPricing}>Nova precificação</button></div>}
     </section>
-    {cenarioPrecificacao && <ScenarioHistoryPanel key={cenarioPrecificacao.id} precificacaoId={cenarioPrecificacao.id} codigo={cenarioPrecificacao.codigo}
-      canViewCost={canViewCost} canEdit={canEdit} onClose={() => setCenarioPrecificacao(null)} />}
+    {cenarioPrecificacao && <ScenarioHistoryPanel key={cenarioPrecificacao.id} precificacaoId={cenarioPrecificacao.id} codigo={cenarioPrecificacao.codigo} precificacao={cenarioPrecificacao}
+      canViewCost={canViewCost} canEdit={canEdit} canReadCatalog={canReadCatalog} canReadCambio={canReadCambio} canReadParametros={canReadParametros} canReadImpostos={canReadImpostos}
+      onClose={() => setCenarioPrecificacao(null)} />}
     {decisaoPrecificacao && <section className="form-card scenario-detail" aria-label={`Registrar decisão de ${decisaoPrecificacao.codigo}`}>
       <div className="list-card-heading"><h3>Decisão de {decisaoPrecificacao.codigo}</h3><button className="button secondary" type="button" onClick={() => setDecisaoPrecificacao(null)}>Fechar</button></div>
       <label className="field">Decisão<select value={decisao} onChange={(event) => setDecisao(event.target.value as DecisaoAprovacao)}><option value="aprovado">Aprovar</option><option value="reprovado">Reprovar</option></select></label>

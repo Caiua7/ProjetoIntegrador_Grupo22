@@ -107,7 +107,7 @@ def listar_precificacoes(
     consulta = (
         _cliente(usuario)
         .table("precificacao")
-        .select("*,cliente(razao_social),produto(descricao)")
+        .select("*,cliente(razao_social),produto(descricao,ncm_codigo)")
         .order("updated_at", desc=True)
     )
     if status_filtro:

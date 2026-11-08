@@ -2,7 +2,14 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { ApiError } from '../../services/apiClient'
 import { arredondarCentavos } from './centavos'
 import { calcularCenario } from './calculateService'
-import type { CalculateRequest, CalculateResponse } from '../../types/calculate.generated'
+import type { CalculateRequest, CalculateResponseAutorizada } from '../../types/calculate.generated'
+import type { Precificacao } from './precificacoesService'
+import { obterInsumo } from '../cadastros/insumosService'
+import { obterFormulacao } from './formulacoesService'
+import { resolverCotacao } from './cotacoesService'
+import { multiplicarDecimais } from './decimalMath'
+import { consultarCambioVigente, consultarParametrosVigentes } from '../parametros/parametrosService'
+import { resolverAliquota } from '../taxes/taxRatesService'
 import {
   compararCenarios,
   consultarCenario,
@@ -17,8 +24,13 @@ import {
 type Props = {
   precificacaoId: string
   codigo: string
+  precificacao?: Precificacao
   canViewCost: boolean
   canEdit: boolean
+  canReadCatalog: boolean
+  canReadCambio: boolean
+  canReadParametros: boolean
+  canReadImpostos: boolean
   onClose: () => void
 }
 
@@ -44,6 +56,12 @@ function percentual(value: string | null, variacao = false): string {
     : `${digits.slice(0, point).replace(/^0+(?=\d)/, '')}.${digits.slice(point)}`
   return `${decimal(`${sign}${shifted}`)}${variacao ? ' p.p.' : '%'}`
 }
+const TAX_FIELDS = ['pis_percentual', 'cofins_percentual', 'icms_percentual', 'ipi_percentual', 'icms_interno_percentual', 'fcp_percentual', 'mva_percentual'] as const
+const isRecord = (value: unknown): value is Record<string, unknown> => Boolean(value && typeof value === 'object' && !Array.isArray(value))
+function dataLocalISO(): string {
+  const agora = new Date()
+  return `${agora.getFullYear()}-${String(agora.getMonth() + 1).padStart(2, '0')}-${String(agora.getDate()).padStart(2, '0')}`
+}
 const linhasRentabilidade = [
   ['receita_operacional_bruta', 'ROB', 'Receita operacional bruta: preço sem IPI × volume'],
   ['deducoes', 'Deduções', 'PIS, COFINS e ICMS sobre a receita'],
@@ -53,7 +71,7 @@ const linhasRentabilidade = [
 ] as const
 const sentido: Record<string, string> = { subiu: 'Subiu', desceu: 'Desceu', igual: 'Sem variação', sem_base: 'Sem base' }
 
-function ScenarioHistoryPanel({ precificacaoId, codigo, canViewCost, canEdit, onClose }: Props) {
+function ScenarioHistoryPanel({ precificacaoId, codigo, precificacao, canViewCost, canEdit, canReadCatalog, canReadCambio, canReadParametros, canReadImpostos, onClose }: Props) {
   const [versoes, setVersoes] = useState<CenarioResumo[]>([])
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState<string | null>(null)
@@ -72,15 +90,186 @@ function ScenarioHistoryPanel({ precificacaoId, codigo, canViewCost, canEdit, on
   const [observacao, setObservacao] = useState('')
   const [simulando, setSimulando] = useState(false)
   const [salvandoCenario, setSalvandoCenario] = useState(false)
-  const [resultadoSimulacao, setResultadoSimulacao] = useState<CalculateResponse | null>(null)
+  const [resultadoSimulacao, setResultadoSimulacao] = useState<CalculateResponseAutorizada | null>(null)
   const [erroSimulacao, setErroSimulacao] = useState<string | null>(null)
   const [entradaCalculada, setEntradaCalculada] = useState<CalculateRequest | null>(null)
+  const [preparando, setPreparando] = useState(false)
+  const [pendenciasPreparacao, setPendenciasPreparacao] = useState<string[]>([])
+
+  async function prepararEntrada() {
+    setPreparando(true); setErroSimulacao(null); setPendenciasPreparacao([])
+    const pendencias: string[] = []
+    let manual: Record<string, unknown> = {}
+    try {
+      const texto = entradaJson.trim()
+      if (texto) {
+        const parseado: unknown = JSON.parse(texto)
+        if (!parseado || typeof parseado !== 'object' || Array.isArray(parseado)) throw new Error('A entrada atual precisa ser um objeto JSON.')
+        manual = parseado as Record<string, unknown>
+      }
+      if (!precificacao) pendencias.push('Cabeçalho da precificação não disponível nesta tela.')
+      const candidato: Record<string, unknown> = { ...manual }
+      if (precificacao?.uf_destino) candidato.cliente_uf = precificacao.uf_destino
+      else if (!candidato.cliente_uf) pendencias.push('UF de destino (cliente_uf).')
+      if (precificacao?.modalidade_comercial) candidato.modalidade_comercial = precificacao.modalidade_comercial
+      else if (!candidato.modalidade_comercial) pendencias.push('Modalidade comercial.')
+      if (precificacao?.regime_tributario) candidato.regime_tributario = precificacao.regime_tributario
+      else if (!candidato.regime_tributario) pendencias.push('Regime tributário do cliente.')
+
+      let formulario: Awaited<ReturnType<typeof obterFormulacao>> | null = null
+      if (precificacao?.produto_id) {
+        try { formulario = await obterFormulacao(precificacao.produto_id) }
+        catch (falha) { pendencias.push(`Formulação do produto: ${falha instanceof ApiError ? falha.message : 'não foi possível consultar.'}`) }
+      } else pendencias.push('Produto associado à precificação.')
+
+      const materiais: Record<string, unknown>[] = []
+      const embalagens: Record<string, unknown>[] = []
+      if (formulario) {
+        for (const item of formulario.itens) {
+          const isMateria = item.tipo_insumo === 'materia_prima'
+          const id = isMateria ? item.materia_prima_id : item.embalagem_id
+          if (!id || !canReadCatalog) {
+            pendencias.push(`${isMateria ? 'Código' : 'Código'} do insumo ${id ?? '(sem referência)'}.`)
+            continue
+          }
+          let insumo
+          try { insumo = await obterInsumo(isMateria ? 'materias-primas' : 'embalagens', id) }
+          catch (falha) { pendencias.push(`Dados do insumo ${id}: ${falha instanceof ApiError ? falha.message : 'não foi possível consultar.'}`); continue }
+          const listaManual = isMateria ? manual.materiais_primas : manual.embalagens
+          const itemManual = Array.isArray(listaManual) ? listaManual.find((linha) => isRecord(linha) && linha.codigo === insumo.codigo) : undefined
+          const entradaItem: Record<string, unknown> = { ...(isRecord(itemManual) ? itemManual : {}), codigo: insumo.codigo, descricao: insumo.descricao, quantidade: item.quantidade }
+          if (isMateria) {
+            entradaItem.margem_seguranca_percentual ??= ''
+            if (canViewCost && item.unidade_medida === 'kg' && insumo.unidade_medida === 'kg' && volume) {
+              try {
+                const cotacao = await resolverCotacao(id, multiplicarDecimais(item.quantidade, volume))
+                entradaItem.preco_negociado = cotacao.preco
+                entradaItem.moeda = cotacao.moeda
+                if (cotacao.moeda === 'BRL') entradaItem.cambio = '1'
+                else if (canReadCambio) entradaItem.cambio = (await consultarCambioVigente(cotacao.moeda)).taxa_com_margem
+                else { entradaItem.cambio = ''; pendencias.push(`Câmbio vigente de ${cotacao.moeda} para ${insumo.codigo}; falta a permissão cambio.ler.`) }
+              } catch (falha) {
+                entradaItem.preco_negociado ??= ''
+                entradaItem.moeda ??= ''
+                entradaItem.cambio ??= ''
+                pendencias.push(`Cotação de ${insumo.codigo}: ${falha instanceof ApiError ? falha.message : 'não foi possível resolver; verifique vigência, volume e fornecedor.'}`)
+              }
+            } else if (!canViewCost) {
+              entradaItem.preco_negociado ??= ''; entradaItem.moeda ??= ''; entradaItem.cambio ??= ''
+              pendencias.push(`Preço de compra de ${insumo.codigo}; cotação exige custo.ler.`)
+            } else if (item.unidade_medida !== 'kg' || insumo.unidade_medida !== 'kg') {
+              entradaItem.preco_negociado ??= ''; entradaItem.moeda ??= ''; entradaItem.cambio ??= ''
+              pendencias.push(`Cotação de ${insumo.codigo}; unidade da formulação deve corresponder à unidade de volume suportada pela cotação.`)
+            } else {
+              entradaItem.preco_negociado ??= ''; entradaItem.moeda ??= ''; entradaItem.cambio ??= ''
+              pendencias.push(`Cotação de ${insumo.codigo}; informe o volume negociado para resolver a faixa.`)
+            }
+            materiais.push(entradaItem)
+          } else {
+            entradaItem.preco_negociado ??= ''
+            entradaItem.moeda ??= ''
+            entradaItem.cambio ??= ''
+            entradaItem.margem_seguranca_percentual ??= ''
+            entradaItem.percentual_descarte ??= ''
+            embalagens.push(entradaItem)
+            pendencias.push(`Preço negociado da embalagem ${insumo.codigo}; a API de cotações não oferece cotação de embalagens.`)
+            pendencias.push(`Descarte da embalagem ${insumo.codigo}; a formulação armazena perda percentual, cujo mapeamento para percentual_descarte precisa ser confirmado.`)
+          }
+        }
+      }
+      if (formulario) {
+        candidato.materiais_primas = materiais
+        candidato.embalagens = embalagens
+      }
+
+      const comerciais = manual.comercial && typeof manual.comercial === 'object' && !Array.isArray(manual.comercial) ? manual.comercial as Record<string, unknown> : {}
+      const impostosManuais = manual.impostos && typeof manual.impostos === 'object' && !Array.isArray(manual.impostos) ? manual.impostos as Record<string, unknown> : {}
+      const comercial: Record<string, unknown> = { ...comerciais }
+      let impostos: Record<string, unknown> = { ...impostosManuais }
+      if (canReadParametros) {
+        try {
+          const vigentes = await consultarParametrosVigentes()
+          const perda = vigentes.parametros.perda_percentual?.valor
+          const taxa = vigentes.parametros.taxa_financeira_mensal_percentual?.valor
+          const prazo = vigentes.parametros.prazo_medio_padrao_dias?.valor
+          if (perda) candidato.perda_percentual = perda
+          if (taxa) comercial.taxa_financeira_mensal_percentual = taxa
+          if (prazo) comercial.prazo_medio_dias = prazo
+          for (const codigo of ['perda_percentual', 'taxa_financeira_mensal_percentual', 'prazo_medio_padrao_dias'] as const) {
+            if (vigentes.faltando.includes(codigo)) pendencias.push(`Parâmetro global sem vigência: ${codigo}.`)
+          }
+        } catch (falha) { pendencias.push(`Parâmetros globais: ${falha instanceof ApiError ? falha.message : 'não foi possível consultar.'}`) }
+      } else pendencias.push('Parâmetros globais; falta a permissão parametro_global.ler.')
+      for (const [campo, label] of [
+        ['taxa_financeira_mensal_percentual', 'Taxa financeira mensal'], ['prazo_medio_dias', 'Prazo médio'],
+      ] as const) {
+        if (comercial[campo] == null || comercial[campo] === '') {
+          comercial[campo] = ''
+          pendencias.push(`${label}; informe o valor global vigente ou o valor aprovado para o cenário.`)
+        }
+      }
+
+      const ncm = precificacao?.produto?.ncm_codigo
+      if (canReadImpostos && precificacao?.uf_destino && precificacao.regime_tributario && ncm) {
+        try {
+          const aliquota = await resolverAliquota({ uf_destino: precificacao.uf_destino, ncm_codigo: ncm, regime_tributario: precificacao.regime_tributario, data_referencia: dataLocalISO() })
+          impostos = {
+            ...impostos,
+            pis_percentual: aliquota.pis_percentual,
+            cofins_percentual: aliquota.cofins_percentual,
+            icms_percentual: aliquota.icms_percentual,
+            ipi_percentual: aliquota.ipi_percentual,
+            icms_interno_percentual: aliquota.icms_interno_percentual,
+            fcp_percentual: aliquota.fcp_percentual,
+            mva_percentual: aliquota.mva_percentual,
+          }
+        } catch (falha) { pendencias.push(`Alíquota de venda: ${falha instanceof ApiError ? falha.message : 'não foi possível resolver para UF, NCM e regime.'}`) }
+      } else pendencias.push('NCM do produto, UF, regime e permissão parametro_fiscal.ler para resolver impostos de venda.')
+
+      const producaoManual = isRecord(manual.producao) ? manual.producao : {}
+      candidato.producao = {
+        taxa_mod: producaoManual.taxa_mod ?? '', taxa_ggf: producaoManual.taxa_ggf ?? '',
+        produtividade: producaoManual.produtividade ?? '', numero_funcionarios: producaoManual.numero_funcionarios ?? '',
+      }
+      for (const campo of ['taxa_mod', 'taxa_ggf', 'produtividade', 'numero_funcionarios']) {
+        if (producaoManual[campo] == null || producaoManual[campo] === '') pendencias.push(`Parâmetro de produção ${campo}; não há API cadastrada para esse campo.`)
+      }
+      for (const campo of ['margem_desejada_percentual', 'comissao_percentual', 'frete_percentual']) {
+        if (comercial[campo] == null || comercial[campo] === '') {
+          comercial[campo] = ''
+          const label = campo === 'margem_desejada_percentual' ? 'Margem desejada' : campo === 'comissao_percentual' ? 'Comissão percentual' : 'Frete percentual (o cabeçalho só informa CIF/FOB)'
+          pendencias.push(`${label}; não há valor correspondente no cabeçalho nem parâmetro vigente.`)
+        }
+      }
+      for (const campo of TAX_FIELDS) if (impostos[campo] == null || impostos[campo] === '') impostos[campo] = ''
+      for (const campo of TAX_FIELDS) if (impostos[campo] === '') pendencias.push(`Alíquota ${campo}; não foi resolvida automaticamente.`)
+      if (candidato.perda_percentual == null || candidato.perda_percentual === '') candidato.perda_percentual = ''
+      if (candidato.material_fornecido_pelo_cliente == null) candidato.material_fornecido_pelo_cliente = ''
+      if (candidato.valor_material_cliente == null || candidato.valor_material_cliente === '') candidato.valor_material_cliente = ''
+      if (candidato.perda_percentual === '') pendencias.push('Perda percentual; informe a vigência global ou o valor aprovado para este cenário.')
+      if (candidato.material_fornecido_pelo_cliente === '') pendencias.push('Informe se há material fornecido pelo cliente; o formulário não presume false.')
+      if (candidato.valor_material_cliente === '') pendencias.push('Valor do material fornecido pelo cliente; o motor ainda recebe um valor global, não por matéria-prima.')
+
+      candidato.comercial = comercial
+      candidato.impostos = impostos
+      setEntradaJson(JSON.stringify(candidato, null, 2))
+      setPendenciasPreparacao([...new Set(pendencias)])
+    } catch (falha) {
+      setErroSimulacao(falha instanceof Error ? falha.message : 'Não foi possível preparar a entrada com as APIs disponíveis.')
+    } finally { setPreparando(false) }
+  }
 
   async function simular(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setErroSimulacao(null); setResultadoSimulacao(null); setEntradaCalculada(null); setSimulando(true)
     try {
-      const entrada = JSON.parse(entradaJson) as CalculateRequest
+      const campos = JSON.parse(entradaJson) as Partial<CalculateRequest>
+      const entrada = {
+        ...campos,
+        ...(precificacao?.uf_destino ? { cliente_uf: precificacao.uf_destino } : {}),
+        ...(precificacao?.modalidade_comercial ? { modalidade_comercial: precificacao.modalidade_comercial } : {}),
+        ...(precificacao?.regime_tributario ? { regime_tributario: precificacao.regime_tributario } : {}),
+      } as CalculateRequest
       const resposta = await calcularCenario(entrada)
       setResultadoSimulacao(resposta)
       setEntradaCalculada(entrada)
@@ -181,9 +370,12 @@ function ScenarioHistoryPanel({ precificacaoId, codigo, canViewCost, canEdit, on
     <div className="list-card-heading"><div><span className="heading-icon" aria-hidden="true">◷</span><h3 id="scenario-history-title">Cenários de {codigo}</h3></div><button className="button secondary" type="button" onClick={onClose}>Fechar</button></div>
     {canEdit && <section className="scenario-simulation" aria-label="Simular com o motor de precificação">
       <h4>Nova simulação</h4>
-      <p className="field-hint">Informe a entrada completa conforme o contrato de <code>POST /calculate</code>. Os valores são enviados à API; nenhum cálculo é feito no navegador.</p>
+      {precificacao && <p className="field-hint">UF de destino, modalidade comercial e regime tributário serão preenchidos do cabeçalho salvo. {precificacao.uf_destino ? `UF: ${precificacao.uf_destino}. ` : 'UF de destino ausente no cabeçalho. '}{precificacao.modalidade_comercial} · {precificacao.regime_tributario ?? 'regime ausente'}.</p>}
+      <p className="field-hint">Complete os demais campos de <code>CalculateRequest</code>. A formulação não contém preços unitários; embalagens não têm endpoint de cotação; e faltam parâmetros de produção, NCM do produto, margem desejada, comissão e frete percentual. Os valores são enviados à API; nenhum cálculo é feito no navegador.</p>
+      <button className="button secondary" type="button" disabled={preparando || simulando || salvandoCenario} onClick={() => { void prepararEntrada() }}>{preparando ? 'Consultando APIs…' : 'Preparar entrada com dados existentes'}</button>
+      {pendenciasPreparacao.length > 0 && <div className="catalog-error" role="status"><strong>Informações que ainda precisam ser preenchidas ou resolvidas:</strong><ul>{pendenciasPreparacao.map((item) => <li key={item}>{item}</li>)}</ul></div>}
       <form onSubmit={(event) => { void simular(event) }}>
-        <label className="field">Entrada JSON<textarea rows={12} required value={entradaJson} onChange={(event) => setEntradaJson(event.target.value)} placeholder="Cole aqui o objeto CalculateRequest com materiais_primas, embalagens, producao, impostos e comercial." /></label>
+        <label className="field">Demais campos da entrada JSON<textarea rows={12} required value={entradaJson} onChange={(event) => setEntradaJson(event.target.value)} placeholder="Informe materiais_primas, embalagens, perda_percentual, origem/valor de material do cliente, producao, impostos e comercial. O cabeçalho é aplicado automaticamente quando disponível." /></label>
         <div className="scenario-compare-controls">
           <label className="field">Volume negociado (opcional)<input inputMode="decimal" value={volume} onChange={(event) => setVolume(event.target.value)} /></label>
           <label className="field">Observação (opcional)<input maxLength={500} value={observacao} onChange={(event) => setObservacao(event.target.value)} /></label>
@@ -195,10 +387,12 @@ function ScenarioHistoryPanel({ precificacaoId, codigo, canViewCost, canEdit, on
         {resultadoSimulacao.metadata.is_mock && <p className="catalog-error" role="status">A API identificou este resultado como mock. Ele não será tratado como resultado real nem poderá ser salvo.</p>}
         <p className="field-hint">Motor {resultadoSimulacao.metadata.versao_motor} · {resultadoSimulacao.metadata.is_mock ? 'demonstrativo' : 'resposta da API'}</p>
         <dl className="scenario-result-grid">{([
-          ['preco_bruto_sem_ipi_sem_encargo', 'PBsIPIsEncargo'], ['preco_bruto_sem_ipi', 'PBsIPI'], ['preco_bruto_com_ipi', 'PBcIPI'], ['preco_bruto', 'PB'], ['receita_operacional_liquida', 'ROL'], ['margem_contribuicao_valor', 'MaCo'],
-          ['custo_mp', 'Custo MP'], ['custo_embalagem', 'Custo embalagem'], ['custo_perda', 'Custo perda'], ['custo_mod', 'Custo MOD'], ['custo_ggf', 'Custo GGF'], ['custo_total', 'Custo total'],
+          ['preco_bruto_sem_ipi_sem_encargo', 'PBsIPIsEncargo'], ['preco_bruto_sem_ipi', 'PBsIPI'], ['preco_bruto_com_ipi', 'PBcIPI'], ['preco_bruto', 'PB'], ['receita_operacional_liquida', 'ROL'],
         ] as const).map(([key, label]) => <div key={key}><dt>{label}</dt><dd>{moeda(resultadoSimulacao[key])}</dd></div>)}
-          <div><dt>MaCo percentual</dt><dd>{percentual(resultadoSimulacao.margem_contribuicao_percentual)}</dd></div>
+          {canViewCost && 'custo_total' in resultadoSimulacao && <>{([
+            ['custo_mp', 'Custo MP'], ['custo_embalagem', 'Custo embalagem'], ['custo_perda', 'Custo perda'], ['custo_mod', 'Custo MOD'], ['custo_ggf', 'Custo GGF'], ['custo_total', 'Custo total'],
+          ] as const).map(([key, label]) => <div key={key}><dt>{label}</dt><dd>{moeda(resultadoSimulacao[key])}</dd></div>)}
+          <div><dt>MaCo</dt><dd>{moeda(resultadoSimulacao.margem_contribuicao_valor)}</dd></div><div><dt>MaCo percentual</dt><dd>{percentual(resultadoSimulacao.margem_contribuicao_percentual)}</dd></div></>}
         </dl>
         <div className="scenario-tax-list"><h4>Impostos destacados</h4>{Object.entries(resultadoSimulacao.impostos_destacados).map(([key, value]) => <p key={key}>{key.replaceAll('_', ' ')}: {moeda(value)}</p>)}</div>
         {!resultadoSimulacao.metadata.is_mock && <button className="button secondary" type="button" disabled={salvandoCenario} onClick={() => { void persistirSimulacao() }}>{salvandoCenario ? 'Salvando versão…' : 'Salvar como nova versão'}</button>}

@@ -4,6 +4,8 @@ import { listarInsumos, type Insumo, type TipoInsumo } from '../cadastros/insumo
 import { normalizarDecimal, perdaValida, quantidadeValida } from './decimalInput'
 import type { ConsultaInsumos } from '../cadastros/insumosQuery'
 import { listarProdutos, obterFormulacao, salvarFormulacao, type FormulacaoItem, type Produto, type TipoItem, type Unidade } from './formulacoesService'
+import { listarPrecificacoes, type Precificacao } from './precificacoesService'
+import ScenarioHistoryPanel from './ScenarioHistoryPanel'
 
 type Draft = Omit<FormulacaoItem, 'quantidade' | 'perda_percentual'> & { quantidade: string, perda_percentual: string }
 type ItemDraft = Draft
@@ -27,7 +29,9 @@ async function listarTodosInsumos(tipo: TipoInsumo): Promise<Insumo[]> {
   return registros
 }
 
-export function FormulationPage({ canEdit }: { canEdit: boolean }) {
+export function FormulationPage({ canEdit, canViewCost, canReadCatalog, canReadCambio, canReadParametros, canReadImpostos }: {
+  canEdit: boolean, canViewCost: boolean, canReadCatalog: boolean, canReadCambio: boolean, canReadParametros: boolean, canReadImpostos: boolean
+}) {
   const [produtos, setProdutos] = useState<Produto[]>([])
   const [materias, setMaterias] = useState<Insumo[]>([])
   const [embalagens, setEmbalagens] = useState<Insumo[]>([])
@@ -38,6 +42,8 @@ export function FormulationPage({ canEdit }: { canEdit: boolean }) {
   const [salvando, setSalvando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const [mensagem, setMensagem] = useState<string | null>(null)
+  const [precificacoes, setPrecificacoes] = useState<Precificacao[]>([])
+  const [precificacaoCenario, setPrecificacaoCenario] = useState<Precificacao | null>(null)
 
   useEffect(() => {
     let vigente = true
@@ -47,6 +53,13 @@ export function FormulationPage({ canEdit }: { canEdit: boolean }) {
         setProdutos(listaProdutos); setMaterias(listaMaterias); setEmbalagens(listaEmbalagens)
       }).catch((falha: unknown) => { if (vigente) setErro(falha instanceof Error ? falha.message : 'Não foi possível carregar produtos e insumos.') })
       .finally(() => { if (vigente) setCarregando(false) })
+    return () => { vigente = false }
+  }, [])
+
+  useEffect(() => {
+    let vigente = true
+    listarPrecificacoes().then((lista) => { if (vigente) setPrecificacoes(lista) })
+      .catch((falha: unknown) => { if (vigente) setErro(falha instanceof Error ? falha.message : 'Não foi possível carregar cenários relacionados.') })
     return () => { vigente = false }
   }, [])
 
@@ -65,6 +78,7 @@ export function FormulationPage({ canEdit }: { canEdit: boolean }) {
 
   const opcoes = (novo.tipo_insumo === 'materia_prima' ? materias : embalagens).filter((item) => item.ativo)
   const insumosPorId = useMemo(() => new Map([...materias, ...embalagens].map((item) => [item.id, item])), [materias, embalagens])
+  const precificacoesProduto = useMemo(() => precificacoes.filter((item) => item.produto_id === produtoId), [precificacoes, produtoId])
 
   function mudarTipo(tipo_insumo: TipoItem) { setNovo({ ...vazio(tipo_insumo) }) }
   function adicionar() {
@@ -111,6 +125,17 @@ export function FormulationPage({ canEdit }: { canEdit: boolean }) {
     </section>
 
     {produtoId && <>
+      {canViewCost && precificacoesProduto.length > 0 && <section className="form-card scenario-profitability">
+        <div className="list-card-heading"><div><h3>Rentabilidade de cenários salvos</h3><p>Resultados reais das precificações deste produto.</p></div>
+          <select aria-label="Abrir cenários salvos do produto" value={precificacaoCenario?.id ?? ''} onChange={(event) => setPrecificacaoCenario(precificacoesProduto.find((item) => item.id === event.target.value) ?? null)}>
+            <option value="">Selecione uma precificação</option>
+            {precificacoesProduto.map((item) => <option key={item.id} value={item.id}>{item.codigo} · {item.cliente?.razao_social ?? item.cliente_id}</option>)}
+          </select>
+        </div>
+      </section>}
+      {precificacaoCenario && <ScenarioHistoryPanel key={precificacaoCenario.id} precificacaoId={precificacaoCenario.id} codigo={precificacaoCenario.codigo} precificacao={precificacaoCenario}
+        canViewCost={canViewCost} canEdit={canEdit} canReadCatalog={canReadCatalog} canReadCambio={canReadCambio}
+        canReadParametros={canReadParametros} canReadImpostos={canReadImpostos} onClose={() => setPrecificacaoCenario(null)} />}
       {canEdit && <section className="form-card formulation-add">
         <div className="list-card-heading"><div><span className="heading-icon" aria-hidden="true">＋</span><h3>Adicionar componente</h3></div></div>
         <div className="formulation-add-grid">

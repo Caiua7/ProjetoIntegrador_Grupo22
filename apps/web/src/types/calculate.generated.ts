@@ -113,6 +113,20 @@ export interface CalculateResponse {
   metadata: CalculateMetadata;
 }
 
+/** Variante devolvida a usuÃ¡rios sem custo.ler; mantÃ©m preÃ§o e tributos destacados. */
+export type CalculateResponseSemCustos = Pick<CalculateResponse,
+  | "preco_bruto_sem_ipi_sem_encargo"
+  | "preco_bruto_sem_ipi"
+  | "preco_bruto_com_ipi"
+  | "preco_bruto"
+  | "preco_indicado"
+  | "receita_operacional_liquida"
+  | "impostos_destacados"
+  | "metadata"
+>;
+
+export type CalculateResponseAutorizada = CalculateResponse | CalculateResponseSemCustos;
+
 export type DomainErrorCodigo = "DENOMINADOR_INVALIDO" | "ENTRADA_INVALIDA";
 
 export interface DomainErrorResponse {

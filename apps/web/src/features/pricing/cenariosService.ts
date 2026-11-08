@@ -36,6 +36,10 @@ export type CenarioDetalhe = CenarioResumo & {
   rentabilidade: RentabilidadeCenario | null
 }
 
+export type CenarioSalvoSemCustos = Pick<CenarioResumo,
+  'id' | 'precificacao_id' | 'versao' | 'vigente' | 'volume' | 'data_calculo' | 'versao_motor' | 'preco_bruto' | 'preco_bruto_sem_ipi' | 'created_at'
+>
+
 export type NovaVersaoCenario = { entrada: CalculateRequest, volume?: string | null, observacao?: string | null }
 
 export type IndicadorCenario = {
@@ -71,6 +75,6 @@ export const duplicarCenario = (precificacaoId: string, versao: number) =>
   })
 
 export const salvarCenario = (precificacaoId: string, corpo: NovaVersaoCenario) =>
-  apiFetch<CenarioDetalhe>(caminhoSalvarCenario(precificacaoId), {
+  apiFetch<CenarioDetalhe | CenarioSalvoSemCustos>(caminhoSalvarCenario(precificacaoId), {
     method: 'POST', body: JSON.stringify(corpo),
   })

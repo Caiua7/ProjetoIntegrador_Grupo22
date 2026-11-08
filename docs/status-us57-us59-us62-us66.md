@@ -2,34 +2,28 @@
 
 ## #59 — integração do motor
 
-`POST /calculate` delega a `pricing_core.engine.calcular`, devolve `metadata.is_mock=false` e traduz `ErroDominioPricing` em HTTP 422 com código, mensagem e detalhes. A versão atual do contrato é `0.2.0`. O frontend agora permite enviar uma entrada `CalculateRequest` completa, exibe custos, PBsIPIsEncargo, PBsIPI, PBcIPI, PB, ROL, MaCo e impostos destacados; erros HTTP e JSON inválido aparecem junto ao formulário.
+`POST /calculate` exige autenticação e `precificacao.ler`, delega ao motor real e converte erros de domínio em HTTP 422. Sem `custo.ler`, a API devolve somente preços, ROL, impostos destacados e metadata; campos de custos, encargos, margem e denominadores internos são omitidos. A gravação do cenário também retorna uma projeção sem entrada, custos ou margens. Preços continuam disponíveis conforme a permissão de precificação.
 
-O resultado pode ser persistido como nova versão via `POST /precificacoes/{id}/cenarios`, que recalcula no backend e guarda entrada e resultado. Respostas marcadas `is_mock=true` são identificadas e não podem ser persistidas pelo fluxo da interface. Não há regra de cálculo no frontend.
-
-O motor ainda contém três premissas `TODO(PO)` e interpretação das bases de impostos destacados pendente de confirmação. A conformidade comercial exige homologação dos casos oficiais com o PO.
+`POST /precificacoes/{id}/cenarios` recalcula no backend e persiste a nova versão. A decisão de persistir usa `metadata.is_mock` do resultado produzido pelo motor no servidor, e não uma flag recebida do navegador; resultado mock é recusado com HTTP 409. Não foi necessária migração de banco. O motor ainda contém três premissas `TODO(PO)` e a interpretação das bases de impostos destacados precisa de homologação do PO.
 
 ## #57 — simulação
 
-A simulação real está conectada à API e pode gerar uma nova versão persistida, com volume e observação opcionais. O histórico existente recupera versões, resultados, impostos, custos e rentabilidade por volume.
+A tela pode preparar uma entrada a partir das APIs disponíveis, além de aceitar edição manual dos campos pendentes. Os mapeamentos automáticos são: UF, modalidade e regime do cabeçalho; itens e quantidades da formulação; NCM do produto; cotações de matéria-prima apenas quando unidade compatível, volume informado e resolvedor encontra uma cotação inequívoca; câmbio vigente para moedas estrangeiras; parâmetros globais de perda, taxa financeira e prazo; e alíquotas de venda resolvidas por UF, NCM e regime. O cálculo continua exclusivamente no motor e salvar cria nova versão com recálculo no backend.
 
-A composição automática da entrada ainda não é possível: o cabeçalho e a formulação não fornecem todos os valores de entrada do motor. O formulário recebe o objeto do contrato explicitamente até que exista um contrato que associe composição, cotações, parâmetros de produção e regras fiscais ao cenário.
+Permanecem pendentes: cotação/preço de embalagem; margem de segurança por item; parâmetros MOD, GGF, produtividade e funcionários; margem desejada, comissão e frete percentual; confirmação de como perda percentual da formulação se relaciona ao descarte de embalagem; informação sobre material fornecido pelo cliente e seu valor. O contrato atual não dá origem nem valor fornecido por item. Dados sem correspondência segura são deixados vazios e listados para preenchimento, sem valores presumidos. Permissões de leitura de custos, câmbio, parâmetros globais e fiscais condicionam o preenchimento dos respectivos dados.
 
 ## #62 — editor de formulação
 
-O editor lê e salva a formulação real do produto. Ele ainda não recalcula automaticamente: itens guardam quantidade e referência de insumo, mas não carregam cotação selecionada, câmbio, margem de segurança, origem fiscal individual nem dados de produção.
+O editor lê e salva a formulação real. Também permite abrir uma precificação existente para ver o histórico e a rentabilidade calculada pelo motor; custos e margens só são apresentados a quem tem `custo.ler`.
 
-`pricing_core.preco_liquido_mp` não participa do fluxo real. O motor chama `calcular_custo_mp` usando preço negociado, câmbio, margem de segurança e quantidade. A função de preço líquido exige alíquotas e flags de recuperação de crédito; o contrato `ItemInsumo` não possui essas informações, e as cotações não identificam por si só a recuperabilidade dos tributos. Integrá-la requer campos/regra homologada para alíquotas de compra e recuperação por fornecedor/origem. Não se deve inferir essas flags do regime do cliente.
-
-Para habilitar a origem por matéria-prima, o contrato do cenário precisa carregar origem e valor fornecido pelo cliente por item, além da política para a mesma matéria-prima variar por cliente. Hoje o motor só recebe `material_fornecido_pelo_cliente` e `valor_material_cliente` globais.
+`pricing_core.preco_liquido_mp` não participa do fluxo real. O motor usa preço negociado, câmbio, margem de segurança e quantidade. O contrato `ItemInsumo` não possui alíquotas de compra nem flags de recuperação de crédito. Integrar preço líquido exige definir alíquotas e recuperabilidade por fornecedor/origem; não se infere isso do regime tributário do cliente. Origem e valor de material fornecido pelo cliente também exigem extensão compatível do contrato e uma regra para variação por item.
 
 ## #66 — submissão para aprovação
 
-Ainda não há rota para transicionar `em_preenchimento` para `em_aprovacao`; a migração de decisões declara explicitamente que a submissão pertence à US35/#66. A interface não simula essa transição nem desbloqueia edição sem suporte do backend. A completude obrigatória também não está definida.
+Não há rota para transicionar `em_preenchimento` para `em_aprovacao`, e a completude obrigatória não está definida. A migração de decisões existente atribui a submissão à US35/#66. Não foi criada validação fictícia nem ação de submissão. A integração frontend/backend depende da rota e dos critérios de completude definidos pelo PO/backend. Aprovar e reprovar permanecem operações distintas e já conectadas para registros em aprovação; reprovar exige comentário.
 
-As decisões do PR #109 estão conectadas: usuários com `precificacao.aprovar` podem aprovar ou reprovar registros já `em_aprovacao`; reprovar exige comentário, e status/erros vêm do endpoint e da regra do banco.
+## Outras integrações e dados demonstrativos
 
-## Outras integrações e dados de demonstração
+Dashboard agora consulta precificações reais e mostra contagens por status e registros recentes. Gráficos, alertas e fixtures antigos não são renderizados. Não há endpoint agregado nem base autorizada suficiente para séries mensais, alertas de margem ou receita operacional bruta; esses indicadores não são apresentados como dados reais.
 
-As telas de câmbio/parâmetros, formulações, alíquotas, precificações e histórico usam endpoints reais disponíveis. Cotações têm endpoints reais de consulta, mas ainda não há tela de cotações conectada ao fluxo.
-
-Dashboard, alertas, gráficos e listas de atividade continuam usando fixtures em `pricingList.mock.ts` e `dashboard.data.ts`, porque não existe endpoint agregado correspondente. O código do dashboard identifica os dados como demonstração.
+Cotações podem alimentar preço de matéria-prima na simulação apenas pelo resolvedor existente, quando unidade, volume, vigência e resultado são inequívocos. Não há contrato de cotação de embalagem, e cotações não definem origem fiscal nem recuperabilidade de tributos. Parâmetros globais e alíquotas de venda são usados somente quando as APIs retornam dado vigente e o usuário tem a permissão de leitura correspondente.
