@@ -63,7 +63,7 @@ function AppShell() {
       {current === 'dashboard' && <Dashboard nome={usuario!.nome} canCreate={canOpen('new-pricing', hasPermission)}
         onNewPricing={() => setScreen('new-pricing')} onOpenList={openList} />}
       {current === 'pricing-list' && <PricingList key={listPreset.key} preset={listPreset.preset} onNewPricing={() => setScreen('new-pricing')}
-        canViewCost={hasPermission('custo.ler')} canEdit={hasPermission('precificacao.editar')} />}
+        canViewCost={hasPermission('custo.ler')} canEdit={hasPermission('precificacao.editar')} canApprove={hasPermission('precificacao.aprovar')} />}
       {current === 'new-pricing' && <PricingCreate onCancel={() => setScreen('pricing-list')} onCreated={() => setScreen('pricing-list')} />}
       {current === 'formulation' && <FormulationPage canEdit={hasPermission('precificacao.editar')} />}
       {current === 'records' && <InsumosPage canEdit={hasPermission('cadastro.editar')} />}
