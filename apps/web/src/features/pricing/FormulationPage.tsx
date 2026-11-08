@@ -130,7 +130,8 @@ export function FormulationPage({ canEdit, canViewCost, canReadCatalog, canReadC
       {produtoId && <p className="field-hint">{produtos.find((produto) => produto.id === produtoId)?.categoria}{produtos.find((produto) => produto.id === produtoId)?.peso_liquido_g ? ` · ${produtos.find((produto) => produto.id === produtoId)?.peso_liquido_g} g` : ''}</p>}
     </section>
 
-    {produtoId && <>
+    {produtoId && <div className="formulation-workspace">
+      <aside className="formulation-sidebar" aria-label="Rentabilidade e cenários relacionados">
       {precificacoesProduto.length > 0 && <section className="form-card scenario-profitability">
         <div className="list-card-heading"><div><h3>Rentabilidade de cenários salvos</h3><p>Resultados reais das precificações deste produto.</p></div>
           <select aria-label="Abrir cenários salvos do produto" value={precificacaoCenario?.id ?? ''} onChange={(event) => setPrecificacaoCenario(precificacoesProduto.find((item) => item.id === event.target.value) ?? null)}>
@@ -142,6 +143,8 @@ export function FormulationPage({ canEdit, canViewCost, canReadCatalog, canReadC
       {precificacaoCenario && <ScenarioHistoryPanel key={precificacaoCenario.id} precificacaoId={precificacaoCenario.id} codigo={precificacaoCenario.codigo} precificacao={precificacaoCenario}
         canViewCost={canViewCost} canEdit={canEdit} canReadCatalog={canReadCatalog} canReadCambio={canReadCambio}
         canReadParametros={canReadParametros} canReadImpostos={canReadImpostos} formulaRevision={formulaRevision} onClose={() => setPrecificacaoCenario(null)} />}
+      </aside>
+      <div className="formulation-editor">
       {canEdit && <section className="form-card formulation-add">
         <div className="list-card-heading"><div><span className="heading-icon" aria-hidden="true">＋</span><h3>Adicionar componente</h3></div></div>
         <div className="formulation-add-grid">
@@ -169,6 +172,7 @@ export function FormulationPage({ canEdit, canViewCost, canReadCatalog, canReadC
           </tbody></table></div>}
         {canEdit && <div className="catalog-form-actions"><button className="button primary" type="button" disabled={salvando || carregandoCatalogos || carregandoFormulacao} onClick={() => { void salvar() }}>{salvando ? 'Salvando…' : 'Salvar formulação'}</button></div>}
       </section>
-    </>}
+      </div>
+    </div>}
   </section>
 }
