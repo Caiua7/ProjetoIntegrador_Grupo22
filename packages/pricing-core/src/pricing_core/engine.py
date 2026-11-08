@@ -115,9 +115,7 @@ def calcular(entrada: CalculateRequest) -> CalculateResponse:
         )
 
         producao = entrada.producao
-        custo_mod = (
-            producao.taxa_mod / producao.produtividade
-        ) * producao.numero_funcionarios
+        custo_mod = (producao.taxa_mod / producao.produtividade) * producao.numero_funcionarios
         custo_ggf = producao.taxa_ggf / producao.produtividade
         custo_total = calcular_custo_total(
             custo_mp,
@@ -137,9 +135,7 @@ def calcular(entrada: CalculateRequest) -> CalculateResponse:
         frete = comercial.frete_percentual
 
         termo_impostos = pis * (UM - icms) + cofins * (UM - icms) + icms
-        denominador = UM - (
-            comissao + frete + margem * (UM - termo_impostos) + termo_impostos
-        )
+        denominador = UM - (comissao + frete + margem * (UM - termo_impostos) + termo_impostos)
         _validar_denominador(
             denominador,
             etapa="D",
@@ -151,11 +147,7 @@ def calcular(entrada: CalculateRequest) -> CalculateResponse:
             comercial.prazo_medio_dias,
         )
 
-        isencao_valor = (
-            custo_mod
-            if entrada.material_fornecido_pelo_cliente and entrada.cliente_uf == "SP"
-            else ZERO
-        )
+        isencao_valor = custo_mod if entrada.material_fornecido_pelo_cliente and entrada.cliente_uf == "SP" else ZERO
 
         # TODO(PO): confirmar se CustoEnviadoCliente deve usar o mesmo
         # valor informado para MaterialCliente em CustoPerda.
@@ -164,16 +156,12 @@ def calcular(entrada: CalculateRequest) -> CalculateResponse:
         # TODO(PO): confirmar se a base da margem desejada é CustoTotal.
         base_margem = custo_total
 
-        preco_bruto_sem_ipi_sem_encargo = (
-            custo_total / denominador - custo_enviado_cliente - isencao_valor
-        )
+        preco_bruto_sem_ipi_sem_encargo = custo_total / denominador - custo_enviado_cliente - isencao_valor
         # A especificação define Encargo$ = Encargo × PBsIPIsEncargo.
         # Não arredondar a base nem o resultado intermediário.
         encargo_valor = encargo_percentual * preco_bruto_sem_ipi_sem_encargo
 
-        denominador_preco_sem_ipi = UM - (
-            termo_impostos + comissao + frete
-        )
+        denominador_preco_sem_ipi = UM - (termo_impostos + comissao + frete)
         _validar_denominador(
             denominador_preco_sem_ipi,
             etapa="PBsIPI",
@@ -181,8 +169,10 @@ def calcular(entrada: CalculateRequest) -> CalculateResponse:
         )
 
         preco_bruto_sem_ipi = (
-            margem * base_margem + custo_total + encargo_valor
-        ) / denominador_preco_sem_ipi - custo_enviado_cliente - isencao_valor
+            (margem * base_margem + custo_total + encargo_valor) / denominador_preco_sem_ipi
+            - custo_enviado_cliente
+            - isencao_valor
+        )
 
         preco_bruto_com_ipi = preco_bruto_sem_ipi * (UM + impostos.ipi_percentual)
 
@@ -194,16 +184,13 @@ def calcular(entrada: CalculateRequest) -> CalculateResponse:
             preco_bruto = preco_bruto_com_ipi
         else:
             preco_bruto = preco_bruto_com_ipi + (
-                (
-                    preco_bruto_com_ipi * (UM + impostos.mva_percentual)
-                )
+                (preco_bruto_com_ipi * (UM + impostos.mva_percentual))
                 * (impostos.icms_interno_percentual + impostos.fcp_percentual)
                 - preco_bruto_sem_ipi * icms
             )
 
         receita_operacional_liquida = preco_bruto_sem_ipi - (
-            (preco_bruto_sem_ipi - preco_bruto_sem_ipi * icms) * (pis + cofins)
-            + preco_bruto_sem_ipi * icms
+            (preco_bruto_sem_ipi - preco_bruto_sem_ipi * icms) * (pis + cofins) + preco_bruto_sem_ipi * icms
         )
 
         # TODO(PO): confirmar se Comissao$ incide sobre PB (incluindo IPI
@@ -211,17 +198,9 @@ def calcular(entrada: CalculateRequest) -> CalculateResponse:
         comissao_valor = comissao * preco_bruto
 
         margem_contribuicao_valor = receita_operacional_liquida - (
-            custo_mp
-            + custo_embalagem
-            + encargo_valor
-            + custo_perda
-            + comissao_valor
+            custo_mp + custo_embalagem + encargo_valor + custo_perda + comissao_valor
         )
-        margem_contribuicao_percentual = (
-            margem_contribuicao_valor / preco_bruto
-            if preco_bruto != ZERO
-            else ZERO
-        )
+        margem_contribuicao_percentual = margem_contribuicao_valor / preco_bruto if preco_bruto != ZERO else ZERO
 
         return CalculateResponse(
             custo_mp=_arredondar_monetario(custo_mp),
@@ -233,19 +212,13 @@ def calcular(entrada: CalculateRequest) -> CalculateResponse:
             denominador=denominador,
             encargo_financeiro_percentual=encargo_percentual,
             encargo_financeiro_valor=_arredondar_monetario(encargo_valor),
-            preco_bruto_sem_ipi_sem_encargo=_arredondar_monetario(
-                preco_bruto_sem_ipi_sem_encargo
-            ),
+            preco_bruto_sem_ipi_sem_encargo=_arredondar_monetario(preco_bruto_sem_ipi_sem_encargo),
             preco_bruto_sem_ipi=_arredondar_monetario(preco_bruto_sem_ipi),
             preco_bruto_com_ipi=_arredondar_monetario(preco_bruto_com_ipi),
             preco_bruto=_arredondar_monetario(preco_bruto),
             preco_indicado=_arredondar_monetario(preco_bruto),
-            receita_operacional_liquida=_arredondar_monetario(
-                receita_operacional_liquida
-            ),
-            margem_contribuicao_valor=_arredondar_monetario(
-                margem_contribuicao_valor
-            ),
+            receita_operacional_liquida=_arredondar_monetario(receita_operacional_liquida),
+            margem_contribuicao_valor=_arredondar_monetario(margem_contribuicao_valor),
             margem_contribuicao_percentual=margem_contribuicao_percentual,
             isencao_mao_de_obra=IsencaoMaoDeObraInfo(
                 aplicada=isencao_valor > ZERO,
@@ -255,12 +228,8 @@ def calcular(entrada: CalculateRequest) -> CalculateResponse:
                 pis_valor=_arredondar_monetario(pis * preco_bruto),
                 cofins_valor=_arredondar_monetario(cofins * preco_bruto),
                 icms_valor=_arredondar_monetario(icms * preco_bruto),
-                ipi_valor=_arredondar_monetario(
-                    preco_bruto_sem_ipi * impostos.ipi_percentual
-                ),
-                icms_st_valor=_arredondar_monetario(
-                    preco_bruto - preco_bruto_com_ipi
-                ),
+                ipi_valor=_arredondar_monetario(preco_bruto_sem_ipi * impostos.ipi_percentual),
+                icms_st_valor=_arredondar_monetario(preco_bruto - preco_bruto_com_ipi),
             ),
             metadata=CalculateMetadata(
                 versao_motor=ENGINE_CONTRACT_VERSION,
