@@ -231,7 +231,7 @@ def test_executiva_ve_o_preco_mas_nao_o_custo(tx):
             precos = cur.execute(
                 "SELECT * FROM cenario_preco WHERE precificacao_id = %s ORDER BY versao", [prc]
             ).fetchall()
-        with pytest.raises(psycopg.errors.NoDataFound), tx.transaction():
+        with pytest.raises(psycopg.errors.InsufficientPrivilege), tx.transaction():
             _salvar(tx, prc)
 
     assert [(linha["versao"], str(linha["preco_bruto"]), linha["vigente"]) for linha in precos] == [
