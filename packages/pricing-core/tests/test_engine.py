@@ -185,3 +185,99 @@ def test_icms_st_e_calculado_quando_mva_ou_fcp_estao_preenchidos():
 
     assert resultado.preco_bruto != resultado.preco_bruto_com_ipi
     assert resultado.impostos_destacados.icms_st_valor != Decimal("0.00")
+
+
+def _assert_centavos_iguais(valor, esperado):
+    assert abs(valor - esperado) <= Decimal("0.01")
+
+
+def test_preco_sem_st_respeita_relacao_pbsipi_pbcipi_e_pb():
+    entrada = _entrada()
+    resultado = calcular(entrada)
+
+    esperado_pbcipi = resultado.preco_bruto_sem_ipi * (Decimal("1") + entrada.impostos.ipi_percentual)
+    _assert_centavos_iguais(resultado.preco_bruto_com_ipi, esperado_pbcipi)
+    _assert_centavos_iguais(resultado.preco_bruto, esperado_pbcipi)
+
+
+def test_preco_com_st_aplica_icms_interno_fcp_e_mva():
+    entrada = _entrada(
+        impostos={
+            "pis_percentual": "0.0165",
+            "cofins_percentual": "0.076",
+            "icms_percentual": "0.18",
+            "ipi_percentual": "0.05",
+            "icms_interno_percentual": "0.18",
+            "fcp_percentual": "0.02",
+            "mva_percentual": "0.40",
+        }
+    )
+    resultado = calcular(entrada)
+    impostos = entrada.impostos
+
+    esperado_pbcipi = resultado.preco_bruto_sem_ipi * (Decimal("1") + impostos.ipi_percentual)
+    esperado_pb = esperado_pbcipi + (
+        esperado_pbcipi
+        * (Decimal("1") + impostos.mva_percentual)
+        * (impostos.icms_interno_percentual + impostos.fcp_percentual)
+        - resultado.preco_bruto_sem_ipi * impostos.icms_percentual
+    )
+
+    _assert_centavos_iguais(resultado.preco_bruto_com_ipi, esperado_pbcipi)
+    _assert_centavos_iguais(resultado.preco_bruto, esperado_pb)
+    _assert_centavos_iguais(
+        resultado.impostos_destacados.icms_st_valor,
+        esperado_pb - esperado_pbcipi,
+    )
+
+
+def test_rol_e_composta_com_as_bases_de_pis_cofins_e_icms_especificadas():
+    entrada = _entrada()
+    resultado = calcular(entrada)
+    pbsipi = resultado.preco_bruto_sem_ipi
+    icms = entrada.impostos.icms_percentual
+    pis = entrada.impostos.pis_percentual
+    cofins = entrada.impostos.cofins_percentual
+
+    esperado = pbsipi - ((pbsipi - pbsipi * icms) * (pis + cofins) + pbsipi * icms)
+    _assert_centavos_iguais(resultado.receita_operacional_liquida, esperado)
+
+
+def test_maco_deduz_custos_encargo_perda_e_comissao():
+    entrada = _entrada()
+    resultado = calcular(entrada)
+    # TODO(PO): a base Comissao$ = Comissao × PB é uma premissa provisória.
+    comissao_valor = entrada.comercial.comissao_percentual * resultado.preco_bruto
+    esperado = resultado.receita_operacional_liquida - (
+        resultado.custo_mp
+        + resultado.custo_embalagem
+        + resultado.encargo_financeiro_valor
+        + resultado.custo_perda
+        + comissao_valor
+    )
+    _assert_centavos_iguais(resultado.margem_contribuicao_valor, esperado)
+
+
+def test_impostos_destacados_usam_as_bases_da_formula_da_rol():
+    entrada = _entrada()
+    resultado = calcular(entrada)
+    pbsipi = resultado.preco_bruto_sem_ipi
+    icms = entrada.impostos.icms_percentual
+    base_pis_cofins = pbsipi - pbsipi * icms
+
+    _assert_centavos_iguais(
+        resultado.impostos_destacados.pis_valor,
+        base_pis_cofins * entrada.impostos.pis_percentual,
+    )
+    _assert_centavos_iguais(
+        resultado.impostos_destacados.cofins_valor,
+        base_pis_cofins * entrada.impostos.cofins_percentual,
+    )
+    _assert_centavos_iguais(
+        resultado.impostos_destacados.icms_valor,
+        pbsipi * icms,
+    )
+    _assert_centavos_iguais(
+        resultado.impostos_destacados.ipi_valor,
+        pbsipi * entrada.impostos.ipi_percentual,
+    )

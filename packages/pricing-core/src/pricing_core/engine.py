@@ -225,9 +225,13 @@ def calcular(entrada: CalculateRequest) -> CalculateResponse:
                 valor=_arredondar_monetario(isencao_valor),
             ),
             impostos_destacados=ImpostosDestacados(
-                pis_valor=_arredondar_monetario(pis * preco_bruto),
-                cofins_valor=_arredondar_monetario(cofins * preco_bruto),
-                icms_valor=_arredondar_monetario(icms * preco_bruto),
+                # TODO(PO): confirmar as bases de destaque. PIS/COFINS e
+                # ICMS usam aqui as mesmas bases de PBsIPI da fórmula da ROL;
+                # IPI usa PBsIPI e ICMS-ST corresponde ao acréscimo entre PB
+                # e PBcIPI no ramo com MVA/FCP/ICMS interno.
+                pis_valor=_arredondar_monetario((preco_bruto_sem_ipi - preco_bruto_sem_ipi * icms) * pis),
+                cofins_valor=_arredondar_monetario((preco_bruto_sem_ipi - preco_bruto_sem_ipi * icms) * cofins),
+                icms_valor=_arredondar_monetario(preco_bruto_sem_ipi * icms),
                 ipi_valor=_arredondar_monetario(preco_bruto_sem_ipi * impostos.ipi_percentual),
                 icms_st_valor=_arredondar_monetario(preco_bruto - preco_bruto_com_ipi),
             ),

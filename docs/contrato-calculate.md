@@ -93,3 +93,19 @@ cálculo ao pacote e converte `ErroDominioPricing` em HTTP 422.
 A implementação dessas premissas permite avançar no desenvolvimento, mas
 não substitui a homologação. Os 30 casos oficiais e a divergência máxima de
 R$ 0,01 continuam sendo necessários para declarar conformidade.
+
+## Formação de preço e impostos destacados (US19)
+
+O motor implementa `PBsIPIsEncargo`, `PBsIPI`, `PBcIPI`, `PB`, `ROL` e
+`MaCo$` conforme as fórmulas da seção 2.3 de `docs/PI6-planejamento-produto.md`.
+No ramo sem ICMS interno, FCP e MVA, `PB` é igual a `PBcIPI`. No outro ramo,
+é aplicado o acréscimo definido pela fórmula de ICMS interno/FCP/MVA.
+
+Para manter os impostos destacados coerentes com a fórmula de ROL, PIS e
+COFINS usam a base `PBsIPI − PBsIPI × ICMS`, ICMS usa `PBsIPI × ICMS`, IPI
+usa `PBsIPI × IPI` e ICMS-ST corresponde a `PB − PBcIPI`.
+
+**Pendente de confirmação do PO:** a especificação da seção 2.3 define as
+bases utilizadas na ROL, mas não detalha de forma independente as bases de
+apresentação de cada imposto destacado. Essa interpretação está sinalizada
+com `TODO(PO)` no motor e não deve ser tratada como homologação fiscal.

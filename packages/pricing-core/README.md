@@ -52,3 +52,24 @@ Erros matemáticos de domínio são representados por
 Essas premissas estão sinalizadas com `TODO(PO)` em `engine.py`. Os resultados
 não devem ser considerados homologados até a confirmação do PO e a execução
 dos 30 casos oficiais de conformidade.
+
+## Formação de preço, rentabilidade e impostos destacados (US19)
+
+O motor calcula `PBsIPIsEncargo`, `PBsIPI`, `PBcIPI` e `PB`. Quando
+`ICMSInt`, `FCP` e `MVA` são zero, `PB = PBcIPI`; caso contrário, aplica o
+ramo adicional especificado na seção 2.3 de `docs/PI6-planejamento-produto.md`.
+
+A `ROL` usa as seguintes bases, conforme a fórmula documentada:
+
+- ICMS: `PBsIPI × ICMS`;
+- PIS e COFINS: `(PBsIPI − PBsIPI × ICMS) × alíquota`.
+
+Os impostos destacados de PIS, COFINS e ICMS passam a usar essas mesmas
+bases, para que sua composição seja coerente com as deduções da ROL. IPI é
+calculado sobre `PBsIPI`; ICMS-ST é representado pela diferença entre `PB` e
+`PBcIPI` no ramo com ICMS interno/FCP/MVA.
+
+**Pendente de confirmação do PO:** a seção 2.3 não detalha separadamente
+as bases fiscais de apresentação dos impostos destacados. A implementação
+acima segue as bases explícitas da fórmula da ROL e está marcada com
+`TODO(PO)` em `engine.py`; não constitui homologação fiscal.
