@@ -9,7 +9,7 @@
 | Motor puro | `packages/pricing-core/src/pricing_core/engine.py` |
 | Tipos usados pelo frontend | `apps/web/src/types/calculate.generated.ts` |
 
-O endpoint executa `pricing_core.engine.calcular`. A resposta informa `metadata.is_mock=false` e registra a versão do motor. Erros de domínio são respondidos como HTTP 422 com `codigo`, `mensagem` e `detalhes`.
+O endpoint exige autenticação e permissão `precificacao.ler`, e executa `pricing_core.engine.calcular`. Usuários com `custo.ler` recebem a resposta completa; os demais recebem preços, ROL, impostos destacados e metadata, sem custos, encargos, isenção de mão de obra ou margens. Erros de domínio são respondidos como HTTP 422 com `codigo`, `mensagem` e `detalhes`.
 
 ## Formato e precisão
 
@@ -31,4 +31,4 @@ As bases usadas para destacar impostos também aguardam confirmação do PO. Por
 
 ## Persistência de cenários
 
-`POST /precificacoes/{precificacao_id}/cenarios` recebe `{ entrada, volume?, observacao? }`, calcula novamente no backend e persiste entrada, resultado e versão do motor. O cliente não envia preço calculado para persistência. As rotas de consulta e duplicação recuperam e versionam cenários; volume habilita indicadores de rentabilidade absoluta.
+`POST /precificacoes/{precificacao_id}/cenarios` recebe `{ entrada, volume?, observacao? }`, calcula novamente no backend e persiste entrada, resultado e versão do motor. O cliente não envia preço calculado para persistência. O backend rejeita com HTTP 409 qualquer resultado que o próprio motor marque como mock. A confirmação da gravação também filtra custos e margem para quem não tem `custo.ler`. As rotas de consulta de detalhes e comparação exigem custo; a visão `/precos` mantém os preços para usuários com `precificacao.ler`. Volume habilita indicadores de rentabilidade absoluta.

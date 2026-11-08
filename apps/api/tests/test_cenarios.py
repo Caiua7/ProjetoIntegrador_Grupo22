@@ -180,6 +180,63 @@ def test_resultado_vem_do_motor_e_nao_do_cliente(ambiente):
     assert cliente.chamadas == []
 
 
+def test_calculate_exige_usuario_autenticado(ambiente):
+    http, _cliente, _usuario = ambiente
+    assert http.post("/calculate", json=ENTRADA).status_code == 401
+
+
+def test_calculate_sem_custo_ler_devolve_preco_sem_campos_de_custo(ambiente):
+    http, _cliente, usuario = ambiente
+    usuario["permissoes"] = ["precificacao.ler"]
+
+    resposta = http.post("/calculate", headers=TOKEN, json=ENTRADA)
+
+    assert resposta.status_code == 200
+    corpo = resposta.json()
+    assert corpo["preco_bruto"]
+    assert corpo["impostos_destacados"]
+    assert not {
+        "custo_mp", "custo_embalagem", "custo_perda", "custo_mod", "custo_ggf", "custo_total",
+        "margem_contribuicao_valor", "margem_contribuicao_percentual", "encargo_financeiro_valor",
+        "encargo_financeiro_percentual", "isencao_mao_de_obra", "denominador",
+    } & corpo.keys()
+
+
+def test_calculate_com_custo_ler_preserva_resposta_completa(ambiente):
+    http, _cliente, usuario = ambiente
+    usuario["permissoes"] = ["precificacao.ler", "custo.ler"]
+
+    resposta = http.post("/calculate", headers=TOKEN, json=ENTRADA)
+
+    assert resposta.status_code == 200
+    assert {"custo_mp", "custo_total", "margem_contribuicao_valor"} <= resposta.json().keys()
+
+
+def test_persistencia_recusa_resultado_mock_produzido_no_backend(ambiente, monkeypatch):
+    http, cliente, _usuario = ambiente
+    real = cenarios.calculate(cenarios.CalculateRequest.model_validate(ENTRADA))
+    simulado = real.model_copy(update={"metadata": real.metadata.model_copy(update={"is_mock": True})})
+    monkeypatch.setattr(cenarios, "calculate", lambda _entrada: simulado)
+
+    resposta = _salvar(http, cliente)
+
+    assert resposta.status_code == 409
+    assert "mock" in resposta.json()["detail"].lower()
+    assert cliente.chamadas == []
+
+
+def test_persistencia_para_usuario_sem_custo_ler_retira_custos_da_resposta(ambiente):
+    http, cliente, usuario = ambiente
+    usuario["permissoes"] = ["precificacao.editar", "precificacao.ler"]
+
+    resposta = _salvar(http, cliente)
+
+    assert resposta.status_code == 201
+    corpo = resposta.json()
+    assert corpo["preco_bruto"]
+    assert not {"resultado", "entrada", "custo_total", "margem_contribuicao_valor", "rentabilidade"} & corpo.keys()
+
+
 def test_entrada_que_o_motor_recusa_nao_vira_versao(ambiente):
     http, cliente, _usuario = ambiente
     entrada = deepcopy(ENTRADA)

@@ -201,6 +201,19 @@ class CalculateResponse(BaseModel):
     metadata: CalculateMetadata
 
 
+class CalculateResponseSemCustos(BaseModel):
+    """Resposta de cálculo para quem pode consultar preços, mas não custos."""
+
+    preco_bruto_sem_ipi_sem_encargo: DecimalComoString
+    preco_bruto_sem_ipi: DecimalComoString
+    preco_bruto_com_ipi: DecimalComoString
+    preco_bruto: DecimalComoString
+    preco_indicado: DecimalComoString
+    receita_operacional_liquida: DecimalComoString
+    impostos_destacados: ImpostosDestacados
+    metadata: CalculateMetadata
+
+
 class DomainErrorCodigo(str, Enum):
     DENOMINADOR_INVALIDO = "DENOMINADOR_INVALIDO"
     ENTRADA_INVALIDA = "ENTRADA_INVALIDA"
