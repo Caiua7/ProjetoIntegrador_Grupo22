@@ -18,5 +18,6 @@ pytest
 | Módulo | O que faz | Issue |
 | :--- | :--- | :--- |
 | `encargo` | Encargo financeiro pelo prazo médio: `(1 + Taxa)^(PrazoMedio/30) − 1` | #52 |
+| `preco_liquido_mp` | Preço líquido de MP: desconta ICMS, PIS e COFINS recuperáveis do preço de aquisição | #53 |
 | `rentabilidade` | ROB, deduções, ROL, MaCo e margem bruta em reais pelo volume negociado do cenário | #64 |
 | `numeros` | Conversão para `Decimal` e precisão comuns aos módulos | — |
