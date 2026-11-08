@@ -76,3 +76,20 @@ usando a lógica já homologada (não mais as suposições do mock), e trocar
 o endpoint em `apps/api/app/routers/calculate.py` para chamá-lo com
 `is_mock=False`. A suíte em `tests/conformidade/` já está pronta para
 validar essa implementação assim que `pricing_core.engine` existir.
+
+
+## Implementação do motor (US16)
+
+O motor puro está em `packages/pricing-core/src/pricing_core/engine.py`,
+com entrada `CalculateRequest` e saída `CalculateResponse`. A API delega o
+cálculo ao pacote e converte `ErroDominioPricing` em HTTP 422.
+
+**Atenção: premissas ainda não confirmadas pelo PO** (marcadas com
+`TODO(PO)` no código):
+1. `Base = CustoTotal`;
+2. `Comissao$ = Comissao × PB`;
+3. `MaterialCliente = CustoEnviadoCliente = valor_material_cliente`.
+
+A implementação dessas premissas permite avançar no desenvolvimento, mas
+não substitui a homologação. Os 30 casos oficiais e a divergência máxima de
+R$ 0,01 continuam sendo necessários para declarar conformidade.
