@@ -252,3 +252,7 @@
 
 .neoprice :is(h1, h2, h3) { font-family: var(--f-titulo); }
 .filter-chip.aviso.selected { border-color: var(--warning); background: var(--warning-wash); color: var(--warning); }
+.scenario-profitability { margin: 12px 0; }
+.scenario-profitability h4 { margin: 0 0 4px; }
+.scenario-profitability dt { text-transform: none; }
+.scenario-profitability dd.negative { color: var(--error); }
