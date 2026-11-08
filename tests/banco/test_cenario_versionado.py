@@ -85,7 +85,8 @@ def _salvar(conn, precificacao_id: str, preco_bruto: str = "57.94", volume=None,
     conn.execute("RESET ROLE")
     conn.execute("SET LOCAL ROLE service_role")
     try:
-        with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
+        # Isola erros esperados no savepoint antes que o finally restaure o papel.
+        with conn.transaction(), conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
             return cur.execute(
                 "SELECT * FROM salvar_cenario_seguro(%s, %s, %s::jsonb, %s::jsonb, '0.3.0', %s, NULL, %s)",
                 [
