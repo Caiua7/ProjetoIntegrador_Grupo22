@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { ApiError } from '../../services/apiClient'
 import { arredondarCentavos } from './centavos'
-import { calcularCenario } from './calculateService'
+import { calcularCenario, calcularCenarioDemo } from './calculateService'
 import type { CalculateRequest, CalculateResponseAutorizada } from '../../types/calculate.generated'
 import type { Precificacao } from './precificacoesService'
 import { obterInsumo } from '../cadastros/insumosService'
@@ -31,6 +31,7 @@ type Props = {
   canReadCambio: boolean
   canReadParametros: boolean
   canReadImpostos: boolean
+  formulaRevision?: number
   onClose: () => void
 }
 
@@ -71,7 +72,7 @@ const linhasRentabilidade = [
 ] as const
 const sentido: Record<string, string> = { subiu: 'Subiu', desceu: 'Desceu', igual: 'Sem variação', sem_base: 'Sem base' }
 
-function ScenarioHistoryPanel({ precificacaoId, codigo, precificacao, canViewCost, canEdit, canReadCatalog, canReadCambio, canReadParametros, canReadImpostos, onClose }: Props) {
+function ScenarioHistoryPanel({ precificacaoId, codigo, precificacao, canViewCost, canEdit, canReadCatalog, canReadCambio, canReadParametros, canReadImpostos, formulaRevision = 0, onClose }: Props) {
   const [versoes, setVersoes] = useState<CenarioResumo[]>([])
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState<string | null>(null)
@@ -96,7 +97,7 @@ function ScenarioHistoryPanel({ precificacaoId, codigo, precificacao, canViewCos
   const [preparando, setPreparando] = useState(false)
   const [pendenciasPreparacao, setPendenciasPreparacao] = useState<string[]>([])
 
-  async function prepararEntrada() {
+  async function prepararEntrada(): Promise<{ entrada: Record<string, unknown>, pendencias: string[] } | null> {
     setPreparando(true); setErroSimulacao(null); setPendenciasPreparacao([])
     const pendencias: string[] = []
     let manual: Record<string, unknown> = {}
@@ -137,7 +138,7 @@ function ScenarioHistoryPanel({ precificacaoId, codigo, precificacao, canViewCos
           catch (falha) { pendencias.push(`Dados do insumo ${id}: ${falha instanceof ApiError ? falha.message : 'não foi possível consultar.'}`); continue }
           const listaManual = isMateria ? manual.materiais_primas : manual.embalagens
           const itemManual = Array.isArray(listaManual) ? listaManual.find((linha) => isRecord(linha) && linha.codigo === insumo.codigo) : undefined
-          const entradaItem: Record<string, unknown> = { ...(isRecord(itemManual) ? itemManual : {}), codigo: insumo.codigo, descricao: insumo.descricao, quantidade: item.quantidade }
+          const entradaItem: Record<string, unknown> = { ...(isRecord(itemManual) ? itemManual : {}), codigo: insumo.codigo, descricao: insumo.descricao, quantidade: item.quantidade, origem_material: item.origem_material }
           if (isMateria) {
             entradaItem.margem_seguranca_percentual ??= ''
             if (canViewCost && item.unidade_medida === 'kg' && insumo.unidade_medida === 'kg' && volume) {
@@ -180,6 +181,18 @@ function ScenarioHistoryPanel({ precificacaoId, codigo, precificacao, canViewCos
       if (formulario) {
         candidato.materiais_primas = materiais
         candidato.embalagens = embalagens
+        const origens = new Set(formulario.itens.map((item) => item.origem_material).filter((origem) => origem !== null))
+        if (origens.size === 1 && origens.has('fabricante') && formulario.itens.every((item) => item.origem_material)) {
+          candidato.material_fornecido_pelo_cliente = false
+          candidato.valor_material_cliente = '0'
+        } else if (origens.size === 1 && origens.has('cliente') && formulario.itens.every((item) => item.origem_material)) {
+          candidato.material_fornecido_pelo_cliente = true
+          if (candidato.valor_material_cliente == null || candidato.valor_material_cliente === '') {
+            pendencias.push('Valor global de material do cliente; o motor ainda não calcula valores por item.')
+          }
+        } else if (formulario.itens.length > 0) {
+          pendencias.push('Defina uma origem para cada item. O motor real também não aceita origens diferentes no mesmo cenário; use demonstração explícita para testar a conversão simulada.')
+        }
       }
 
       const comerciais = manual.comercial && typeof manual.comercial === 'object' && !Array.isArray(manual.comercial) ? manual.comercial as Record<string, unknown> : {}
@@ -254,8 +267,10 @@ function ScenarioHistoryPanel({ precificacaoId, codigo, precificacao, canViewCos
       candidato.impostos = impostos
       setEntradaJson(JSON.stringify(candidato, null, 2))
       setPendenciasPreparacao([...new Set(pendencias)])
+      return { entrada: candidato, pendencias: [...new Set(pendencias)] }
     } catch (falha) {
       setErroSimulacao(falha instanceof Error ? falha.message : 'Não foi possível preparar a entrada com as APIs disponíveis.')
+      return null
     } finally { setPreparando(false) }
   }
 
@@ -275,6 +290,27 @@ function ScenarioHistoryPanel({ precificacaoId, codigo, precificacao, canViewCos
       setEntradaCalculada(entrada)
     } catch (falha) {
       setErroSimulacao(falha instanceof ApiError ? falha.message : falha instanceof SyntaxError ? 'A entrada precisa ser um JSON válido no formato de POST /calculate.' : 'Não foi possível executar a simulação.')
+    } finally { setSimulando(false) }
+  }
+
+  async function simularDemo() {
+    setErroSimulacao(null); setResultadoSimulacao(null); setEntradaCalculada(null); setSimulando(true)
+    try {
+      let dados: Record<string, unknown> = {}
+      if (entradaJson.trim()) {
+        const parseado: unknown = JSON.parse(entradaJson)
+        if (!isRecord(parseado)) throw new Error('A entrada atual precisa ser um objeto JSON.')
+        dados = parseado
+      }
+      const comCabecalho = {
+        ...dados,
+        ...(precificacao?.uf_destino ? { cliente_uf: precificacao.uf_destino } : {}),
+        ...(precificacao?.modalidade_comercial ? { modalidade_comercial: precificacao.modalidade_comercial } : {}),
+        ...(precificacao?.regime_tributario ? { regime_tributario: precificacao.regime_tributario } : {}),
+      }
+      setResultadoSimulacao(await calcularCenarioDemo(comCabecalho))
+    } catch (falha) {
+      setErroSimulacao(falha instanceof ApiError ? falha.message : falha instanceof SyntaxError ? 'A entrada precisa ser um JSON válido.' : falha instanceof Error ? falha.message : 'Não foi possível executar a demonstração.')
     } finally { setSimulando(false) }
   }
 
@@ -318,6 +354,27 @@ function ScenarioHistoryPanel({ precificacaoId, codigo, precificacao, canViewCos
     }).finally(() => { if (ativo) setCarregando(false) })
     return () => { ativo = false }
   }, [precificacaoId, canViewCost])
+
+  useEffect(() => {
+    if (formulaRevision === 0) return
+    let ativo = true
+    void (async () => {
+      const preparado = await prepararEntrada()
+      if (!ativo || !preparado || preparado.pendencias.length > 0) return
+      setSimulando(true); setErroSimulacao(null)
+      try {
+        const resposta = await calcularCenario(preparado.entrada as unknown as CalculateRequest)
+        if (!ativo) return
+        setResultadoSimulacao(resposta)
+        setEntradaCalculada(preparado.entrada as unknown as CalculateRequest)
+      } catch (falha) {
+        if (ativo) setErroSimulacao(falha instanceof ApiError ? falha.message : 'A fórmula foi salva; não foi possível recalcular com todos os parâmetros reais disponíveis. Use a demonstração explícita para testar os campos pendentes.')
+      } finally { if (ativo) setSimulando(false) }
+    })()
+    return () => { ativo = false }
+  // A função usa a formulação persistida e os dados do cabeçalho, e só executa o motor real.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formulaRevision])
 
   useEffect(() => {
     if (versaoDetalhe == null || !canViewCost) {
@@ -382,10 +439,18 @@ function ScenarioHistoryPanel({ precificacaoId, codigo, precificacao, canViewCos
         </div>
         <button className="button primary" type="submit" disabled={simulando || salvandoCenario}>{simulando ? 'Calculando…' : 'Calcular no motor'}</button>
       </form>
+      <div className="demo-calculation-action">
+        <p className="field-hint">Para testar sem completar os parâmetros de negócio, a rota de demonstração usa valores mock centralizados no backend. O resultado fica identificado e não pode ser salvo nem submetido para aprovação.</p>
+        <button className="button secondary" type="button" disabled={simulando || salvandoCenario} onClick={() => { void simularDemo() }}>{simulando ? 'Executando demonstração…' : 'Executar demonstração (mock explícito)'}</button>
+      </div>
       {erroSimulacao && <p className="catalog-error" role="alert">{erroSimulacao}</p>}
       {resultadoSimulacao && <div className="scenario-detail" aria-live="polite">
-        {resultadoSimulacao.metadata.is_mock && <p className="catalog-error" role="status">A API identificou este resultado como mock. Ele não será tratado como resultado real nem poderá ser salvo.</p>}
-        <p className="field-hint">Motor {resultadoSimulacao.metadata.versao_motor} · {resultadoSimulacao.metadata.is_mock ? 'demonstrativo' : 'resposta da API'}</p>
+        {resultadoSimulacao.metadata.is_mock && <div className="catalog-error" role="status">
+          <strong>AMBIENTE DE DEMONSTRAÇÃO — DADOS SIMULADOS</strong>
+          <p>{resultadoSimulacao.metadata.classificacao === 'inteiramente_simulado' ? 'Resultado inteiramente mockado.' : 'Resultado parcialmente simulado; valores informados pelo usuário não foram verificados como reais.'} Não é homologado, não pode ser salvo e não pode ser submetido para aprovação.</p>
+          {resultadoSimulacao.metadata.parametros_simulados.length > 0 && <ul>{resultadoSimulacao.metadata.parametros_simulados.map((campo) => <li key={campo}>{campo}</li>)}</ul>}
+        </div>}
+        <p className="field-hint">Motor {resultadoSimulacao.metadata.versao_motor} · {resultadoSimulacao.metadata.is_mock ? 'mock explícito de demonstração' : 'pricing-core real; premissas comerciais ainda exigem homologação'}</p>
         <dl className="scenario-result-grid">{([
           ['preco_bruto_sem_ipi_sem_encargo', 'PBsIPIsEncargo'], ['preco_bruto_sem_ipi', 'PBsIPI'], ['preco_bruto_com_ipi', 'PBcIPI'], ['preco_bruto', 'PB'], ['receita_operacional_liquida', 'ROL'],
         ] as const).map(([key, label]) => <div key={key}><dt>{label}</dt><dd>{moeda(resultadoSimulacao[key])}</dd></div>)}

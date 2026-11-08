@@ -160,6 +160,7 @@ def test_item_de_materia_prima_aceita_unidade_e_perda():
         quantidade="1.25",
         unidade_medida="kg",
         perda_percentual="2.5",
+        origem_material="fabricante",
     )
     assert item.quantidade == 1.25
     assert item.perda_percentual == 2.5
@@ -215,6 +216,7 @@ def test_lista_produtos_e_persiste_recupera_edita_e_remove_itens(ambiente):
                 "quantidade": "1.500000",
                 "unidade_medida": "kg",
                 "perda_percentual": "2.5000",
+                "origem_material": "fabricante",
             }
         ]
     }
@@ -252,6 +254,7 @@ def test_formulacao_preserva_precision_decimal_de_api(ambiente):
                     "quantidade": "12345678.123456",
                     "unidade_medida": "kg",
                     "perda_percentual": "99.9999",
+                    "origem_material": "cliente",
                 }
             ]
         },
@@ -289,6 +292,7 @@ def test_formulacao_rejeita_quantidade_invalida_na_api(ambiente):
                     "materia_prima_id": str(MP_ID),
                     "quantidade": 0,
                     "unidade_medida": "kg",
+                    "origem_material": "fabricante",
                 }
             ]
         },

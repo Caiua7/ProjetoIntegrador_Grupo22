@@ -7,3 +7,10 @@ export function calcularCenario(entrada: CalculateRequest): Promise<CalculateRes
     method: 'POST', body: JSON.stringify(entrada),
   })
 }
+
+/** Rota separada de demonstração; o servidor aplica e identifica as assunções mock. */
+export function calcularCenarioDemo(dados: Record<string, unknown>): Promise<CalculateResponseAutorizada> {
+  return apiFetch<CalculateResponseAutorizada>('/calculate/demo', {
+    method: 'POST', body: JSON.stringify({ dados }),
+  })
+}

@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.core.auth import UsuarioAutenticado, exigir_permissao
-from app.infrastructure.supabase_client import supabase_do_usuario
+from app.infrastructure.supabase_client import supabase_do_usuario, supabase_servico
 
 router = APIRouter(prefix="/precificacoes", tags=["precificacoes"])
 Modalidade = Literal["full_service_nacional", "full_service_exportacao", "industrializacao_por_encomenda"]
@@ -39,6 +39,7 @@ class PrecificacaoResposta(BaseModel):
     frete: Frete | None = None
     regime_tributario: Regime | None = None
     status: str
+    homologacao_pendente: bool = False
     created_at: datetime
     updated_at: datetime
     cliente: dict | None = None
@@ -56,6 +57,25 @@ class OpcoesResposta(BaseModel):
     produtos: list[OpcaoResposta]
 
 
+class VerificacaoSubmissao(BaseModel):
+    pode_submeter: bool
+    modo_politica: Literal["demonstracao", "homologada"]
+    homologacao_pendente: bool
+    campos_obrigatorios: list[str]
+    motivos_bloqueio: list[str]
+    status: str | None = None
+
+
+class HistoricoStatusResposta(BaseModel):
+    id: UUID
+    precificacao_id: UUID
+    status_anterior: str
+    status_novo: str
+    modo: Literal["demonstracao", "homologada"]
+    responsavel_id: UUID
+    ocorrido_em: datetime
+
+
 def _cliente(usuario: UsuarioAutenticado):
     try:
         return supabase_do_usuario(usuario.access_token)
@@ -68,10 +88,15 @@ def _executar(operacao):
         return operacao()
     except Exception as erro:
         codigo = str(getattr(erro, "code", ""))
-        if codigo in {"23503", "23514", "22P02"}:
-            raise HTTPException(422, "Cliente ou produto invalido para esta precificacao.") from erro
+        mensagem = getattr(erro, "message", None) or str(erro)
+        if codigo == "P0002":
+            raise HTTPException(404, "Precificação não encontrada ou fora da sua carteira.") from erro
         if codigo == "42501":
-            raise HTTPException(403, "Seu perfil nao pode acessar esta precificacao.") from erro
+            raise HTTPException(403, "Seu perfil não pode executar esta ação.") from erro
+        if codigo == "55000":
+            raise HTTPException(409, mensagem) from erro
+        if codigo in {"23503", "23514", "22P02"}:
+            raise HTTPException(422, mensagem) from erro
         raise HTTPException(503, "Nao foi possivel acessar as precificacoes.") from erro
 
 
@@ -127,3 +152,57 @@ def criar_precificacao(
     if not resposta.data:
         raise HTTPException(503, "A precificacao nao foi retornada apos a gravacao.")
     return resposta.data[0]
+
+
+def _rpc_submissao(nome: str, usuario: UsuarioAutenticado, precificacao_id: UUID) -> dict:
+    resposta = _executar(
+        lambda: (
+            supabase_servico()
+            .rpc(
+                nome,
+                {
+                    "p_usuario_id": str(usuario.id),
+                    "p_precificacao_id": str(precificacao_id),
+                },
+            )
+            .execute()
+        )
+    )
+    dado = resposta.data[0] if isinstance(resposta.data, list) else resposta.data
+    if not dado:
+        raise HTTPException(503, "A API não recebeu o resultado da verificação de submissão.")
+    return dado
+
+
+@router.get("/{precificacao_id}/submissao", response_model=VerificacaoSubmissao)
+def verificar_submissao(
+    precificacao_id: UUID,
+    usuario: UsuarioAutenticado = Depends(exigir_permissao("precificacao.editar")),
+) -> dict:
+    return _rpc_submissao("avaliar_submissao_precificacao", usuario, precificacao_id)
+
+
+@router.post("/{precificacao_id}/submissao", response_model=VerificacaoSubmissao)
+def submeter_precificacao(
+    precificacao_id: UUID,
+    usuario: UsuarioAutenticado = Depends(exigir_permissao("precificacao.editar")),
+) -> dict:
+    return _rpc_submissao("submeter_precificacao", usuario, precificacao_id)
+
+
+@router.get("/{precificacao_id}/historico-status", response_model=list[HistoricoStatusResposta])
+def historico_status(
+    precificacao_id: UUID,
+    usuario: UsuarioAutenticado = Depends(exigir_permissao("precificacao.ler")),
+) -> list[dict]:
+    resposta = _executar(
+        lambda: (
+            _cliente(usuario)
+            .table("historico_status_precificacao")
+            .select("*")
+            .eq("precificacao_id", str(precificacao_id))
+            .order("ocorrido_em", desc=True)
+            .execute()
+        )
+    )
+    return resposta.data or []

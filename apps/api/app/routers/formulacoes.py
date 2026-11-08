@@ -36,6 +36,7 @@ class ItemEntrada(BaseModel):
     quantidade: Decimal = Field(gt=0, max_digits=14, decimal_places=6)
     unidade_medida: Unidade
     perda_percentual: Decimal | None = Field(default=None, ge=0, le=100, max_digits=7, decimal_places=4)
+    origem_material: Literal["fabricante", "cliente"] | None = None
 
     @model_validator(mode="after")
     def referencia_coerente(self):
@@ -49,6 +50,12 @@ class ItemEntrada(BaseModel):
 class FormulacaoEntrada(BaseModel):
     model_config = ConfigDict(extra="forbid")
     itens: list[ItemEntrada] = Field(max_length=500)
+
+    @model_validator(mode="after")
+    def origem_explicita(self):
+        if any(item.origem_material is None for item in self.itens):
+            raise ValueError("Selecione a origem do material para cada item antes de salvar.")
+        return self
 
 
 class FormulacaoResposta(BaseModel):
@@ -67,6 +74,7 @@ class ItemResposta(BaseModel):
     quantidade: DecimalComoString
     unidade_medida: Unidade
     perda_percentual: DecimalComoString | None
+    origem_material: Literal["fabricante", "cliente"] | None
     ordem: int
 
 
@@ -117,7 +125,9 @@ def _obter_formulacao(produto_id: UUID, usuario: UsuarioAutenticado):
     itens = _executar(
         lambda: (
             cliente.table("formulacao_item")
-            .select("id,tipo_insumo,materia_prima_id,embalagem_id,quantidade,unidade_medida,perda_percentual,ordem")
+            .select(
+                "id,tipo_insumo,materia_prima_id,embalagem_id,quantidade,unidade_medida,perda_percentual,origem_material,ordem"
+            )
             .eq("formulacao_id", formulacao["id"])
             .order("ordem")
             .execute()

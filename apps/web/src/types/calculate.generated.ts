@@ -12,7 +12,7 @@
 // direto, ou você reintroduz o mesmo problema de arredondamento que o
 // motor foi desenhado para evitar (ver README.md, seção "Arquitetura").
 
-export const ENGINE_CONTRACT_VERSION = "0.2.0";
+export const ENGINE_CONTRACT_VERSION = "0.3.0";
 
 export type ModalidadeComercial =
   | "full_service_nacional"
@@ -22,6 +22,7 @@ export type ModalidadeComercial =
 export interface ItemInsumo {
   codigo: string;
   descricao?: string | null;
+  origem_material?: "fabricante" | "cliente" | null;
   preco_negociado: string;
   moeda: string;
   cambio: string;
@@ -88,6 +89,10 @@ export interface CalculateMetadata {
   calculado_em: string; // ISO 8601
   /** Indica se esta resposta específica foi produzida por um mock. */
   is_mock: boolean;
+  origem: "pricing_core" | "demonstracao";
+  classificacao: "real" | "parcialmente_simulado" | "inteiramente_simulado";
+  parametros_simulados: string[];
+  dados_recebidos_nao_verificados: boolean;
 }
 
 export interface CalculateResponse {

@@ -39,7 +39,7 @@ RESULTADO = {
     "custo_total": "32.46",
     "margem_contribuicao_valor": "11.67",
     "margem_contribuicao_percentual": "0.284",
-    "metadata": {"versao_motor": "0.1.0-mock"},
+    "metadata": {"versao_motor": "0.3.0", "is_mock": False, "origem": "pricing_core"},
 }
 
 
@@ -158,16 +158,42 @@ def test_aprovacao_pode_ir_sem_comentario(tx):
 
 def test_decisao_aponta_para_a_versao_vigente_do_cenario(tx):
     prc = _precificacao(tx, "PRC-2026-0148")
-    salvar = "SELECT id FROM salvar_cenario(%s, %s::jsonb, %s::jsonb, '0.1.0-mock')"
-
-    with como(tx, ANALISTA_SUDESTE):
-        tx.execute(salvar, [prc, json.dumps(ENTRADA), json.dumps(RESULTADO)])
-        vigente = tx.execute(salvar, [prc, json.dumps(ENTRADA), json.dumps(RESULTADO)]).fetchone()[0]
+    with tx.cursor() as cur:
+        cur.execute(
+            "INSERT INTO cenario (precificacao_id, versao, versao_motor, entrada, resultado) "
+            "VALUES (%s, 1, '0.3.0', %s::jsonb, %s::jsonb) RETURNING id",
+            [prc, json.dumps(ENTRADA), json.dumps(RESULTADO)],
+        )
+        cur.fetchone()
+        vigente = cur.execute(
+            "INSERT INTO cenario (precificacao_id, versao, versao_motor, entrada, resultado) "
+            "VALUES (%s, 2, '0.3.0', %s::jsonb, %s::jsonb) RETURNING id",
+            [prc, json.dumps(ENTRADA), json.dumps(RESULTADO)],
+        ).fetchone()[0]
 
     with como(tx, GERENTE_SUDESTE):
         decisao = _decidir(tx, prc, "aprovado", "Dentro da política.")
 
     assert decisao["cenario_id"] == vigente
+
+
+def test_resultado_mock_nao_pode_ser_aprovado(tx):
+    prc = _precificacao(tx, "PRC-2026-0148")
+    resultado_mock = {**RESULTADO, "metadata": {"versao_motor": "demo", "is_mock": True, "origem": "demonstracao"}}
+    tx.execute(
+        "INSERT INTO cenario (precificacao_id, versao, versao_motor, entrada, resultado) "
+        "VALUES (%s, 1, 'demo', %s::jsonb, %s::jsonb)",
+        [prc, json.dumps(ENTRADA), json.dumps(resultado_mock)],
+    )
+    with como(tx, GERENTE_SUDESTE):
+        _recusa_decisao(tx, psycopg.errors.ObjectNotInPrerequisiteState, prc, "aprovado")
+
+
+def test_submissao_demo_nao_pode_ser_aprovada(tx):
+    prc = _precificacao(tx, "PRC-2026-0148")
+    tx.execute("UPDATE precificacao SET homologacao_pendente = TRUE WHERE id = %s", [prc])
+    with como(tx, GERENTE_SUDESTE):
+        _recusa_decisao(tx, psycopg.errors.ObjectNotInPrerequisiteState, prc, "aprovado")
 
 
 def test_responsavel_vem_da_sessao_e_nao_de_quem_chama(tx):

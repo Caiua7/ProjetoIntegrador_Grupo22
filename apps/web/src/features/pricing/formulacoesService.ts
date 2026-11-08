@@ -3,6 +3,7 @@ import { apiFetch } from '../../services/apiClient'
 export type Produto = { id: string, codigo: string, descricao: string, categoria: string, peso_liquido_g: number | null }
 export type TipoItem = 'materia_prima' | 'embalagem'
 export type Unidade = 'kg' | 'g' | 'l' | 'ml' | 'un'
+export type OrigemMaterial = 'fabricante' | 'cliente'
 export type FormulacaoItem = {
   id?: string
   tipo_insumo: TipoItem
@@ -11,6 +12,7 @@ export type FormulacaoItem = {
   quantidade: string
   unidade_medida: Unidade
   perda_percentual: string | null
+  origem_material: OrigemMaterial | null
   ordem?: number
 }
 export type Formulacao = { id: string, produto_id: string, created_at: string, updated_at: string, itens: FormulacaoItem[] }

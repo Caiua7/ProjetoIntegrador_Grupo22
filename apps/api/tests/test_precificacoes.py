@@ -66,9 +66,47 @@ class Consulta:
 class ClienteFalso:
     def __init__(self, banco):
         self.banco = banco
+        self.chamadas_rpc = []
 
     def table(self, tabela):
         return Consulta(self.banco, tabela)
+
+    def rpc(self, nome, parametros):
+        self.chamadas_rpc.append((nome, parametros))
+        cliente = self
+
+        class Chamada:
+            def execute(self):
+                if nome == "submeter_precificacao":
+                    for item in cliente.banco["precificacao"]:
+                        if item["id"] == parametros["p_precificacao_id"]:
+                            item["status"] = "em_aprovacao"
+                            item["homologacao_pendente"] = True
+                    return Resposta(
+                        [
+                            {
+                                "pode_submeter": True,
+                                "modo_politica": "demonstracao",
+                                "homologacao_pendente": True,
+                                "campos_obrigatorios": ["uf_destino", "frete", "regime_tributario"],
+                                "motivos_bloqueio": [],
+                                "status": "em_aprovacao",
+                            }
+                        ]
+                    )
+                return Resposta(
+                    [
+                        {
+                            "pode_submeter": True,
+                            "modo_politica": "demonstracao",
+                            "homologacao_pendente": True,
+                            "campos_obrigatorios": ["uf_destino", "frete", "regime_tributario"],
+                            "motivos_bloqueio": [],
+                        }
+                    ]
+                )
+
+        return Chamada()
 
 
 @pytest.fixture
@@ -89,13 +127,15 @@ def ambiente(monkeypatch):
     monkeypatch.setattr(auth, "validar_token", lambda _token: USUARIO_ID)
     monkeypatch.setattr(auth, "carregar_usuario", lambda _db, _id: dados_usuario)
     monkeypatch.setattr(precificacoes, "supabase_do_usuario", lambda _token: ClienteFalso(banco))
+    cliente_servico = ClienteFalso(banco)
+    monkeypatch.setattr(precificacoes, "supabase_servico", lambda: cliente_servico)
     app.dependency_overrides[get_db] = lambda: None
-    yield TestClient(app), banco, dados_usuario
+    yield TestClient(app), banco, dados_usuario, cliente_servico
     app.dependency_overrides.clear()
 
 
 def test_opcoes_usa_cadastros_persistidos(ambiente):
-    cliente, _banco, _usuario = ambiente
+    cliente, _banco, _usuario, _servico = ambiente
     resposta = cliente.get("/precificacoes/opcoes", headers=TOKEN)
     assert resposta.status_code == 200
     assert resposta.json()["clientes"][0]["id"] == str(CLIENTE_ID)
@@ -103,7 +143,7 @@ def test_opcoes_usa_cadastros_persistidos(ambiente):
 
 
 def test_cria_precificacao_completa_em_preenchimento(ambiente):
-    cliente, banco, _usuario = ambiente
+    cliente, banco, _usuario, _servico = ambiente
     resposta = cliente.post(
         "/precificacoes",
         headers=TOKEN,
@@ -123,7 +163,7 @@ def test_cria_precificacao_completa_em_preenchimento(ambiente):
 
 
 def test_rejeita_cabecalho_sem_campo_obrigatorio(ambiente):
-    cliente, _banco, _usuario = ambiente
+    cliente, _banco, _usuario, _servico = ambiente
     resposta = cliente.post(
         "/precificacoes",
         headers=TOKEN,
@@ -137,14 +177,14 @@ def test_rejeita_cabecalho_sem_campo_obrigatorio(ambiente):
 
 
 def test_opcoes_exigem_permissao_de_leitura_dos_cadastros(ambiente):
-    cliente, _banco, usuario = ambiente
+    cliente, _banco, usuario, _servico = ambiente
     usuario["permissoes"] = ["precificacao.editar"]
     resposta = cliente.get("/precificacoes/opcoes", headers=TOKEN)
     assert resposta.status_code == 403
 
 
 def test_lista_precificacao_legada_sem_cabecalho_completo(ambiente):
-    cliente, banco, _usuario = ambiente
+    cliente, banco, _usuario, _servico = ambiente
     agora = datetime.now(UTC).isoformat()
     banco["precificacao"] = [
         {
@@ -167,3 +207,42 @@ def test_lista_precificacao_legada_sem_cabecalho_completo(ambiente):
     assert resposta.status_code == 200
     assert resposta.json()[0]["uf_destino"] is None
     assert resposta.json()[0]["frete"] is None
+
+
+def test_verificacao_e_submissao_usam_rpc_privilegiado_com_usuario(ambiente):
+    http, banco, _usuario, servico = ambiente
+    prc = str(uuid4())
+    banco["precificacao"].append(
+        {
+            "id": prc,
+            "codigo": "PRC-TESTE",
+            "cliente_id": str(CLIENTE_ID),
+            "produto_id": str(PRODUTO_ID),
+            "modalidade_comercial": "full_service_nacional",
+            "uf_destino": "SP",
+            "frete": "cif",
+            "regime_tributario": "lucro_real",
+            "status": "em_preenchimento",
+            "homologacao_pendente": False,
+            "created_at": datetime.now(UTC).isoformat(),
+            "updated_at": datetime.now(UTC).isoformat(),
+        }
+    )
+    verificacao = http.get(f"/precificacoes/{prc}/submissao", headers=TOKEN)
+    resposta = http.post(f"/precificacoes/{prc}/submissao", headers=TOKEN)
+    assert verificacao.status_code == 200 and verificacao.json()["pode_submeter"] is True
+    assert resposta.status_code == 200 and resposta.json()["status"] == "em_aprovacao"
+    assert resposta.json()["homologacao_pendente"] is True
+    assert servico.chamadas_rpc[0] == (
+        "avaliar_submissao_precificacao",
+        {"p_usuario_id": str(USUARIO_ID), "p_precificacao_id": prc},
+    )
+    assert servico.chamadas_rpc[1][0] == "submeter_precificacao"
+
+
+def test_submissao_exige_permissao_de_edicao(ambiente):
+    http, _banco, usuario, servico = ambiente
+    usuario["permissoes"] = ["precificacao.ler"]
+    resposta = http.post(f"/precificacoes/{uuid4()}/submissao", headers=TOKEN)
+    assert resposta.status_code == 403
+    assert servico.chamadas_rpc == []
