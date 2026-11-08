@@ -205,11 +205,19 @@ def test_executiva_nao_cria_precificacao(conn, usuarios):
 
 
 def test_gerente_aprova_so_na_propria_carteira(conn, usuarios):
-    aprovar = "UPDATE precificacao SET status = 'aprovado' WHERE codigo = %s"
+    # A aprovação passa pelo registro da decisão (#68); as duas precisam
+    # estar em aprovação para a carteira ser a única diferença.
+    conn.execute("UPDATE precificacao SET status = 'em_aprovacao' WHERE codigo IN ('PRC-2026-0145', 'PRC-2026-0148')")
+    aprovar = "SELECT decidir_aprovacao(id, 'aprovado') FROM precificacao WHERE codigo = %s"
 
     with como(conn, usuarios["gerente_sul"]):
-        assert conn.execute(aprovar, ["PRC-2026-0145"]).rowcount == 1
-        assert conn.execute(aprovar, ["PRC-2026-0148"]).rowcount == 0
+        conn.execute(aprovar, ["PRC-2026-0145"])
+        # A da outra carteira nem aparece para ele: não há o que aprovar
+        assert conn.execute(aprovar, ["PRC-2026-0148"]).fetchall() == []
+
+    status = "SELECT status FROM precificacao WHERE codigo = %s"
+    assert conn.execute(status, ["PRC-2026-0145"]).fetchone()[0] == "aprovado"
+    assert conn.execute(status, ["PRC-2026-0148"]).fetchone()[0] == "em_aprovacao"
 
 
 def test_precificacao_nao_pode_ser_movida_para_cliente_de_outra_carteira(conn, usuarios):

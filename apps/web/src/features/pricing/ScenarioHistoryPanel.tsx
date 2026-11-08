@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { ApiError } from '../../services/apiClient'
+import { arredondarCentavos } from './centavos'
 import {
   compararCenarios,
   consultarCenario,
@@ -40,6 +41,13 @@ function percentual(value: string | null, variacao = false): string {
     : `${digits.slice(0, point).replace(/^0+(?=\d)/, '')}.${digits.slice(point)}`
   return `${decimal(`${sign}${shifted}`)}${variacao ? ' p.p.' : '%'}`
 }
+const linhasRentabilidade = [
+  ['receita_operacional_bruta', 'ROB', 'Receita operacional bruta: preço sem IPI × volume'],
+  ['deducoes', 'Deduções', 'PIS, COFINS e ICMS sobre a receita'],
+  ['receita_operacional_liquida', 'ROL', 'Receita operacional líquida'],
+  ['margem_contribuicao', 'MaCo absoluta', 'Margem de contribuição unitária × volume'],
+  ['margem_bruta', 'Margem bruta', 'ROL menos o custo do produto'],
+] as const
 const sentido: Record<string, string> = { subiu: 'Subiu', desceu: 'Desceu', igual: 'Sem variação', sem_base: 'Sem base' }
 
 function ScenarioHistoryPanel({ precificacaoId, codigo, canViewCost, canEdit, onClose }: Props) {
@@ -169,6 +177,16 @@ function ScenarioHistoryPanel({ precificacaoId, codigo, canViewCost, canEdit, on
       {detalheAtual && <section className="scenario-detail" aria-label={`Detalhes da versão ${detalheAtual.versao}`}>
         <div className="list-card-heading"><div><h4>Detalhes da versão v{detalheAtual.versao}</h4>{detalheAtual.observacao && <p>{detalheAtual.observacao}</p>}</div><button className="button secondary" type="button" onClick={() => setVersaoDetalhe(null)}>Fechar detalhes</button></div>
         {metadata?.is_mock && <p className="catalog-error" role="status">Resultado demonstrativo: esta versão foi calculada pelo mock ({metadata.versao_motor ?? detalheAtual.versao_motor}) e não deve ser usada como preço comercial.</p>}
+        <section className="scenario-profitability" aria-label="Rentabilidade da operação">
+          <h4>Rentabilidade da operação</h4>
+          {detalheAtual.rentabilidade ? <>
+            <p className="field-hint">Valores em reais para o volume negociado de {decimal(detalheAtual.rentabilidade.volume)} unidades.</p>
+            <dl className="scenario-result-grid">{linhasRentabilidade.map(([key, rotulo, ajuda]) => {
+              const valor = detalheAtual.rentabilidade?.[key] ?? null
+              return <div key={key} title={ajuda}><dt>{rotulo}</dt><dd className={valor?.startsWith('-') ? 'negative' : undefined}>{moeda(arredondarCentavos(valor))}</dd></div>
+            })}</dl>
+          </> : <p className="field-hint">Informe o volume negociado ao salvar a versão para ver ROB, MaCo absoluta e margem bruta em reais.</p>}
+        </section>
         <dl className="scenario-result-grid">{(['custo_mp', 'custo_embalagem', 'custo_perda', 'custo_mod', 'custo_ggf', 'custo_total', 'preco_bruto', 'preco_bruto_sem_ipi', 'receita_operacional_liquida', 'margem_contribuicao_valor', 'margem_contribuicao_percentual'] as const).map((key) => <div key={key}><dt>{key.replaceAll('_', ' ')}</dt><dd>{key === 'margem_contribuicao_percentual' ? percentual(String(resultado?.[key] ?? '')) : moeda(String(resultado?.[key] ?? ''))}</dd></div>)}</dl>
         {impostos && <div className="scenario-tax-list"><h4>Impostos destacados</h4>{Object.entries(impostos).map(([key, value]) => <p key={key}>{key.replaceAll('_', ' ')}: {moeda(value)}</p>)}</div>}
       </section>}

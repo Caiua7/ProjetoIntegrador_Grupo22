@@ -141,7 +141,9 @@ def test_nem_o_dono_do_banco_altera_versao_salva(tx, sql):
 
 
 def test_truncate_e_recusado(tx):
-    _recusa(tx, psycopg.errors.InsufficientPrivilege, "TRUNCATE cenario")
+    # CASCADE: a decisão de aprovação (#68) referencia o cenário; sem ele a
+    # chave estrangeira barra antes, e o que se quer ver é a auditoria barrar.
+    _recusa(tx, psycopg.errors.InsufficientPrivilege, "TRUNCATE cenario CASCADE")
 
 
 def test_gravacao_fica_na_auditoria(tx):

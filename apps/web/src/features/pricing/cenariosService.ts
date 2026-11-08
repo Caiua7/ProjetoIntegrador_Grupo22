@@ -19,9 +19,20 @@ export type CenarioResumo = {
   created_at: string
 }
 
+/** Valores em reais do cenário inteiro para o volume negociado (#64). */
+export type RentabilidadeCenario = {
+  volume: string
+  receita_operacional_bruta: string
+  deducoes: string
+  receita_operacional_liquida: string
+  margem_contribuicao: string
+  margem_bruta: string
+}
+
 export type CenarioDetalhe = CenarioResumo & {
   entrada: Record<string, unknown>
   resultado: Record<string, unknown>
+  rentabilidade: RentabilidadeCenario | null
 }
 
 export type IndicadorCenario = {

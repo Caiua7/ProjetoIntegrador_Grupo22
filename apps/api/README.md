@@ -99,4 +99,18 @@ Percentuais são enviados como frações decimais (`0.18` = 18%) e validados con
 
 Na listagem, `busca` (opcional, até 100 caracteres) pesquisa código, descrição e NCM; `ativo` e `unidade_medida` são filtros opcionais combináveis. A paginação usa `pagina` (padrão `1`) e `tamanho_pagina` (padrão `20`, máximo `100`). A resposta contém `registros`, `total`, `pagina`, `tamanho_pagina` e `total_paginas`; os registros são ordenados por descrição e, como desempate estável, por ID. Contagem, filtros e intervalo são executados pelo PostgREST em nome do usuário, então RLS continua aplicado.
 
+## Rentabilidade do cenário pelo volume (US32)
+
+`GET /precificacoes/{id}/cenarios/{versao}`, `POST /precificacoes/{id}/cenarios` e `POST .../{versao}/duplicar` devolvem o campo `rentabilidade` com os valores do cenário inteiro, em reais, para o volume negociado da versão:
+
+| Campo | Fórmula |
+| :--- | :--- |
+| `receita_operacional_bruta` (ROB) | preço bruto sem IPI × volume |
+| `deducoes` | ROB − ROL (PIS, COFINS e ICMS) |
+| `receita_operacional_liquida` (ROL) | ROL unitária × volume |
+| `margem_contribuicao` (MaCo absoluta) | MaCo unitária × volume |
+| `margem_bruta` (MB) | (ROL unitária − custo total) × volume |
+
+O volume já é guardado em cada versão (`cenario.volume`, #63), então não há migration nova. Sem volume, `rentabilidade` vem `null`: só existe a margem unitária. Os valores vêm sem arredondamento, como texto; a tela arredonda para centavos ao exibir. A derivação está em `pricing_core.rentabilidade` e as premissas (ROB sobre o preço sem IPI e MB sem despesas comerciais) aguardam confirmação do PO na homologação dos 30 casos. A rota exige `custo.ler`, como o resto do detalhe da versão.
+
 Testes: `cd apps/api && python -m pytest tests`.

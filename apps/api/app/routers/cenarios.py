@@ -19,6 +19,7 @@ from app.infrastructure.supabase_client import supabase_do_usuario
 from app.routers.calculate import calculate
 from app.services.comparacao_cenarios import comparar_cenarios
 from pricing_core.contracts import CalculateRequest
+from pricing_core.rentabilidade import derivar_rentabilidade
 
 router = APIRouter(prefix="/precificacoes/{precificacao_id}/cenarios", tags=["cenários"])
 
@@ -76,9 +77,21 @@ class CenarioResumo(BaseModel):
     created_at: datetime
 
 
+class Rentabilidade(BaseModel):
+    """Valores em reais do cenário inteiro, para o volume negociado (#64)."""
+
+    volume: DecimalComoString
+    receita_operacional_bruta: DecimalComoString
+    deducoes: DecimalComoString
+    receita_operacional_liquida: DecimalComoString
+    margem_contribuicao: DecimalComoString
+    margem_bruta: DecimalComoString
+
+
 class CenarioDetalhe(CenarioResumo):
     entrada: dict
     resultado: dict
+    rentabilidade: Rentabilidade | None = None
 
 
 class PrecoDaVersao(BaseModel):
@@ -172,6 +185,23 @@ def _versao(usuario: UsuarioAutenticado, precificacao_id: UUID, versao: int) -> 
     return resposta.data[0]
 
 
+def _com_rentabilidade(cenario: dict) -> dict:
+    """Acrescenta ROB, deduções, ROL, MaCo e MB em reais quando a versão tem
+    volume. Sem volume não há valor absoluto: só a margem unitária."""
+    volume = _volume(cenario)
+    if volume is None:
+        return {**cenario, "rentabilidade": None}
+    resultado = cenario["resultado"]
+    rentabilidade = derivar_rentabilidade(
+        volume,
+        preco_bruto_sem_ipi=resultado["preco_bruto_sem_ipi"],
+        receita_operacional_liquida=resultado["receita_operacional_liquida"],
+        margem_contribuicao_valor=resultado["margem_contribuicao_valor"],
+        custo_total=resultado["custo_total"],
+    )
+    return {**cenario, "rentabilidade": vars(rentabilidade)}
+
+
 def _marcar_vigente(linhas: list[dict]) -> list[dict]:
     maior = max((linha["versao"] for linha in linhas), default=None)
     return [{**linha, "vigente": linha["versao"] == maior} for linha in linhas]
@@ -199,7 +229,7 @@ def _salvar(
     salvo = resposta.data[0] if isinstance(resposta.data, list) else resposta.data
     if not salvo:
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "A versão não foi retornada após a gravação.")
-    return {**salvo, "vigente": True}
+    return _com_rentabilidade({**salvo, "vigente": True})
 
 
 # ------------------------------------------------------------ rotas
@@ -256,7 +286,7 @@ def consultar_versao(
 ) -> dict:
     detalhe = _versao(usuario, precificacao_id, versao)
     maior = max(linha["versao"] for linha in _versoes(usuario, precificacao_id, "versao"))
-    return {**detalhe, "vigente": detalhe["versao"] == maior}
+    return _com_rentabilidade({**detalhe, "vigente": detalhe["versao"] == maior})
 
 
 @router.post("", response_model=CenarioDetalhe, status_code=status.HTTP_201_CREATED)

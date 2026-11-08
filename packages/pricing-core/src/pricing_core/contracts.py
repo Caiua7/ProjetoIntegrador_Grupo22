@@ -24,16 +24,17 @@ Convenções:
       `CalculateMetadata.versao_motor` e, futuramente, no cenário
       persistido (RF09 — versionamento).
 
-DECISÕES EM ABERTO — confirmar na homologação dos 30 casos com o PO
-(ver tests/conformidade/README.md). Nenhuma delas muda a FORMA do
-contrato abaixo, apenas a fórmula usada por trás dele:
-    1. "Base" em `m × Base` (seção 2.3) — assumido aqui como `CustoTotal`.
-    2. `Comissao$` — assumido aqui como `Comissao × PB`, por analogia a
-       `Encargo$ = Encargo × PBsIPIsEncargo`, que é a única definição
-       explícita na especificação.
-    3. `MaterialCliente` (usado em CustoPerda) e `CustoEnviadoCliente`
-       (usado em PBsIPIsEncargo) — assumidos aqui como o mesmo valor,
-       informado uma única vez em `valor_material_cliente`.
+PREMISSAS PROVISÓRIAS — confirmar explicitamente com o Product Owner
+antes da homologação comercial e dos 30 casos de conformidade:
+    1. "Base" em `m × Base` (seção 2.3) é assumido como `CustoTotal`.
+    2. `Comissao$` é assumido como `Comissao × PB`.
+    3. `MaterialCliente` (CustoPerda) e `CustoEnviadoCliente`
+       (PBsIPIsEncargo) são assumidos como o mesmo valor, informado uma
+       única vez em `valor_material_cliente`.
+
+O motor implementa essas três premissas para viabilizar o desenvolvimento.
+Elas estão marcadas com TODO(PO) no cálculo e NÃO devem ser consideradas
+homologadas até a confirmação do Product Owner.
 """
 
 from __future__ import annotations
@@ -46,7 +47,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, PlainSerializer, model_validator
 
-ENGINE_CONTRACT_VERSION = "0.1.0-mock"
+ENGINE_CONTRACT_VERSION = "0.2.0"
 
 DecimalComoString = Annotated[
     Decimal,
@@ -164,7 +165,7 @@ class IsencaoMaoDeObraInfo(BaseModel):
 class CalculateMetadata(BaseModel):
     versao_motor: str = ENGINE_CONTRACT_VERSION
     calculado_em: datetime = Field(default_factory=lambda: datetime.now(UTC))
-    is_mock: bool = Field(..., description="True enquanto o motor real (US16/US19, Sprint 3) não estiver integrado")
+    is_mock: bool = Field(..., description="Indica se o resultado foi produzido por um mock ou pelo motor real")
 
 
 class CalculateResponse(BaseModel):

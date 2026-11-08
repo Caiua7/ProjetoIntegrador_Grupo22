@@ -338,3 +338,51 @@ def test_comparar_a_versao_com_ela_mesma_devolve_422(ambiente):
     http, _cliente, _usuario = ambiente
 
     assert http.get(f"{BASE}/comparacao", headers=TOKEN, params={"de": 1, "para": 1}).status_code == 422
+
+
+# ------------------------------------------------------------ rentabilidade (#64)
+
+
+def test_com_volume_de_10_mil_a_versao_traz_rob_maco_e_mb_em_reais(ambiente):
+    """Critério de aceite da US32: dado volume de 10 mil unidades, quando o
+    cenário é calculado, ROB, MaCo absoluta e MB aparecem em reais."""
+    http, cliente, _usuario = ambiente
+
+    salvo = _salvar(http, cliente, volume="10000").json()
+    lido = http.get(f"{BASE}/1", headers=TOKEN).json()
+
+    unitario = salvo["resultado"]
+    pbsipi = Decimal(unitario["preco_bruto_sem_ipi"])
+    rol = Decimal(unitario["receita_operacional_liquida"])
+    esperado = {
+        "volume": Decimal("10000"),
+        "receita_operacional_bruta": pbsipi * 10000,
+        "deducoes": (pbsipi - rol) * 10000,
+        "receita_operacional_liquida": rol * 10000,
+        "margem_contribuicao": Decimal(unitario["margem_contribuicao_valor"]) * 10000,
+        "margem_bruta": (rol - Decimal(unitario["custo_total"])) * 10000,
+    }
+    for corpo in (salvo, lido):
+        rentabilidade = corpo["rentabilidade"]
+        assert set(rentabilidade) == set(esperado)
+        assert all(isinstance(valor, str) for valor in rentabilidade.values()), "dinheiro vai como texto"
+        assert {campo: Decimal(valor) for campo, valor in rentabilidade.items()} == esperado
+
+
+def test_sem_volume_a_versao_nao_tem_rentabilidade_em_reais(ambiente):
+    http, cliente, _usuario = ambiente
+
+    salvo = _salvar(http, cliente).json()
+
+    assert salvo["rentabilidade"] is None
+    assert http.get(f"{BASE}/1", headers=TOKEN).json()["rentabilidade"] is None
+
+
+def test_duplicar_com_outro_volume_recalcula_a_rentabilidade(ambiente):
+    http, cliente, _usuario = ambiente
+    origem = _salvar(http, cliente, volume="10000").json()
+
+    copia = http.post(f"{BASE}/1/duplicar", headers=TOKEN, json={"volume": "20000"}).json()
+
+    rob_origem = Decimal(origem["rentabilidade"]["receita_operacional_bruta"])
+    assert Decimal(copia["rentabilidade"]["receita_operacional_bruta"]) == rob_origem * 2

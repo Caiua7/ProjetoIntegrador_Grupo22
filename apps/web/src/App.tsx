@@ -16,6 +16,7 @@ import { FormulationPage } from './features/pricing/FormulationPage'
 import PricingCreate from './features/pricing/PricingCreate'
 import PricingList from './features/pricing/PricingList'
 import type { ListPreset } from './features/pricing/listPreset'
+import { ExchangeParamsPage } from './features/parametros/ExchangeParamsPage'
 import { TaxRatesPage } from './features/taxes/TaxRatesPage'
 
 function App() {
@@ -69,6 +70,8 @@ function AppShell() {
       {current === 'records' && <InsumosPage canEdit={hasPermission('cadastro.editar')} />}
       {current === 'taxes' && <TaxRatesPage canEdit={hasPermission('parametro_fiscal.editar')} />}
       {current === 'quotes' && <QuotesPage />}
+      {current === 'exchange' && <ExchangeParamsPage canEditCambio={hasPermission('cambio.editar')}
+        canReadParametros={hasPermission('parametro_global.ler')} canEditParametros={hasPermission('parametro_global.editar')} />}
     </main>
   </div>
 }
