@@ -11,7 +11,8 @@ from pricing_core.contracts import (
     CalculateResponse,
     DomainErrorResponse,
 )
-from pricing_core.engine import ErroDominioPricing, calcular as calcular_motor
+from pricing_core.engine import ErroDominioPricing
+from pricing_core.engine import calcular as calcular_motor
 
 router = APIRouter(prefix="/calculate", tags=["calculate"])
 

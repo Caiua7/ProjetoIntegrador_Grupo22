@@ -12,7 +12,7 @@ As premissas foram mantidas para viabilizar a implementação e os testes,
 não representam confirmação de regra fiscal/comercial pelo PO.
 """
 
-from decimal import Decimal, ROUND_HALF_UP, localcontext
+from decimal import ROUND_HALF_UP, Decimal, localcontext
 
 from pricing_core.contracts import (
     ENGINE_CONTRACT_VERSION,
