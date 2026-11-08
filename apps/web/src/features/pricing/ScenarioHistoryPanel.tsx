@@ -293,6 +293,21 @@ function ScenarioHistoryPanel({ precificacaoId, codigo, precificacao, canViewCos
     } finally { setSimulando(false) }
   }
 
+  async function prepararECalcular() {
+    setResultadoSimulacao(null); setEntradaCalculada(null)
+    const preparado = await prepararEntrada()
+    if (!preparado || preparado.pendencias.length > 0) return
+    setSimulando(true); setErroSimulacao(null)
+    try {
+      const entrada = preparado.entrada as unknown as CalculateRequest
+      const resposta = await calcularCenario(entrada)
+      setResultadoSimulacao(resposta)
+      setEntradaCalculada(entrada)
+    } catch (falha) {
+      setErroSimulacao(falha instanceof ApiError ? falha.message : 'NÃ£o foi possÃ­vel calcular com os dados reais preparados.')
+    } finally { setSimulando(false) }
+  }
+
   async function simularDemo() {
     setErroSimulacao(null); setResultadoSimulacao(null); setEntradaCalculada(null); setSimulando(true)
     try {
@@ -429,10 +444,10 @@ function ScenarioHistoryPanel({ precificacaoId, codigo, precificacao, canViewCos
       <h4>Nova simulação</h4>
       {precificacao && <p className="field-hint">UF de destino, modalidade comercial e regime tributário serão preenchidos do cabeçalho salvo. {precificacao.uf_destino ? `UF: ${precificacao.uf_destino}. ` : 'UF de destino ausente no cabeçalho. '}{precificacao.modalidade_comercial} · {precificacao.regime_tributario ?? 'regime ausente'}.</p>}
       <p className="field-hint">Complete os demais campos de <code>CalculateRequest</code>. A formulação não contém preços unitários; embalagens não têm endpoint de cotação; e faltam parâmetros de produção, NCM do produto, margem desejada, comissão e frete percentual. Os valores são enviados à API; nenhum cálculo é feito no navegador.</p>
-      <button className="button secondary" type="button" disabled={preparando || simulando || salvandoCenario} onClick={() => { void prepararEntrada() }}>{preparando ? 'Consultando APIs…' : 'Preparar entrada com dados existentes'}</button>
+      <button className="button primary" type="button" disabled={preparando || simulando || salvandoCenario} onClick={() => { void prepararECalcular() }}>{preparando ? 'Consultando APIs…' : simulando ? 'Calculando…' : 'Preparar dados reais e calcular'}</button>
       {pendenciasPreparacao.length > 0 && <div className="catalog-error" role="status"><strong>Informações que ainda precisam ser preenchidas ou resolvidas:</strong><ul>{pendenciasPreparacao.map((item) => <li key={item}>{item}</li>)}</ul></div>}
       <form onSubmit={(event) => { void simular(event) }}>
-        <label className="field">Demais campos da entrada JSON<textarea rows={12} required value={entradaJson} onChange={(event) => setEntradaJson(event.target.value)} placeholder="Informe materiais_primas, embalagens, perda_percentual, origem/valor de material do cliente, producao, impostos e comercial. O cabeçalho é aplicado automaticamente quando disponível." /></label>
+        <details className="scenario-manual-input"><summary>Complementar ou editar manualmente a entrada do motor</summary><p className="field-hint">Use apenas para preencher campos sem API ou corrigir dados aprovados. A entrada continua sendo validada pelo motor real.</p><label className="field">Entrada CalculateRequest em JSON<textarea rows={12} value={entradaJson} onChange={(event) => setEntradaJson(event.target.value)} placeholder="Prepare os dados reais acima ou informe a entrada completa no contrato CalculateRequest." /></label></details>
         <div className="scenario-compare-controls">
           <label className="field">Volume negociado (opcional)<input inputMode="decimal" value={volume} onChange={(event) => setVolume(event.target.value)} /></label>
           <label className="field">Observação (opcional)<input maxLength={500} value={observacao} onChange={(event) => setObservacao(event.target.value)} /></label>

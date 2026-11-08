@@ -38,7 +38,8 @@ export function FormulationPage({ canEdit, canViewCost, canReadCatalog, canReadC
   const [produtoId, setProdutoId] = useState('')
   const [itens, setItens] = useState<ItemDraft[]>([])
   const [novo, setNovo] = useState<Draft>(vazio())
-  const [carregando, setCarregando] = useState(true)
+  const [carregandoCatalogos, setCarregandoCatalogos] = useState(true)
+  const [carregandoFormulacao, setCarregandoFormulacao] = useState(false)
   const [salvando, setSalvando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const [mensagem, setMensagem] = useState<string | null>(null)
@@ -48,21 +49,23 @@ export function FormulationPage({ canEdit, canViewCost, canReadCatalog, canReadC
 
   useEffect(() => {
     let vigente = true
+    if (!canReadCatalog) return () => { vigente = false }
     Promise.all([listarProdutos(), listarTodosInsumos('materias-primas'), listarTodosInsumos('embalagens')])
       .then(([listaProdutos, listaMaterias, listaEmbalagens]) => {
         if (!vigente) return
         setProdutos(listaProdutos); setMaterias(listaMaterias); setEmbalagens(listaEmbalagens)
       }).catch((falha: unknown) => { if (vigente) setErro(falha instanceof Error ? falha.message : 'Não foi possível carregar produtos e insumos.') })
-      .finally(() => { if (vigente) setCarregando(false) })
+      .finally(() => { if (vigente) setCarregandoCatalogos(false) })
     return () => { vigente = false }
-  }, [])
+  }, [canReadCatalog])
 
   useEffect(() => {
+    if (!canReadCatalog) return
     let vigente = true
     listarPrecificacoes().then((lista) => { if (vigente) setPrecificacoes(lista) })
       .catch((falha: unknown) => { if (vigente) setErro(falha instanceof Error ? falha.message : 'Não foi possível carregar cenários relacionados.') })
     return () => { vigente = false }
-  }, [])
+  }, [canReadCatalog])
 
   useEffect(() => {
     if (!produtoId) return
@@ -73,7 +76,7 @@ export function FormulationPage({ canEdit, canViewCost, canReadCatalog, canReadC
         if (!vigente) return
         if (falha instanceof ApiError && falha.status === 404) setItens([])
         else { setItens([]); setErro(falha instanceof Error ? falha.message : 'Não foi possível recuperar a formulação.') }
-      }).finally(() => { if (vigente) setCarregando(false) })
+      }).finally(() => { if (vigente) setCarregandoFormulacao(false) })
     return () => { vigente = false }
   }, [produtoId])
 
@@ -118,16 +121,17 @@ export function FormulationPage({ canEdit, canViewCost, canReadCatalog, canReadC
     {mensagem && <p className="catalog-success" role="status">{mensagem}</p>}
     <section className="form-card formulation-selector">
       <label className="field" htmlFor="formulation-product">Produto
-        <select id="formulation-product" value={produtoId} disabled={salvando} onChange={(event) => { setProdutoId(event.target.value); setItens([]); setCarregando(Boolean(event.target.value)); setErro(null); setMensagem(null) }}>
+        <select id="formulation-product" value={produtoId} disabled={salvando || carregandoCatalogos || !canReadCatalog} onChange={(event) => { setProdutoId(event.target.value); setItens([]); setCarregandoFormulacao(Boolean(event.target.value)); setErro(null); setMensagem(null) }}>
           <option value="">Selecione um produto ativo</option>
           {produtos.map((produto) => <option value={produto.id} key={produto.id}>{produto.codigo} — {produto.descricao}</option>)}
         </select>
       </label>
+      {!canReadCatalog && <p className="field-hint" role="status">A permissão cadastro.ler é necessária para carregar produtos e insumos da formulação.</p>}
       {produtoId && <p className="field-hint">{produtos.find((produto) => produto.id === produtoId)?.categoria}{produtos.find((produto) => produto.id === produtoId)?.peso_liquido_g ? ` · ${produtos.find((produto) => produto.id === produtoId)?.peso_liquido_g} g` : ''}</p>}
     </section>
 
     {produtoId && <>
-      {canViewCost && precificacoesProduto.length > 0 && <section className="form-card scenario-profitability">
+      {precificacoesProduto.length > 0 && <section className="form-card scenario-profitability">
         <div className="list-card-heading"><div><h3>Rentabilidade de cenários salvos</h3><p>Resultados reais das precificações deste produto.</p></div>
           <select aria-label="Abrir cenários salvos do produto" value={precificacaoCenario?.id ?? ''} onChange={(event) => setPrecificacaoCenario(precificacoesProduto.find((item) => item.id === event.target.value) ?? null)}>
             <option value="">Selecione uma precificação</option>
@@ -152,7 +156,7 @@ export function FormulationPage({ canEdit, canViewCost, canReadCatalog, canReadC
       </section>}
       <section className="form-card catalog-table-card">
         <div className="list-card-heading"><div><span className="heading-icon" aria-hidden="true">▤</span><h3>Componentes da formulação</h3></div><span className="list-scope">{itens.length} {itens.length === 1 ? 'item' : 'itens'}</span></div>
-        {carregando ? <div className="empty-list" role="status">Carregando formulação…</div> : itens.length === 0 ? <div className="empty-list"><h3>Composição vazia</h3><p>Adicione matérias-primas ou embalagens para iniciar.</p></div> : <div className="table-scroll" role="region" aria-label="Itens da formulação" tabIndex={0}>
+        {carregandoCatalogos || carregandoFormulacao ? <div className="empty-list" role="status">Carregando formulação…</div> : itens.length === 0 ? <div className="empty-list"><h3>Composição vazia</h3><p>Adicione matérias-primas ou embalagens para iniciar.</p></div> : <div className="table-scroll" role="region" aria-label="Itens da formulação" tabIndex={0}>
           <table className="pricing-table formulation-table"><thead><tr><th>Tipo</th><th>Insumo</th><th>Origem</th><th>Quantidade</th><th>Unidade</th><th>Perda (%)</th>{canEdit && <th>Ações</th>}</tr></thead><tbody>
             {itens.map((item, index) => { const id = item.tipo_insumo === 'materia_prima' ? item.materia_prima_id : item.embalagem_id; const insumo = id ? insumosPorId.get(id) : undefined
               return <tr key={item.id ?? `${id}-${index}`}><td>{item.tipo_insumo === 'materia_prima' ? 'Matéria-prima' : 'Embalagem'}</td><td>{insumo ? `${insumo.codigo} — ${insumo.descricao}` : 'Insumo indisponível'}</td>
@@ -163,7 +167,7 @@ export function FormulationPage({ canEdit, canViewCost, canReadCatalog, canReadC
                 {canEdit && <td><button type="button" className="button secondary" onClick={() => { setItens((atuais) => atuais.filter((_, posicao) => posicao !== index)); setMensagem(null) }}>Remover</button></td>}</tr>
             })}
           </tbody></table></div>}
-        {canEdit && <div className="catalog-form-actions"><button className="button primary" type="button" disabled={salvando || carregando} onClick={() => { void salvar() }}>{salvando ? 'Salvando…' : 'Salvar formulação'}</button></div>}
+        {canEdit && <div className="catalog-form-actions"><button className="button primary" type="button" disabled={salvando || carregandoCatalogos || carregandoFormulacao} onClick={() => { void salvar() }}>{salvando ? 'Salvando…' : 'Salvar formulação'}</button></div>}
       </section>
     </>}
   </section>

@@ -17,3 +17,6 @@ export const registrarDecisao = (precificacaoId: string, decisao: DecisaoAprovac
   apiFetch<DecisaoRegistrada>(`/precificacoes/${encodeURIComponent(precificacaoId)}/decisoes`, {
     method: 'POST', body: JSON.stringify({ decisao, comentario: comentario || null }),
   })
+
+export const listarDecisoesAprovacao = (precificacaoId: string) =>
+  apiFetch<DecisaoRegistrada[]>(`/precificacoes/${encodeURIComponent(precificacaoId)}/decisoes`)
