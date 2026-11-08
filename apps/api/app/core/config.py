@@ -19,6 +19,9 @@ class Settings(BaseSettings):
     AMBIENTE: str = "local"
     SENTRY_DSN: str = ""
     LOG_LEVEL: str = "INFO"
+    # Modo explícito de demonstração. Desligado por padrão; não salva cenários.
+    DEMO_CALCULATION_ENABLED: bool = False
+    DEMO_CALCULATION_DEFAULTS_JSON: str = ""
     # o Render preenche RENDER_GIT_COMMIT; vira a "release" no Sentry
     VERSAO: str = Field(default="", validation_alias=AliasChoices("VERSAO", "RENDER_GIT_COMMIT"))
 

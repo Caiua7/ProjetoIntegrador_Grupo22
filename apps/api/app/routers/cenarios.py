@@ -15,7 +15,7 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 from pydantic import BaseModel, ConfigDict, Field, PlainSerializer
 
 from app.core.auth import UsuarioAutenticado, exigir_permissao
-from app.infrastructure.supabase_client import supabase_do_usuario
+from app.infrastructure.supabase_client import supabase_do_usuario, supabase_servico
 from app.routers.calculate import calculate
 from app.services.comparacao_cenarios import comparar_cenarios
 from pricing_core.contracts import CalculateRequest
@@ -150,7 +150,7 @@ def _erro(erro: Exception) -> HTTPException:
         return HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, mensagem)
     if codigo == "23505":
         return HTTPException(status.HTTP_409_CONFLICT, "Outra versão foi salva ao mesmo tempo; tente de novo.")
-    if codigo == "23001":
+    if codigo in {"23001", "55000"}:
         return HTTPException(status.HTTP_409_CONFLICT, mensagem)
     if codigo == "42501":
         return HTTPException(status.HTTP_403_FORBIDDEN, "Seu perfil não pode acessar ou alterar esta precificação.")
@@ -245,7 +245,11 @@ def _salvar(
         "p_observacao": observacao,
         "p_cenario_origem_id": origem_id,
     }
-    resposta = _executar(lambda: _cliente(usuario).rpc("salvar_cenario", parametros).execute())
+    # A persistência usa o papel privilegiado da API, pois o RPC com entrada e
+    # resultado calculado não pode ficar exposto ao papel authenticated. A
+    # função SQL revalida usuário, permissão e carteira antes de gravar.
+    parametros["p_usuario_id"] = str(usuario.id)
+    resposta = _executar(lambda: supabase_servico().rpc("salvar_cenario_seguro", parametros).execute())
     salvo = resposta.data[0] if isinstance(resposta.data, list) else resposta.data
     if not salvo:
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "A versão não foi retornada após a gravação.")
@@ -319,8 +323,16 @@ def salvar_nova_versao(
     if usuario.tem_permissao("custo.ler"):
         return salvo
     campos_preco = {
-        "id", "precificacao_id", "versao", "vigente", "volume", "data_calculo", "versao_motor",
-        "preco_bruto", "preco_bruto_sem_ipi", "created_at",
+        "id",
+        "precificacao_id",
+        "versao",
+        "vigente",
+        "volume",
+        "data_calculo",
+        "versao_motor",
+        "preco_bruto",
+        "preco_bruto_sem_ipi",
+        "created_at",
     }
     return CenarioSalvoSemCustos.model_validate({campo: salvo[campo] for campo in campos_preco})
 

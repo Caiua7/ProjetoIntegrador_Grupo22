@@ -32,3 +32,11 @@ As bases usadas para destacar impostos também aguardam confirmação do PO. Por
 ## Persistência de cenários
 
 `POST /precificacoes/{precificacao_id}/cenarios` recebe `{ entrada, volume?, observacao? }`, calcula novamente no backend e persiste entrada, resultado e versão do motor. O cliente não envia preço calculado para persistência. O backend rejeita com HTTP 409 qualquer resultado que o próprio motor marque como mock. A confirmação da gravação também filtra custos e margem para quem não tem `custo.ler`. As rotas de consulta de detalhes e comparação exigem custo; a visão `/precos` mantém os preços para usuários com `precificacao.ler`. Volume habilita indicadores de rentabilidade absoluta.
+
+## Demonstração explícita
+
+`POST /calculate/demo` recebe `{ dados: { ... } }` e é habilitado somente com `DEMO_CALCULATION_ENABLED=true`. Campos ausentes são preenchidos por premissas deliberadamente demonstrativas em `app/services/demo_calculator.py`, sobrescrevíveis pela configuração `DEMO_CALCULATION_DEFAULTS_JSON`. A resposta sempre tem `metadata.is_mock=true`, `origem=demonstracao`, classificação e lista das premissas aplicadas. Dados recebidos do cliente são sinalizados como não verificados. O endpoint não persiste; a RPC de persistência aceita somente proveniência real validada no próprio banco.
+
+## Benchmark local
+
+`apps/api/scripts/benchmark_calculate.py --iterations 1000` mede o motor puro com o caso oficial `caso_000_template.json`, incluindo aquecimento e p50/p95/p99. O microbenchmark não mede rede, API ou banco e não substitui benchmark de carga.
