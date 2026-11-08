@@ -50,6 +50,9 @@ CREATE POLICY historico_status_leitura
         AND EXISTS (SELECT 1 FROM precificacao p WHERE p.id = precificacao_id)
     );
 
+SELECT habilitar_auditoria('politica_submissao');
+SELECT habilitar_auditoria('historico_status_precificacao');
+
 CREATE FUNCTION avaliar_submissao_precificacao(p_usuario_id UUID, p_precificacao_id UUID)
 RETURNS JSONB
 LANGUAGE plpgsql

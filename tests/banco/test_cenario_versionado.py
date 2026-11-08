@@ -47,6 +47,9 @@ def _resultado(preco_bruto: str, *, mock: bool = False) -> dict:
 @pytest.fixture
 def tx(conn):
     with conn.transaction(force_rollback=True):
+        # Os testes versionam cenários em uma negociação aberta. A fixture
+        # de desenvolvimento mantém PRC-0148 em aprovação para testes do fluxo.
+        conn.execute("UPDATE precificacao SET status = 'em_preenchimento' WHERE codigo = 'PRC-2026-0148'")
         for usuario_id, (perfil, carteira) in USUARIOS.items():
             conn.execute(
                 "INSERT INTO usuario (id, nome, email, perfil_id) SELECT %s, %s, %s, id FROM perfil WHERE codigo = %s",
