@@ -225,6 +225,10 @@
 .catalog-content button:focus-visible, .catalog-content input:focus-visible, .catalog-content select:focus-visible { outline: 2px solid var(--brand-light); outline-offset: 2px; }
 .formulation-selector { margin-bottom: 14px; padding: 16px; }
 .formulation-selector .field { max-width: 680px; }
+.formulation-workspace { display: grid; grid-template-columns: minmax(0,1fr) minmax(340px,.8fr); align-items: start; gap: 14px; }
+.formulation-editor, .formulation-sidebar { min-width: 0; }
+.formulation-sidebar .scenario-history { margin: 0; }
+.formulation-sidebar .scenario-history > .table-scroll { max-height: 360px; overflow: auto; }
 .formulation-add { margin-bottom: 14px; padding: 16px; }
 .formulation-add-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); align-items: end; gap: 12px; }
 .formulation-add-button { min-height: 39px; }
@@ -275,6 +279,7 @@
 @media (max-width: 620px) { .tax-filters { grid-template-columns: 1fr; } .tax-resolver { align-items: stretch; flex-direction: column; } .tax-resolver .field { min-width: 0; } }
 
 @media (max-width: 620px) {
+  .formulation-workspace { grid-template-columns: 1fr; }
   .catalog-filters { grid-template-columns: 1fr; }
   .catalog-pagination { justify-content: flex-start; }
   .catalog-form { grid-template-columns: 1fr; }

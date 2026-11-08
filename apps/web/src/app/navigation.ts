@@ -9,6 +9,7 @@ export type NavItem = {
   icon: IconName
   /** Permissão nomeada exigida; null = todo usuário ativo. */
   permission: string | null
+  additionalPermissions?: string[]
   /** Uma frase sobre o que a tela faz, mostrada no hover do menu. */
   description: string
 }
@@ -33,7 +34,7 @@ export const NAVIGATION: NavGroup[] = [
     { id: 'dashboard', label: 'Painel', icon: 'painel', permission: null, description: 'Resumo da carteira: margem, pendências e últimas movimentações' },
     { id: 'pricing-list', label: 'Precificações', icon: 'precificacoes', permission: 'precificacao.ler', description: 'Todos os estudos de preço, com status e margem' },
     { id: 'new-pricing', label: 'Nova precificação', icon: 'nova', permission: 'precificacao.editar', description: 'Abrir um estudo de preço para um cliente e produto' },
-    { id: 'formulation', label: 'Formulações', icon: 'cenario', permission: 'precificacao.ler', description: 'Gerenciar a composição de matérias-primas e embalagens dos produtos' },
+    { id: 'formulation', label: 'Formulações', icon: 'cenario', permission: 'precificacao.ler', additionalPermissions: ['cadastro.ler'], description: 'Gerenciar a composição de matérias-primas e embalagens dos produtos' },
     { id: 'scenario', label: 'Cenário aberto', icon: 'cenario', permission: 'precificacao.ler', description: 'Detalhe de um cenário: custos, impostos e margens' },
     { id: 'inverse', label: 'Modo inverso', icon: 'inverso', permission: 'precificacao.editar', description: 'Informe a margem desejada e descubra o preço' },
     { id: 'compare', label: 'Comparar cenários', icon: 'comparar', permission: 'precificacao.ler', description: 'Compare versões e cenários lado a lado' },
@@ -67,7 +68,10 @@ export function isImplemented(id: string): id is Screen {
 /** Grupos com só os itens que o perfil alcança; grupo vazio some. */
 export function navigationFor(hasPermission: (codigo: string) => boolean): NavGroup[] {
   return NAVIGATION
-    .map((group) => ({ ...group, items: group.items.filter((item) => item.permission === null || hasPermission(item.permission)) }))
+    .map((group) => ({ ...group, items: group.items.filter((item) =>
+      (item.permission === null || hasPermission(item.permission))
+      && (item.additionalPermissions ?? []).every(hasPermission),
+    ) }))
     .filter((group) => group.items.length > 0)
 }
 

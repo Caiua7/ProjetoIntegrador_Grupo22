@@ -30,6 +30,12 @@ test('cadastros de insumos exigem leitura para abrir e edição para manter regi
   assert.ok(ids.includes('records'))
 })
 
+test('fórmulas exige leitura de preços e do catálogo para resolver produto e insumos', () => {
+  assert.equal(canOpen('formulation', perfil('precificacao.ler')), false)
+  assert.equal(canOpen('formulation', perfil('cadastro.ler')), false)
+  assert.equal(canOpen('formulation', perfil('precificacao.ler', 'cadastro.ler')), true)
+})
+
 test('cotações abre com custo.ler', () => {
   assert.equal(canOpen('quotes', perfil('cadastro.ler')), false)
   assert.equal(canOpen('quotes', perfil('custo.ler')), true)
