@@ -11,6 +11,8 @@
 
 O endpoint exige autenticação e permissão `precificacao.ler`, e executa `pricing_core.engine.calcular`. Usuários com `custo.ler` recebem a resposta completa; os demais recebem preços, ROL, impostos destacados e metadata, sem custos, encargos, isenção de mão de obra ou margens. Erros de domínio são respondidos como HTTP 422 com `codigo`, `mensagem` e `detalhes`.
 
+O `.ts` é mantido à mão. `apps/api/tests/test_contrato_front.py` lê esse arquivo e compara com `contracts.py`: mesmos campos em cada interface, nenhum campo obrigatório na API marcado como opcional (`?`) no front, mesmos valores de enum e o mesmo recorte de `CalculateResponseSemCustos`. Mudou um lado? Mude o outro no mesmo PR, ou o CI falha.
+
 ## Formato e precisão
 
 Campos monetários e percentuais são decimais serializados como strings. Percentuais são frações (`0.18` representa 18%). O frontend deve enviar os campos conforme `CalculateRequest` e exibir os valores retornados sem reimplementar fórmulas. A resposta inclui custos, `PBsIPIsEncargo`, `PBsIPI`, `PBcIPI`, `PB`, `ROL`, `MaCo`, isenção de mão de obra e impostos destacados.
@@ -40,3 +42,24 @@ As bases usadas para destacar impostos também aguardam confirmação do PO. Por
 ## Benchmark local
 
 `apps/api/scripts/benchmark_calculate.py --iterations 1000` mede o motor puro com o caso oficial `caso_000_template.json`, incluindo aquecimento e p50/p95/p99. O microbenchmark não mede rede, API ou banco e não substitui benchmark de carga.
+
+## Tempo de resposta (p95 < 800 ms)
+
+`scripts/medir_p95.py` mede `POST /calculate` de ponta a ponta (rede, autenticação, API e motor) com uma formulação de 25 matérias-primas e 5 embalagens, depois de 10 chamadas de aquecimento:
+
+```bash
+set NEOPRICE_EMAIL=...   # usuário de teste com precificacao.ler
+set NEOPRICE_SENHA=...
+python scripts/medir_p95.py --api https://neoprice-api-staging.onrender.com
+python scripts/medir_p95.py --api https://neoprice-api-staging.onrender.com --concorrencia 5
+```
+
+Medido no staging (Render gratuito) em 10/11/2026, 200 chamadas por rodada:
+
+| Concorrência | p50 | p95 | p99 |
+| --- | --- | --- | --- |
+| 1 | 240 ms | 312 ms | 405 ms |
+| 3 | — | ~600 ms | — |
+| 5 | — | ~600 ms | — |
+
+O motor puro leva menos de 0,1 ms; quase todo o tempo é a validação do token e a leitura do perfil no Supabase, feitas a cada requisição. Com 5 chamadas simultâneas, 2 em 60 respondiam 401 com token válido: qualquer falha ao falar com o Supabase virava "sessão inválida". Agora um token recusado continua 401, e uma falha passageira é repetida uma vez e, se persistir, vira 503 com log, sem deslogar o usuário.

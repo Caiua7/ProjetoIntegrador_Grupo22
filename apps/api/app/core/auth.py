@@ -7,6 +7,7 @@ carrega o perfil e as permissões da tabela `usuario`. É a segunda camada de
 autorização: quem barra o dado continua sendo o RLS (docs/controle-de-acesso.md).
 """
 
+import logging
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from uuid import UUID
@@ -14,11 +15,13 @@ from uuid import UUID
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
+from supabase_auth.errors import AuthApiError, AuthInvalidJwtError, AuthSessionMissingError
 
 from app.infrastructure.database import get_db
 from app.infrastructure.supabase_client import supabase_servico
 
 _bearer = HTTPBearer(auto_error=False)
+logger = logging.getLogger("neoprice.auth")
 
 
 @dataclass(frozen=True)
@@ -43,14 +46,35 @@ def _nao_autenticado(motivo: str) -> HTTPException:
     )
 
 
+def _token_recusado(erro: Exception) -> bool:
+    """O Supabase recusou o token (inválido, expirado, usuário removido).
+
+    Timeout, falha de rede, limite de taxa (429) e erro 5xx do Supabase não
+    dizem nada sobre o token: tratá-los como 401 desloga o usuário por causa
+    de uma falha passageira (visto no teste de carga da issue #59).
+    """
+    if isinstance(erro, AuthInvalidJwtError | AuthSessionMissingError):
+        return True
+    return isinstance(erro, AuthApiError) and erro.status in {400, 401, 403, 404}
+
+
 def validar_token(access_token: str) -> UUID:
-    """Devolve o id do usuário dono do token ou levanta 401."""
-    try:
-        resposta = supabase_servico().auth.get_user(access_token)
-    except RuntimeError:
-        raise
-    except Exception as erro:
-        raise _nao_autenticado("Sessão inválida ou expirada.") from erro
+    """Devolve o id do usuário dono do token; 401 se recusado, 503 se o Supabase falhar."""
+    for tentativa in (1, 2):
+        try:
+            resposta = supabase_servico().auth.get_user(access_token)
+            break
+        except RuntimeError:
+            raise
+        except Exception as erro:
+            if _token_recusado(erro):
+                raise _nao_autenticado("Sessão inválida ou expirada.") from erro
+            if tentativa == 2:
+                logger.exception("falha ao validar o token no Supabase")
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail="Não foi possível confirmar sua sessão agora. Tente de novo em instantes.",
+                ) from erro
     if resposta is None or resposta.user is None:
         raise _nao_autenticado("Sessão inválida ou expirada.")
     return UUID(resposta.user.id)
