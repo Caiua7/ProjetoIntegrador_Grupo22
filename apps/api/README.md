@@ -53,7 +53,7 @@ Detalhes da regra de acesso em [docs/controle-de-acesso.md](../../docs/controle-
 
 ## Autenticação
 
-O front manda o access token do Supabase Auth em `Authorization: Bearer <token>`. A API confere o token no próprio Supabase e carrega perfil e permissões da tabela `usuario` (`app/core/auth.py`).
+O front manda o access token do Supabase Auth em `Authorization: Bearer <token>`. A API confere a assinatura localmente com a chave pública do projeto (JWKS em `/auth/v1/.well-known/jwks.json`, ES256), sem ir ao Supabase a cada requisição; se a chave não estiver disponível ou o token for de outro formato, confirma no próprio Supabase. Depois carrega perfil e permissões da tabela `usuario` (`app/core/auth.py`), então usuário desativado é barrado na hora. Um logout só derruba o token quando ele expira (até 1 h).
 
 | Dependência | O que faz |
 | :--- | :--- |

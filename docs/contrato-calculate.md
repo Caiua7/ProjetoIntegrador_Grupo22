@@ -63,3 +63,6 @@ Medido no staging (Render gratuito) em 10/11/2026, 200 chamadas por rodada:
 | 5 | — | ~600 ms | — |
 
 O motor puro leva menos de 0,1 ms; quase todo o tempo é a validação do token e a leitura do perfil no Supabase, feitas a cada requisição. Com 5 chamadas simultâneas, 2 em 60 respondiam 401 com token válido: qualquer falha ao falar com o Supabase virava "sessão inválida". Agora um token recusado continua 401, e uma falha passageira é repetida uma vez e, se persistir, vira 503 com log, sem deslogar o usuário.
+
+Depois disso (issue #70) a API passou a validar o token localmente pela chave pública do projeto (0,3 ms em vez de ~250 ms e sem falhas de rede); ir ao Supabase ficou só como reserva. A leitura do perfil continua indo ao banco a cada requisição.
+
