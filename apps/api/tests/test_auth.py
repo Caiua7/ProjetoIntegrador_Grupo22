@@ -4,6 +4,7 @@ from uuid import uuid4
 import pytest
 from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
+from supabase_auth.errors import AuthApiError, AuthRetryableError
 
 from app.core import auth
 from app.infrastructure.database import get_db
@@ -23,7 +24,7 @@ DADOS = {
 class _AuthFalso:
     def get_user(self, token):
         if token != "token-valido":
-            raise Exception("invalid JWT")
+            raise AuthApiError("invalid JWT", 403, None)
         return SimpleNamespace(user=SimpleNamespace(id=str(USUARIO_ID)))
 
 
@@ -113,3 +114,51 @@ def test_carregar_usuario_sem_cadastro_devolve_none(monkeypatch):
     servico = SimpleNamespace(table=lambda _nome: _ConsultaUsuario([]))
     monkeypatch.setattr(auth, "supabase_servico", lambda: servico)
     assert auth.carregar_usuario(None, USUARIO_ID) is None
+
+
+class _AuthInstavel:
+    """Falha `falhas` vezes por erro passageiro do Supabase e depois responde."""
+
+    def __init__(self, falhas):
+        self.falhas = falhas
+        self.chamadas = 0
+
+    def get_user(self, token):
+        self.chamadas += 1
+        if self.chamadas <= self.falhas:
+            raise AuthRetryableError("timeout", 504)
+        return SimpleNamespace(user=SimpleNamespace(id=str(USUARIO_ID)))
+
+
+def test_falha_passageira_do_supabase_tenta_de_novo(monkeypatch):
+    instavel = _AuthInstavel(falhas=1)
+    monkeypatch.setattr(auth, "supabase_servico", lambda: SimpleNamespace(auth=instavel))
+
+    assert auth.validar_token("qualquer") == USUARIO_ID
+    assert instavel.chamadas == 2
+
+
+def test_supabase_fora_do_ar_devolve_503_e_nao_desloga(monkeypatch):
+    instavel = _AuthInstavel(falhas=2)
+    monkeypatch.setattr(auth, "supabase_servico", lambda: SimpleNamespace(auth=instavel))
+
+    with pytest.raises(auth.HTTPException) as erro:
+        auth.validar_token("qualquer")
+
+    assert erro.value.status_code == 503
+
+
+def test_token_recusado_nao_tenta_de_novo(monkeypatch):
+    falso = _AuthFalso()
+    chamadas = []
+    monkeypatch.setattr(
+        auth,
+        "supabase_servico",
+        lambda: SimpleNamespace(auth=SimpleNamespace(get_user=lambda t: chamadas.append(t) or falso.get_user(t))),
+    )
+
+    with pytest.raises(auth.HTTPException) as erro:
+        auth.validar_token("expirado")
+
+    assert erro.value.status_code == 401
+    assert len(chamadas) == 1
