@@ -1,22 +1,28 @@
 """Autenticação e autorização da API (US03, issue #44).
 
 O front manda o access token do Supabase Auth no cabeçalho
-`Authorization: Bearer <token>`. A API confirma o token no próprio Supabase
-(serve para chave simétrica ou assimétrica e respeita logout e expiração) e
-carrega o perfil e as permissões da tabela `usuario`. É a segunda camada de
+`Authorization: Bearer <token>`. A API confere a assinatura localmente com a
+chave pública do projeto (JWKS, ES256/RS256), sem ir ao Supabase a cada
+requisição; se não conseguir (chave indisponível ou formato inesperado),
+confirma o token no próprio Supabase. Depois carrega o perfil e as
+permissões da tabela `usuario`, então um usuário desativado é barrado na
+hora. Um logout só derruba o token quando ele expira (até 1 h). É a segunda camada de
 autorização: quem barra o dado continua sendo o RLS (docs/controle-de-acesso.md).
 """
 
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from functools import lru_cache
 from uuid import UUID
 
+import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 from supabase_auth.errors import AuthApiError, AuthInvalidJwtError, AuthSessionMissingError
 
+from app.core.config import settings
 from app.infrastructure.database import get_db
 from app.infrastructure.supabase_client import supabase_servico
 
@@ -58,8 +64,53 @@ def _token_recusado(erro: Exception) -> bool:
     return isinstance(erro, AuthApiError) and erro.status in {400, 401, 403, 404}
 
 
+ALGORITMOS_ASSIMETRICOS = {"ES256", "RS256"}
+
+
+@lru_cache
+def _cliente_jwks() -> jwt.PyJWKClient:
+    # guarda as chaves por 1 h; um `kid` novo (rotação) força nova busca
+    return jwt.PyJWKClient(
+        f"{settings.SUPABASE_URL}/auth/v1/.well-known/jwks.json", cache_keys=True, lifespan=3600, timeout=10
+    )
+
+
+class _SemValidacaoLocal(Exception):
+    """Não deu para validar localmente; a validação vai para o Supabase."""
+
+
+def _validar_localmente(access_token: str) -> UUID:
+    try:
+        algoritmo = jwt.get_unverified_header(access_token).get("alg")
+    except jwt.PyJWTError as erro:
+        raise _SemValidacaoLocal from erro
+    if algoritmo not in ALGORITMOS_ASSIMETRICOS or not settings.SUPABASE_URL:
+        raise _SemValidacaoLocal
+    try:
+        chave = _cliente_jwks().get_signing_key_from_jwt(access_token)
+    except jwt.PyJWKClientError as erro:
+        raise _SemValidacaoLocal from erro
+    try:
+        dados = jwt.decode(
+            access_token,
+            chave.key,
+            algorithms=[algoritmo],
+            audience="authenticated",
+            issuer=f"{settings.SUPABASE_URL}/auth/v1",
+            options={"require": ["exp", "sub"]},
+            leeway=30,
+        )
+        return UUID(dados["sub"])
+    except (jwt.PyJWTError, ValueError) as erro:
+        raise _nao_autenticado("Sessão inválida ou expirada.") from erro
+
+
 def validar_token(access_token: str) -> UUID:
     """Devolve o id do usuário dono do token; 401 se recusado, 503 se o Supabase falhar."""
+    try:
+        return _validar_localmente(access_token)
+    except _SemValidacaoLocal:
+        pass
     for tentativa in (1, 2):
         try:
             resposta = supabase_servico().auth.get_user(access_token)
