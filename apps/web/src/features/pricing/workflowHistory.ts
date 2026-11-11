@@ -15,6 +15,7 @@ export type DecisionEventSource = {
   responsavel_id: string
   responsavel_nome: string | null
   decidido_em: string
+  comentario?: string | null
 }
 
 export type WorkflowEvent = {
@@ -26,6 +27,7 @@ export type WorkflowEvent = {
   responsavel_nome: string | null
   origem: 'submissao' | 'decisao'
   modo?: 'demonstracao' | 'homologada'
+  comentario?: string | null
 }
 
 export function combinarHistoricoWorkflow(
@@ -51,6 +53,7 @@ export function combinarHistoricoWorkflow(
       responsavel_id: item.responsavel_id,
       responsavel_nome: item.responsavel_nome,
       origem: 'decisao' as const,
+      comentario: item.comentario ?? null,
     })),
   ]
 

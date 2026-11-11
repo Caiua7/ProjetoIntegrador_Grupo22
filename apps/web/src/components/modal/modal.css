@@ -1,0 +1,55 @@
+/* ═══ Modal do NeoPrice ═══ */
+html.np-modal-aberto { overflow: hidden; }
+
+.np-modal-fundo {
+  position: fixed; z-index: 80; inset: 0; display: grid; place-items: center; padding: 24px 16px;
+  background: rgba(3, 5, 10, .62); backdrop-filter: blur(3px);
+  animation: np-modal-fundo .16s ease-out;
+}
+.neoprice[data-theme='light'] .np-modal-fundo { background: rgba(10, 14, 26, .38); }
+
+.np-modal {
+  display: flex; width: 100%; max-height: min(88vh, 920px); flex-direction: column; overflow: hidden;
+  border: 1px solid var(--line-strong); border-radius: 16px; background: var(--surface); color: var(--text);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, .45), 0 2px 8px rgba(0, 0, 0, .2); outline: none;
+  animation: np-modal-abre .2s cubic-bezier(.2, .7, .2, 1);
+}
+.np-modal-pequeno { max-width: 440px; }
+.np-modal-medio { max-width: 680px; }
+.np-modal-grande { max-width: 1080px; }
+
+.np-modal-topo { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 18px 20px 14px; border-bottom: 1px solid var(--line); }
+.np-modal-topo h2 { margin: 0; font: 600 17px/1.35 var(--f-titulo); letter-spacing: -.2px; }
+.np-modal-topo p { margin: 3px 0 0; color: var(--text-3); font-size: 12.5px; }
+.np-modal-x {
+  display: grid; width: 34px; height: 34px; flex: 0 0 34px; place-items: center; margin: -4px -6px 0 0;
+  border: 1px solid transparent; border-radius: 9px; background: transparent; color: var(--text-3); cursor: pointer;
+}
+.np-modal-x:hover:not(:disabled) { border-color: var(--line); background: var(--surface-2); color: var(--text); }
+
+.np-modal-corpo { min-height: 0; flex: 1; overflow-y: auto; padding: 18px 20px 20px; overscroll-behavior: contain; }
+.np-modal-corpo > :first-child { margin-top: 0; }
+.np-modal-rodape { display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding: 14px 20px; border-top: 1px solid var(--line); background: color-mix(in srgb, var(--surface-2) 45%, var(--surface)); }
+.np-modal-rodape .np-modal-rodape-info { margin-right: auto; color: var(--text-3); font-size: 12px; }
+
+/* Formulários dentro do modal: sem o cartão em volta, que já é o modal */
+.np-modal-corpo .catalog-form, .np-modal-corpo .exchange-form { margin: 0; padding: 0; border: 0; }
+.np-modal-corpo .catalog-form-actions { margin-top: 4px; }
+
+/* confirmação */
+.np-confirma { display: flex; gap: 14px; }
+.np-confirma-icone { display: grid; width: 40px; height: 40px; flex: 0 0 40px; place-items: center; border-radius: 12px; background: var(--warning-wash); color: var(--warning); }
+.np-confirma-icone.perigo { background: var(--error-wash); color: var(--error); }
+.np-confirma p { margin: 2px 0 0; color: var(--text-2); font-size: 13.5px; line-height: 1.55; }
+.button.perigo { border-color: var(--error); background: var(--error); color: #fff; }
+.button.perigo:hover { filter: brightness(1.08); }
+
+@keyframes np-modal-fundo { from { opacity: 0; } }
+@keyframes np-modal-abre { from { opacity: 0; transform: translateY(10px) scale(.985); } }
+@media (prefers-reduced-motion: reduce) { .np-modal, .np-modal-fundo { animation: none; } }
+@media (max-width: 620px) {
+  .np-modal-fundo { place-items: end center; padding: 0; }
+  .np-modal { max-height: 92vh; border-radius: 16px 16px 0 0; }
+  .np-modal-rodape { flex-wrap: wrap; }
+  .np-modal-rodape .button { flex: 1; }
+}

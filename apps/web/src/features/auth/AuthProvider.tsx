@@ -3,7 +3,7 @@ import type { Session } from '@supabase/supabase-js'
 import { getAuthErrorMessage, type AuthErrorLike } from './authMessages'
 import { isSupabaseConfigured, supabaseClient, supabaseConfigurationMessage } from '../../services/supabaseClient'
 import { AuthContext, type AuthContextValue } from './authContext'
-import { fetchSessaoUsuario, type SessaoUsuario } from '../../services/apiClient'
+import { fetchSessaoUsuario, limparCacheApi, type SessaoUsuario } from '../../services/apiClient'
 
 function toAuthError(error: unknown): AuthErrorLike {
   if (error && typeof error === 'object') return error as AuthErrorLike
@@ -126,6 +126,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async signOut() {
       if (!supabaseClient) return supabaseConfigurationMessage ?? 'Autenticação indisponível.'
       signingOut.current = true
+      limparCacheApi()
       try {
         const { error } = await supabaseClient.auth.signOut()
         const message = error ? getAuthErrorMessage(error) : null

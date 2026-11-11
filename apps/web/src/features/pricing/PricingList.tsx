@@ -5,12 +5,17 @@ import { listarPrecificacoes, listarHistoricoStatus, submeterPrecificacao, verif
 import type { ListPreset } from './listPreset'
 import ScenarioHistoryPanel from './ScenarioHistoryPanel'
 import { listarDecisoesAprovacao, registrarDecisao, type DecisaoAprovacao } from './aprovacoesService'
+import { Modal } from '../../components/modal/Modal'
+import { CAMPO, FRETE, MODALIDADE, REGIME, rotulo, rotuloCampo } from './rotulos'
 import { combinarHistoricoWorkflow, type WorkflowEvent, type WorkflowStatus } from './workflowHistory'
 
 type Props = { onNewPricing: () => void, preset?: ListPreset, canViewCost: boolean, canEdit: boolean, canApprove: boolean,
   canReadCatalog: boolean, canReadCambio: boolean, canReadParametros: boolean, canReadImpostos: boolean }
 const statusLabel: Record<Precificacao['status'], string> = {
   em_preenchimento: 'Em preenchimento', em_aprovacao: 'Em aprovação', aprovado: 'Aprovado', reprovado: 'Reprovado',
+}
+const statusClasse: Record<Precificacao['status'], string> = {
+  em_preenchimento: 'status-neutral', em_aprovacao: 'status-review', aprovado: 'status-approved', reprovado: 'status-rejected',
 }
 const dataHora = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
 
@@ -101,45 +106,89 @@ function PricingList({ onNewPricing, preset, canViewCost, canEdit, canApprove, c
   }, [])
   const rows = useMemo(() => items.filter((item) => status === 'all' || item.status === status), [items, status])
 
+  const linhaTempo = (eventos: WorkflowEvent[]) => eventos.length
+    ? <ol className="workflow-timeline">{eventos.map((item) => <li key={item.id}>
+        <strong>{statusLabel[item.status_anterior]} → {statusLabel[item.status_novo]}</strong>
+        <span>{item.origem === 'submissao' ? (item.modo === 'demonstracao' ? 'Submissão demonstrativa' : 'Submissão para aprovação') : `Decisão de ${item.responsavel_nome ?? 'aprovador'}`}{item.comentario ? ` · “${item.comentario}”` : ''}</span>
+        <time dateTime={item.ocorrido_em}>{dataHora.format(new Date(item.ocorrido_em))}</time>
+      </li>)}</ol>
+    : <p className="field-hint">Nenhuma mudança de status registrada ainda.</p>
+
+  const contagem = (valor: 'all' | Precificacao['status']) => loading ? '–' : valor === 'all' ? items.length : items.filter((item) => item.status === valor).length
+
   return <section className="content list-content">
-    <div className="list-intro"><div><span className="eyebrow">PRECIFICAÇÃO</span><h2>Precificações</h2><p>Registros persistidos com acesso limitado pelas permissões e carteira do usuário.</p></div><button className="button primary" type="button" onClick={onNewPricing}><Icon name="mais" size={16} /> Nova precificação</button></div>
+    <div className="list-intro"><div><span className="eyebrow">PRECIFICAÇÃO</span><h2>Precificações</h2><p>Estudos de preço da sua carteira, com status e cenários.</p></div>{canEdit && <button className="button primary" type="button" onClick={onNewPricing}><Icon name="mais" size={16} /> Nova precificação</button>}</div>
     {error && <p className="catalog-error" role="alert">{error}</p>}
     {mensagemSubmissao && <p className="catalog-success" role="status">{mensagemSubmissao}</p>}
     <div className="pricing-filters" aria-label="Filtros de precificações"><div className="status-filters" role="group" aria-label="Filtrar por status">
-      {(['all', 'em_preenchimento', 'em_aprovacao', 'aprovado', 'reprovado'] as const).map((value) => <button key={value} className={`filter-chip${status === value ? ' selected' : ''}`} type="button" aria-pressed={status === value} onClick={() => setStatus(value)}>{value === 'all' ? 'Todas' : statusLabel[value]}<span>{value === 'all' ? items.length : items.filter((item) => item.status === value).length}</span></button>)}
+      {(['all', 'em_preenchimento', 'em_aprovacao', 'aprovado', 'reprovado'] as const).map((value) => <button key={value} className={`filter-chip${status === value ? ' selected' : ''}`} type="button" aria-pressed={status === value} onClick={() => setStatus(value)}>{value === 'all' ? 'Todas' : statusLabel[value]}<span>{contagem(value)}</span></button>)}
     </div></div>
-    <section className="form-card pricing-list-card"><div className="list-card-heading"><div><span className="heading-icon" aria-hidden="true"><Icon name="precificacoes" size={16} /></span><h3>Precificações</h3></div><span className="list-scope">Dados da API</span></div>
-      {loading ? <div className="empty-list" role="status">Carregando precificações…</div> : rows.length ? <div className="table-scroll" role="region" aria-label="Precificações persistidas" tabIndex={0}><table className="pricing-table"><thead><tr><th>Código</th><th>Cliente</th><th>Produto</th><th>Modalidade</th><th>Destino</th><th>Frete</th><th>Regime</th><th>Status</th><th>Atualizada</th><th>Cenários</th><th>Histórico</th>{(canApprove || canEdit) && <th>Ações</th>}</tr></thead><tbody>{rows.map((item) => <tr key={item.id}><th scope="row" className="code-cell">{item.codigo}</th><td>{item.cliente?.razao_social ?? item.cliente_id}</td><td>{item.produto?.descricao ?? item.produto_id}</td><td>{item.modalidade_comercial}</td><td>{item.uf_destino ?? '—'}</td><td>{item.frete?.toUpperCase() ?? '—'}</td><td>{item.regime_tributario?.replaceAll('_', ' ') ?? '—'}</td><td>{statusLabel[item.status]}{item.homologacao_pendente && <small className="status-demo"> · demonstração; homologação pendente</small>}</td><td>{dataHora.format(new Date(item.updated_at))}</td><td><button className="button secondary" type="button" onClick={() => setCenarioPrecificacao(item)} aria-label={`Ver cenários da precificação ${item.codigo}`}>Ver cenários</button></td><td><button className="button secondary" type="button" onClick={() => { void abrirHistorico(item) }}>Ver histórico</button></td>{(canApprove || canEdit) && <td>{canEdit && ['em_preenchimento', 'reprovado'].includes(item.status) && <button className="button secondary" type="button" onClick={() => { void abrirSubmissao(item) }}>Verificar e submeter</button>}{canApprove && item.status === 'em_aprovacao' && <button className="button secondary" type="button" onClick={() => { setDecisaoPrecificacao(item); setDecisao(item.homologacao_pendente ? 'reprovado' : 'aprovado'); setComentario(''); setErroDecisao(null) }}>Decidir</button>}</td>}</tr>)}</tbody></table></div> : <div className="empty-list" role="status"><h3>{items.length ? 'Nenhuma precificação neste status' : 'Nenhuma precificação encontrada'}</h3><p>{items.length ? 'Escolha outro status para consultar os registros.' : 'Crie uma precificação para começar.'}</p><button className="button secondary" type="button" onClick={onNewPricing}>Nova precificação</button></div>}
+    <section className="form-card pricing-list-card"><div className="list-card-heading"><div><span className="heading-icon" aria-hidden="true"><Icon name="precificacoes" size={16} /></span><h3>Precificações</h3></div><span className="list-scope">{loading ? '' : `${rows.length} ${rows.length === 1 ? 'registro' : 'registros'}`}</span></div>
+      {loading ? <div className="empty-list" role="status"><span className="np-carregando" aria-hidden="true" />Carregando precificações…</div> : rows.length ? <div className="table-scroll" role="region" aria-label="Precificações" tabIndex={0}>
+        <table className="pricing-table pricing-main-table"><thead><tr><th>Código</th><th>Cliente e produto</th><th>Modalidade</th><th>Destino</th><th>Regime</th><th>Status</th><th>Atualizada</th><th><span className="sr-only">Ações</span></th></tr></thead>
+        <tbody>{rows.map((item) => <tr key={item.id}>
+          <th scope="row" className="code-cell">{item.codigo}</th>
+          <td className="customer-cell">{item.cliente?.razao_social ?? '—'}<span>{item.produto?.descricao ?? '—'}</span></td>
+          <td>{rotulo(MODALIDADE, item.modalidade_comercial)}</td>
+          <td className="nowrap">{item.uf_destino ?? '—'}{item.frete && <span className="cell-sub-inline"> · {rotulo(FRETE, item.frete)}</span>}</td>
+          <td className="nowrap">{rotulo(REGIME, item.regime_tributario)}</td>
+          <td><span className={`status-pill ${statusClasse[item.status]}`}><i />{statusLabel[item.status]}</span>{item.homologacao_pendente && <small className="status-demo">Homologação pendente</small>}</td>
+          <td className="updated-cell">{dataHora.format(new Date(item.updated_at))}</td>
+          <td className="cell-acoes"><div className="row-actions">
+            <button className="button secondary compacto" type="button" onClick={() => setCenarioPrecificacao(item)} aria-label={`Cenários de ${item.codigo}`}>Cenários</button>
+            <button className="button secondary compacto" type="button" onClick={() => { void abrirHistorico(item) }} aria-label={`Histórico de ${item.codigo}`}>Histórico</button>
+            {canEdit && ['em_preenchimento', 'reprovado'].includes(item.status) && <button className="button primary compacto" type="button" onClick={() => { void abrirSubmissao(item) }}>Submeter</button>}
+            {canApprove && item.status === 'em_aprovacao' && <button className="button primary compacto" type="button" onClick={() => { setDecisaoPrecificacao(item); setDecisao(item.homologacao_pendente ? 'reprovado' : 'aprovado'); setComentario(''); setErroDecisao(null) }}>Decidir</button>}
+          </div></td>
+        </tr>)}</tbody></table></div>
+        : <div className="empty-list" role="status"><h3>{items.length ? 'Nenhuma precificação neste status' : 'Nenhuma precificação encontrada'}</h3><p>{items.length ? 'Escolha outro status para consultar os registros.' : 'Crie uma precificação para começar.'}</p>{canEdit && <button className="button secondary" type="button" onClick={onNewPricing}>Nova precificação</button>}</div>}
     </section>
-    {submissaoPrecificacao && <section className="form-card scenario-detail" aria-label={`Submissão de ${submissaoPrecificacao.codigo}`}>
-      <div className="list-card-heading"><h3>Submeter {submissaoPrecificacao.codigo} para aprovação</h3><button className="button secondary" type="button" onClick={() => setSubmissaoPrecificacao(null)}>Fechar</button></div>
-      {carregandoSubmissao && <p role="status">Verificando os requisitos…</p>}
+
+    {submissaoPrecificacao && <Modal titulo={`Submeter ${submissaoPrecificacao.codigo} para aprovação`} subtitulo={`${submissaoPrecificacao.cliente?.razao_social ?? ''} · ${submissaoPrecificacao.produto?.descricao ?? ''}`}
+      ocupado={carregandoSubmissao && confirmandoSubmissao} onFechar={() => setSubmissaoPrecificacao(null)}
+      rodape={<>
+        <button className="button secondary" type="button" disabled={carregandoSubmissao && confirmandoSubmissao} onClick={() => (confirmandoSubmissao ? setConfirmandoSubmissao(false) : setSubmissaoPrecificacao(null))}>{confirmandoSubmissao ? 'Voltar' : 'Fechar'}</button>
+        {verificacaoSubmissao?.pode_submeter && (confirmandoSubmissao
+          ? <button className="button primary" type="button" disabled={carregandoSubmissao} onClick={() => { void submeter() }}>{carregandoSubmissao ? 'Submetendo…' : 'Confirmar submissão'}</button>
+          : <button className="button primary" type="button" disabled={carregandoSubmissao} onClick={() => setConfirmandoSubmissao(true)}>Submeter</button>)}
+      </>}>
+      {carregandoSubmissao && !verificacaoSubmissao && <p className="np-carregando-linha" role="status"><span className="np-carregando" aria-hidden="true" />Conferindo os requisitos…</p>}
       {erroSubmissao && <p className="catalog-error" role="alert">{erroSubmissao}</p>}
       {verificacaoSubmissao && <>
-        {verificacaoSubmissao.modo_politica === 'demonstracao' && <p className="catalog-error" role="status"><strong>Política demonstrativa, não homologada pelo PO.</strong> Se submeter, a precificação ficará identificada com homologação pendente e não poderá ser aprovada como real.</p>}
-        {verificacaoSubmissao.motivos_bloqueio.length > 0 ? <div className="catalog-error" role="status"><strong>Corrija estes itens antes de submeter:</strong><ul>{verificacaoSubmissao.motivos_bloqueio.map((motivo) => <li key={motivo}>{motivo}</li>)}</ul></div> : <p className="catalog-success" role="status">Critérios configurados atendidos. O backend confirmou um cenário real vigente.</p>}
-        <p className="field-hint">Campos obrigatórios configurados: {verificacaoSubmissao.campos_obrigatorios.join(', ')}.</p>
-        {verificacaoSubmissao.pode_submeter && !confirmandoSubmissao && <button className="button primary" type="button" disabled={carregandoSubmissao} onClick={() => setConfirmandoSubmissao(true)}>Continuar para confirmar submissão</button>}{verificacaoSubmissao.pode_submeter && confirmandoSubmissao && <div className="submission-confirm" role="group" aria-label="Confirmar submissão"><p>Confirma a transição para <strong>Em aprovação</strong>? A política {verificacaoSubmissao.modo_politica === 'demonstracao' ? 'demonstrativa marcará homologação pendente e bloqueará a aprovação' : 'configurada será aplicada'}.</p><button className="button secondary" type="button" disabled={carregandoSubmissao} onClick={() => setConfirmandoSubmissao(false)}>Voltar</button><button className="button primary" type="button" disabled={carregandoSubmissao} onClick={() => { void submeter() }}>{carregandoSubmissao ? 'Submetendo…' : 'Confirmar submissão'}</button></div>}
+        {verificacaoSubmissao.modo_politica === 'demonstracao' && <div className="demo-notice"><span className="notice-dot" />A política de aprovação ainda é demonstrativa. Se submeter, a precificação fica marcada com homologação pendente e não poderá ser aprovada.</div>}
+        {verificacaoSubmissao.motivos_bloqueio.length > 0
+          ? <div className="np-pendencias" role="status"><strong>Antes de submeter, resolva:</strong><ul>{verificacaoSubmissao.motivos_bloqueio.map((motivo) => <li key={motivo}>{CAMPO[motivo] ? `Preencha ${rotuloCampo(motivo)} no cabeçalho.` : motivo}</li>)}</ul></div>
+          : <p className="catalog-success" role="status">Tudo certo: os campos obrigatórios estão preenchidos e há um cenário calculado salvo.</p>}
+        {confirmandoSubmissao && <p className="np-confirma-texto">A precificação passa para <strong>Em aprovação</strong> e não poderá ser editada até a decisão.</p>}
       </>}
-      <h4>Histórico de status</h4>
-      {historicoStatus.length ? <ol className="workflow-timeline">{historicoStatus.map((item) => <li key={item.id}><strong>{statusLabel[item.status_anterior]} → {statusLabel[item.status_novo]}</strong><span>{item.origem === 'submissao' ? (item.modo === 'demonstracao' ? 'Submissão demonstrativa' : 'Submissão homologada') : `Decisão por ${item.responsavel_nome ?? item.responsavel_id}`}</span><time dateTime={item.ocorrido_em}>{dataHora.format(new Date(item.ocorrido_em))}</time></li>)}</ol> : <p className="field-hint">Ainda não há transições registradas.</p>}
-    </section>}
-    {historicoPrecificacao && <section className="form-card scenario-detail" aria-label={`Histórico de status de ${historicoPrecificacao.codigo}`}>
-      <div className="list-card-heading"><h3>Histórico de {historicoPrecificacao.codigo}</h3><button className="button secondary" type="button" onClick={() => setHistoricoPrecificacao(null)}>Fechar histórico</button></div>
-      {carregandoHistorico && <p role="status">Carregando histórico de submissões e decisões…</p>}
+      <h4 className="np-secao">Histórico de status</h4>
+      {linhaTempo(historicoStatus)}
+    </Modal>}
+
+    {historicoPrecificacao && <Modal titulo={`Histórico de ${historicoPrecificacao.codigo}`} subtitulo={`${historicoPrecificacao.cliente?.razao_social ?? ''} · ${historicoPrecificacao.produto?.descricao ?? ''}`} onFechar={() => setHistoricoPrecificacao(null)}>
+      {carregandoHistorico && <p className="np-carregando-linha" role="status"><span className="np-carregando" aria-hidden="true" />Carregando submissões e decisões…</p>}
       {erroHistorico && <p className="catalog-error" role="alert">{erroHistorico}</p>}
-      {!carregandoHistorico && !erroHistorico && (eventosHistorico.length ? <ol className="workflow-timeline">{eventosHistorico.map((item) => <li key={item.id}><strong>{statusLabel[item.status_anterior]} → {statusLabel[item.status_novo]}</strong><span>{item.origem === 'submissao' ? (item.modo === 'demonstracao' ? 'Submissão demonstrativa' : 'Submissão homologada') : `Decisão por ${item.responsavel_nome ?? item.responsavel_id}`}</span><time dateTime={item.ocorrido_em}>{dataHora.format(new Date(item.ocorrido_em))}</time></li>)}</ol> : <p className="field-hint">Ainda não há transições registradas.</p>)}
-    </section>}    {cenarioPrecificacao && <ScenarioHistoryPanel key={cenarioPrecificacao.id} precificacaoId={cenarioPrecificacao.id} codigo={cenarioPrecificacao.codigo} precificacao={cenarioPrecificacao}
+      {!carregandoHistorico && !erroHistorico && linhaTempo(eventosHistorico)}
+    </Modal>}
+
+    {cenarioPrecificacao && <ScenarioHistoryPanel key={cenarioPrecificacao.id} precificacaoId={cenarioPrecificacao.id} codigo={cenarioPrecificacao.codigo} precificacao={cenarioPrecificacao}
       canViewCost={canViewCost} canEdit={canEdit} canReadCatalog={canReadCatalog} canReadCambio={canReadCambio} canReadParametros={canReadParametros} canReadImpostos={canReadImpostos}
       onClose={() => setCenarioPrecificacao(null)} />}
-    {decisaoPrecificacao && <section className="form-card scenario-detail" aria-label={`Registrar decisão de ${decisaoPrecificacao.codigo}`}>
-      <div className="list-card-heading"><h3>Decisão de {decisaoPrecificacao.codigo}</h3><button className="button secondary" type="button" onClick={() => setDecisaoPrecificacao(null)}>Fechar</button></div>
-      {decisaoPrecificacao.homologacao_pendente && <p className="catalog-error" role="status">Demonstração: esta precificação aguarda homologação e só pode ser reprovada. O backend também bloqueia qualquer tentativa de aprová-la.</p>}
-      <label className="field">Decisão<select value={decisao} onChange={(event) => setDecisao(event.target.value as DecisaoAprovacao)}><option value="aprovado" disabled={decisaoPrecificacao.homologacao_pendente}>Aprovar</option><option value="reprovado">Reprovar</option></select></label>
-      <label className="field">Comentário{decisao === 'reprovado' && ' (obrigatório)'}<textarea maxLength={2000} value={comentario} onChange={(event) => setComentario(event.target.value)} /></label>
+
+    {decisaoPrecificacao && <Modal titulo={`Decisão de ${decisaoPrecificacao.codigo}`} subtitulo={`${decisaoPrecificacao.cliente?.razao_social ?? ''} · ${decisaoPrecificacao.produto?.descricao ?? ''}`}
+      ocupado={salvandoDecisao} onFechar={() => setDecisaoPrecificacao(null)}
+      rodape={<>
+        <button className="button secondary" type="button" disabled={salvandoDecisao} onClick={() => setDecisaoPrecificacao(null)}>Cancelar</button>
+        <button className={`button ${decisao === 'reprovado' ? 'perigo' : 'primary'}`} type="button" disabled={salvandoDecisao || (decisao === 'reprovado' && !comentario.trim())} onClick={() => { void salvarDecisao() }}>{salvandoDecisao ? 'Registrando…' : decisao === 'reprovado' ? 'Reprovar' : 'Aprovar'}</button>
+      </>}>
+      {decisaoPrecificacao.homologacao_pendente && <div className="demo-notice"><span className="notice-dot" />Esta precificação foi submetida com a política demonstrativa e aguarda homologação, por isso só pode ser reprovada.</div>}
+      <div className="decisao-opcoes" role="radiogroup" aria-label="Decisão">
+        <button type="button" role="radio" aria-checked={decisao === 'aprovado'} disabled={decisaoPrecificacao.homologacao_pendente} className={`decisao-opcao aprovar${decisao === 'aprovado' ? ' selecionada' : ''}`} onClick={() => setDecisao('aprovado')}><Icon name="check" size={18} />Aprovar</button>
+        <button type="button" role="radio" aria-checked={decisao === 'reprovado'} className={`decisao-opcao reprovar${decisao === 'reprovado' ? ' selecionada' : ''}`} onClick={() => setDecisao('reprovado')}><Icon name="fechar" size={18} />Reprovar</button>
+      </div>
+      <label className="field"><span>Comentário {decisao === 'reprovado' ? <b aria-hidden="true">*</b> : <small>(opcional)</small>}</span><textarea className="decisao-comentario" maxLength={2000} placeholder={decisao === 'reprovado' ? 'Explique o motivo para o analista corrigir.' : 'Observação para o histórico.'} value={comentario} onChange={(event) => setComentario(event.target.value)} /></label>
       {erroDecisao && <p className="catalog-error" role="alert">{erroDecisao}</p>}
-      <button className="button primary" type="button" disabled={salvandoDecisao || (decisao === 'reprovado' && !comentario.trim())} onClick={() => { void salvarDecisao() }}>{salvandoDecisao ? 'Registrando…' : 'Registrar decisão'}</button>
-    </section>}
+    </Modal>}
   </section>
 }
 
