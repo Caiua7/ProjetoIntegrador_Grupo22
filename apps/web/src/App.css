@@ -408,3 +408,20 @@
 .scenario-tax-list p b { color: var(--text); font-weight: 600; }
 .scenario-compare-controls .field { min-width: 120px; }
 @media (max-width: 760px) { .scenario-sim-campos { grid-template-columns: 1fr; } .np-detalhes { grid-template-columns: 1fr; } }
+
+/* Cenários: campos sem cadastro no sistema */
+.scenario-manuais { margin: 16px 0 0; padding: 14px 16px 16px; border: 1px solid var(--line); border-radius: 12px; min-width: 0; }
+.scenario-manuais legend { padding: 0 6px; font-weight: 600; font-size: 13px; }
+.scenario-manuais legend small { margin-left: 6px; color: var(--text-3); font-weight: 400; }
+.scenario-manuais-grupo + .scenario-manuais-grupo { margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--line); }
+.scenario-manuais-grupo h5 { margin: 0 0 10px; color: var(--text-2); font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
+.scenario-manuais-campos { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
+.scenario-manuais .field { margin: 0; }
+.scenario-embalagens { display: grid; gap: 10px; }
+.scenario-embalagem { display: grid; grid-template-columns: minmax(0, 1fr) 150px 120px; gap: 12px; align-items: end; }
+.scenario-embalagem-nome { display: flex; flex-direction: column; padding-bottom: 11px; font-size: 13px; font-weight: 500; }
+.scenario-embalagem-nome small { color: var(--text-3); font: 500 11px var(--f-codigo); }
+@media (max-width: 640px) {
+  .scenario-embalagem { grid-template-columns: 1fr 1fr; }
+  .scenario-embalagem-nome { grid-column: 1 / -1; padding-bottom: 0; }
+}
