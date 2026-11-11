@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import './App.css'
 import { canOpen, navigationFor, SCREEN_HEADER, type Screen } from './app/navigation'
 import { Sidebar } from './components/layout/Sidebar'
@@ -47,9 +47,14 @@ function AppShell() {
     window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark',
   )
 
+  // O tema vale também para o <html>: rolagem e controles nativos acompanham.
+  useEffect(() => { document.documentElement.dataset.theme = theme }, [theme])
+
   // Guarda de rota: tela sem permissão cai no painel.
   const current: Screen = canOpen(screen, hasPermission) ? screen : 'dashboard'
   const header = SCREEN_HEADER[current]
+  // Cada tela abre do topo, e não na rolagem que a anterior deixou.
+  useEffect(() => { window.scrollTo(0, 0) }, [current])
   const section = navigationFor(hasPermission).find((group) => group.items.some((item) => item.id === current))?.title
 
   return <div className="neoprice" data-theme={theme}>

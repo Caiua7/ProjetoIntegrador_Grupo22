@@ -22,9 +22,9 @@ export const SCREEN_HEADER: Record<Screen, { title: string, subtitle: string }> 
   dashboard: { title: 'Painel', subtitle: 'Visão geral da sua carteira' },
   'pricing-list': { title: 'Precificações', subtitle: 'Precificações e cenários persistidos da carteira' },
   'new-pricing': { title: 'Nova precificação', subtitle: 'Cabeçalho comercial e fiscal do estudo' },
-  formulation: { title: 'Formulação', subtitle: 'Composição de matérias-primas e embalagens por produto' },
+  formulation: { title: 'Formulações', subtitle: 'Composição de matérias-primas e embalagens por produto' },
   records: { title: 'Matérias-primas e embalagens', subtitle: 'Cadastros de insumos' },
-  taxes: { title: 'Alíquotas fiscais', subtitle: 'Parâmetros fiscais por vigência' },
+  taxes: { title: 'Tributos', subtitle: 'Parâmetros fiscais por vigência' },
   quotes: { title: 'Cotações', subtitle: 'Cotações vigentes por faixa de volume' },
   exchange: { title: 'Câmbio e parâmetros', subtitle: 'Câmbio por moeda e parâmetros globais do cálculo' },
 }

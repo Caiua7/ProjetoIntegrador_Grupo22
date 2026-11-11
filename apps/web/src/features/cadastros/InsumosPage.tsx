@@ -1,6 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Select } from '../../components/form/Select'
 import { Sigla } from '../../components/Sigla'
+import { Modal } from '../../components/modal/Modal'
+import { useConfirmacao } from '../../components/modal/useConfirmacao'
 import {
   atualizarInsumo,
   buscarNcm,
@@ -52,6 +54,7 @@ export function InsumosPage({ canEdit }: { canEdit: boolean }) {
   const [registroDetalhe, setRegistroDetalhe] = useState<Insumo | null>(null)
   const [carregandoDetalhe, setCarregandoDetalhe] = useState<string | null>(null)
   const [operandoId, setOperandoId] = useState<string | null>(null)
+  const [confirmar, dialogo] = useConfirmacao()
 
   useEffect(() => {
     let vigente = true
@@ -150,13 +153,15 @@ export function InsumosPage({ canEdit }: { canEdit: boolean }) {
     }
   }
 
-  async function mostrarDetalhes(id: string) {
-    setCarregandoDetalhe(id)
-    setErro(null)
+  // Abre na hora com a linha da lista e só depois confere no servidor.
+  async function mostrarDetalhes(item: Insumo) {
+    setRegistroDetalhe(item)
+    setCarregandoDetalhe(item.id)
     try {
-      setRegistroDetalhe(await obterInsumo(tipo, id))
-    } catch (falha) {
-      setErro(falha instanceof Error ? falha.message : 'Não foi possível carregar os detalhes.')
+      const atual = await obterInsumo(tipo, item.id)
+      setRegistroDetalhe((aberto) => (aberto?.id === item.id ? atual : aberto))
+    } catch {
+      // o que veio da lista continua valendo para leitura
     } finally {
       setCarregandoDetalhe(null)
     }
@@ -164,7 +169,7 @@ export function InsumosPage({ canEdit }: { canEdit: boolean }) {
 
   async function alternarAtivo(item: Insumo) {
     const acao = item.ativo ? 'inativar' : 'reativar'
-    if (item.ativo && !window.confirm(`Inativar “${item.descricao}”? O registro será preservado no histórico.`)) return
+    if (item.ativo && !await confirmar({ titulo: 'Inativar cadastro?', mensagem: <>“{item.descricao}” deixa de aparecer nas novas formulações. O registro continua no histórico e pode ser reativado depois.</>, confirmar: 'Inativar', perigo: true })) return
     setOperandoId(item.id)
     setErro(null)
     try {
@@ -182,6 +187,7 @@ export function InsumosPage({ canEdit }: { canEdit: boolean }) {
   }
 
   return <section className="content catalog-content">
+    {dialogo}
     <div className="list-intro">
       <div><span className="eyebrow">CADASTROS BASE</span><h2>Matérias-primas e embalagens</h2><p>Consulte e mantenha os insumos usados nos cadastros do NeoPrice.</p></div>
       {canEdit && <button className="button primary" type="button" onClick={abrirNovo}>+ Novo cadastro</button>}
@@ -212,23 +218,23 @@ export function InsumosPage({ canEdit }: { canEdit: boolean }) {
     </div>
 
     {mensagem && <p className="catalog-success" role="status">{mensagem}</p>}
-    {erro && <p className="catalog-error" role="alert">{erro}</p>}
+    {erro && !formularioAberto && <p className="catalog-error" role="alert">{erro}</p>}
 
-    {formularioAberto && <section className="form-card catalog-form-card" aria-labelledby="insumo-form-title">
-      <div className="list-card-heading"><h3 id="insumo-form-title">{editando ? 'Editar cadastro' : `Novo cadastro de ${rotulos[tipo].toLocaleLowerCase('pt-BR')}`}</h3></div>
+    {formularioAberto && <Modal titulo={editando ? 'Editar cadastro' : `Novo cadastro de ${rotulos[tipo].toLocaleLowerCase('pt-BR')}`} ocupado={salvando} onFechar={() => setFormularioAberto(false)}>
+      {erro && <p className="catalog-error" role="alert">{erro}</p>}
       <form className="catalog-form" onSubmit={(evento) => { void enviarFormulario(evento) }}>
-        <label className="field">Código <b aria-hidden="true">*</b>
+        <label className="field"><span>Código <b aria-hidden="true">*</b></span>
           <input required maxLength={30} value={rascunho.codigo} onChange={(evento) => setRascunho({ ...rascunho, codigo: evento.target.value })} />
         </label>
-        <label className="field">Descrição <b aria-hidden="true">*</b>
+        <label className="field"><span>Descrição <b aria-hidden="true">*</b></span>
           <input required maxLength={200} value={rascunho.descricao} onChange={(evento) => setRascunho({ ...rascunho, descricao: evento.target.value })} />
         </label>
-        <label className="field">Unidade de medida <b aria-hidden="true">*</b>
+        <label className="field"><span>Unidade de medida <b aria-hidden="true">*</b></span>
           <Select required value={rascunho.unidade_medida} onChange={(valor) => setRascunho({ ...rascunho, unidade_medida: valor as Draft['unidade_medida'] })}
             options={unidades.map((unidade) => ({ value: unidade, label: unidade }))} />
         </label>
         <div className="field catalog-ncm-field">
-          <label htmlFor="ncm-search">NCM <b aria-hidden="true">*</b></label>
+          <label htmlFor="ncm-search"><span>NCM <b aria-hidden="true">*</b></span></label>
           <input id="ncm-search" type="search" aria-describedby="ncm-instructions" aria-controls="ncm-options" autoComplete="off" required value={ncmBusca} placeholder="Busque por código ou descrição" onChange={(evento) => { setNcmBusca(evento.target.value); setNcmCodigo(''); setOpcoesNcm([]); setBuscandoNcm(false) }} />
           <small id="ncm-instructions">Digite ao menos dois caracteres e escolha um resultado para vincular o NCM.</small>
           {buscandoNcm && <small role="status">Buscando NCM…</small>}
@@ -242,27 +248,32 @@ export function InsumosPage({ canEdit }: { canEdit: boolean }) {
           <button className="button primary" type="submit" disabled={salvando}>{salvando ? 'Salvando…' : editando ? 'Salvar alterações' : 'Criar cadastro'}</button>
         </div>
       </form>
-    </section>}
+    </Modal>}
 
-    {registroDetalhe && <section className="form-card catalog-detail" aria-labelledby="catalog-detail-title">
-      <div className="list-card-heading"><h3 id="catalog-detail-title">Detalhes do cadastro</h3><button className="button secondary" type="button" onClick={() => setRegistroDetalhe(null)}>Fechar</button></div>
-      <dl><div><dt>Tipo</dt><dd>{rotulos[tipo]}</dd></div><div><dt>Código</dt><dd>{registroDetalhe.codigo}</dd></div><div><dt>Descrição</dt><dd>{registroDetalhe.descricao}</dd></div><div><dt>Unidade de medida</dt><dd>{registroDetalhe.unidade_medida}</dd></div><div><dt>NCM</dt><dd>{registroDetalhe.ncm_codigo}</dd></div><div><dt>Situação</dt><dd>{registroDetalhe.ativo ? 'Ativo' : 'Inativo'}</dd></div><div><dt>Criado em</dt><dd>{new Date(registroDetalhe.created_at).toLocaleString('pt-BR')}</dd></div><div><dt>Atualizado em</dt><dd>{new Date(registroDetalhe.updated_at).toLocaleString('pt-BR')}</dd></div></dl>
-    </section>}
+    {registroDetalhe && <Modal titulo={registroDetalhe.descricao} subtitulo={`${tipo === 'embalagens' ? 'Embalagem' : 'Matéria-prima'} · ${registroDetalhe.codigo}`} onFechar={() => setRegistroDetalhe(null)}
+      rodape={<>
+        {carregandoDetalhe === registroDetalhe.id && <span className="np-modal-rodape-info"><span className="np-carregando" aria-hidden="true" />Atualizando…</span>}
+        {canEdit && <button className="button secondary" type="button" disabled={operandoId === registroDetalhe.id} onClick={() => { void alternarAtivo(registroDetalhe) }}>{registroDetalhe.ativo ? 'Inativar' : 'Reativar'}</button>}
+        {canEdit && <button className="button primary" type="button" onClick={() => { const item = registroDetalhe; setRegistroDetalhe(null); abrirEdicao(item) }}>Editar</button>}
+        {!canEdit && <button className="button secondary" type="button" onClick={() => setRegistroDetalhe(null)}>Fechar</button>}
+      </>}>
+      <dl className="np-detalhes"><div><dt>Tipo</dt><dd>{rotulos[tipo]}</dd></div><div><dt>Código</dt><dd>{registroDetalhe.codigo}</dd></div><div><dt>Descrição</dt><dd>{registroDetalhe.descricao}</dd></div><div><dt>Unidade de medida</dt><dd>{registroDetalhe.unidade_medida}</dd></div><div><dt>NCM</dt><dd>{registroDetalhe.ncm_codigo}</dd></div><div><dt>Situação</dt><dd>{registroDetalhe.ativo ? 'Ativo' : 'Inativo'}</dd></div><div><dt>Criado em</dt><dd>{new Date(registroDetalhe.created_at).toLocaleString('pt-BR')}</dd></div><div><dt>Atualizado em</dt><dd>{new Date(registroDetalhe.updated_at).toLocaleString('pt-BR')}</dd></div></dl>
+    </Modal>}
 
     <section className="form-card catalog-table-card" aria-labelledby="catalog-table-title">
       <div className="list-card-heading">
         <div><span className="heading-icon" aria-hidden="true">{String.fromCharCode(0x25a4)}</span><h3 id="catalog-table-title">{rotulos[tipo]}</h3></div>
         <span className="list-scope" aria-live="polite">{carregando || !paginaDados ? 'Carregando total…' : `${paginaDados.total} ${paginaDados.total === 1 ? 'registro' : 'registros'}`}</span>
       </div>
-      {carregando ? <div className="empty-list" role="status">{'Carregando cadastros…'}</div>
+      {carregando ? <div className="empty-list" role="status"><span className="np-carregando" aria-hidden="true" />{'Carregando cadastros…'}</div>
         : erroLista ? <div className="empty-list" role="alert"><h3>{'Não foi possível carregar a lista'}</h3><p>{erroLista}</p><button className="button secondary" type="button" onClick={() => { setCarregando(true); setVersao((atual) => atual + 1) }}>{'Tentar novamente'}</button></div>
           : itens.length === 0 ? <div className="empty-list" role="status"><span className="empty-icon" aria-hidden="true">{String.fromCharCode(0x2315)}</span><h3>{'Nenhum cadastro encontrado'}</h3><p>{busca.trim() || filtroAtivo !== 'todos' || unidadeFiltro !== 'todas' ? 'A busca e os filtros atuais não encontraram registros.' : 'Esta lista ainda não possui registros.'}</p>{canEdit && !busca.trim() && filtroAtivo === 'todos' && unidadeFiltro === 'todas' && <button className="button primary" type="button" onClick={abrirNovo}>{'Criar primeiro cadastro'}</button>}</div>
             : <div className="table-scroll" role="region" aria-label={`Lista de ${rotulos[tipo].toLocaleLowerCase('pt-BR')}`} tabIndex={0}>
               <table className="pricing-table catalog-table"><caption className="sr-only">{rotulos[tipo]} {'cadastradas, incluindo código, descrição, unidade, NCM, situação e ações'}</caption>
-                <thead><tr><th scope="col">{'Código'}</th><th scope="col">{'Descrição'}</th><th scope="col">Unidade</th><th scope="col"><Sigla termo="NCM" /></th><th scope="col">{'Situação'}</th><th scope="col">{'Ações'}</th></tr></thead>
+                <thead><tr><th scope="col">{'Código'}</th><th scope="col">{'Descrição'}</th><th scope="col">Unidade</th><th scope="col"><Sigla termo="NCM" /></th><th scope="col">{'Situação'}</th><th scope="col"><span className="sr-only">{'Ações'}</span></th></tr></thead>
                 <tbody>{itens.map((item) => <tr key={item.id}>
                   <th scope="row" className="code-cell">{item.codigo}</th><td>{item.descricao}</td><td>{item.unidade_medida}</td><td className="mono-cell">{item.ncm_codigo}</td><td><span className={`status-pill ${item.ativo ? 'status-approved' : 'status-neutral'}`}><i />{item.ativo ? 'Ativo' : 'Inativo'}</span></td>
-                  <td className="catalog-actions"><button className="button secondary" type="button" disabled={carregandoDetalhe === item.id} onClick={() => { void mostrarDetalhes(item.id) }}>{carregandoDetalhe === item.id ? 'Abrindo…' : 'Visualizar'}</button>{canEdit && <><button className="button secondary" type="button" onClick={() => abrirEdicao(item)}>Editar</button><button className="button secondary" type="button" disabled={operandoId === item.id} onClick={() => { void alternarAtivo(item) }}>{operandoId === item.id ? 'Aguarde…' : item.ativo ? 'Inativar' : 'Reativar'}</button></>}</td>
+                  <td className="cell-acoes"><div className="catalog-actions"><button className="button secondary compacto" type="button" onClick={() => { void mostrarDetalhes(item) }}>Visualizar</button>{canEdit && <><button className="button secondary compacto" type="button" onClick={() => abrirEdicao(item)}>Editar</button><button className="button secondary compacto" type="button" disabled={operandoId === item.id} onClick={() => { void alternarAtivo(item) }}>{operandoId === item.id ? 'Aguarde…' : item.ativo ? 'Inativar' : 'Reativar'}</button></>}</div></td>
                 </tr>)}</tbody>
               </table>
             </div>}

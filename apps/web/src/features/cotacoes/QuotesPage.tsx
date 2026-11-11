@@ -116,7 +116,7 @@ export function QuotesPage() {
     <section className="form-card tax-filter-card" aria-label="Matéria-prima e data">
       <div className="catalog-form quotes-filters">
         <label className="field">Buscar matéria-prima<input placeholder="Código, descrição ou NCM" value={busca} maxLength={100} onChange={(e) => setBusca(e.target.value)} /></label>
-        <label className="field">Matéria-prima <b aria-hidden="true">*</b><Select pesquisavel value={mpId} onChange={trocarMp} placeholder={opcoesMp.length ? 'Selecione' : 'Nenhuma encontrada'} options={opcoesMp} /></label>
+        <label className="field"><span>Matéria-prima <b aria-hidden="true">*</b></span><Select pesquisavel value={mpId} onChange={trocarMp} placeholder={opcoesMp.length ? 'Selecione' : 'Nenhuma encontrada'} options={opcoesMp} /></label>
         <label className="field">Vigente em<DatePicker value={dataRef} onChange={trocarData} /></label>
       </div>
     </section>
@@ -125,7 +125,7 @@ export function QuotesPage() {
       <section className="form-card catalog-table-card" aria-labelledby="quotes-sim-title">
         <div className="list-card-heading"><div><span className="heading-icon" aria-hidden="true">≈</span><h3 id="quotes-sim-title">Simulador por volume</h3></div></div>
         <form className="catalog-form quotes-sim" onSubmit={(e) => { void simular(e) }}>
-          <label className="field">Quantidade{unidade ? ` (${unidade})` : ''} <b aria-hidden="true">*</b><input required inputMode="decimal" placeholder="250" value={quantidade} onChange={(e) => { setQuantidade(e.target.value); setResultado(null) }} /></label>
+          <label className="field"><span>Quantidade{unidade ? ` (${unidade})` : ''} <b aria-hidden="true">*</b></span><input required inputMode="decimal" placeholder="250" value={quantidade} onChange={(e) => { setQuantidade(e.target.value); setResultado(null) }} /></label>
           <label className="field">Fornecedor<Select value={fornecedorId} onChange={(v) => { setFornecedorId(v); setResultado(null) }} options={[{ value: '', label: 'Qualquer (o sistema escolhe)' }, ...listaFornecedores.map((f) => ({ value: f.id, label: f.rotulo }))]} /></label>
           <div className="catalog-form-actions"><button className="button primary" type="submit" disabled={resolvendo || carregando}>{resolvendo ? 'Resolvendo…' : 'Resolver cotação'}</button></div>
         </form>

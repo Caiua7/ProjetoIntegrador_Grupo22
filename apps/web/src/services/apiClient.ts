@@ -48,11 +48,39 @@ function detailMessage(body: unknown, fallback: string): string {
 }
 
 /**
+ * Cache curto de leituras: trocar de aba não refaz as mesmas chamadas.
+ * Requisições iguais em andamento são compartilhadas. Qualquer escrita
+ * (POST/PUT/PATCH/DELETE) ou sessão expirada limpa tudo, então a releitura
+ * depois de salvar sempre vem da API.
+ */
+const CACHE_MS = 30_000
+const cacheLeitura = new Map<string, { expira: number; promessa: Promise<unknown> }>()
+
+export function limparCacheApi(): void {
+  cacheLeitura.clear()
+}
+
+export function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const metodo = (init.method ?? 'GET').toUpperCase()
+  if (metodo !== 'GET') {
+    cacheLeitura.clear()
+    return chamarApi<T>(path, init).finally(limparCacheApi)
+  }
+  const agora = Date.now()
+  const guardado = cacheLeitura.get(path)
+  if (guardado && guardado.expira > agora) return guardado.promessa as Promise<T>
+  const promessa = chamarApi<T>(path, init)
+  cacheLeitura.set(path, { expira: agora + CACHE_MS, promessa })
+  promessa.catch(() => { if (cacheLeitura.get(path)?.promessa === promessa) cacheLeitura.delete(path) })
+  return promessa
+}
+
+/**
  * Chama a API do NeoPrice com o token da sessão. Se a API responder 401,
  * renova a sessão uma vez e repete; se ainda assim falhar, encerra a sessão
  * e o app volta para o login.
  */
-export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
+async function chamarApi<T>(path: string, init: RequestInit): Promise<T> {
   const requestId = novoIdCorrelacao()
   let response: Response
   try {
@@ -60,7 +88,7 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
     if (response.status === 401 && supabaseClient) {
       const { data } = await supabaseClient.auth.refreshSession()
       if (data.session) response = await send(path, init, data.session.access_token, requestId)
-      if (response.status === 401) await supabaseClient.auth.signOut()
+      if (response.status === 401) { limparCacheApi(); await supabaseClient.auth.signOut() }
     }
   } catch {
     throw new ApiError(0, 'Não foi possível falar com a API do NeoPrice. Confira se ela está no ar.')
@@ -73,5 +101,7 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
 }
 
 export function fetchSessaoUsuario(): Promise<SessaoUsuario> {
+  // Sessão nova (login ou troca de usuário): nada do cache anterior vale.
+  limparCacheApi()
   return apiFetch<SessaoUsuario>('/auth/me')
 }

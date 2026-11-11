@@ -7,6 +7,7 @@ export const acoes = {
     <path className="a-seta" d="M10 16.5 5.5 12 10 7.5M5.5 12h10" />
   </>,
   mais: <path className="a-mais" d="M12 5v14M5 12h14" />,
+  fechar: <path d="M6.5 6.5l11 11M17.5 6.5l-11 11" />,
   seta: <path className="a-seta" d="M5 12h14M13.5 6.5 19 12l-5.5 5.5" />,
   voltar: <path className="a-seta" d="M19 12H5M10.5 6.5 5 12l5.5 5.5" />,
   sol: <>

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { formatarDecimalBr } from '../../app/decimal'
 import { DatePicker } from '../../components/form/DatePicker'
 import { Select } from '../../components/form/Select'
+import { Modal } from '../../components/modal/Modal'
 import {
   definicaoParametro,
   editavel,
@@ -181,7 +182,7 @@ export function ExchangeParamsPage({ canEditCambio, canReadParametros, canEditPa
     </div>
     <div className="demo-notice"><span className="notice-dot" />O histórico é imutável: para mudar um valor, cadastre uma nova vigência. Registros com data anterior a hoje ficam só para consulta.</div>
     {mensagem && <p className="catalog-success" role="status">{mensagem}</p>}
-    {erro && <p className="catalog-error" role="alert">{erro}</p>}
+    {erro && !formCambio && !formParametro && <p className="catalog-error" role="alert">{erro}</p>}
 
     {/* ------------------------------------------------ câmbio */}
     <section className="form-card catalog-table-card" aria-labelledby="exchange-title">
@@ -190,7 +191,7 @@ export function ExchangeParamsPage({ canEditCambio, canReadParametros, canEditPa
         {canEditCambio && <button className="button primary" type="button" onClick={novoCambio}>+ Novo câmbio</button>}
       </div>
 
-      {carregandoCambio ? <div className="empty-list" role="status">Carregando câmbio…</div> : <>
+      {carregandoCambio ? <div className="empty-list" role="status"><span className="np-carregando" aria-hidden="true" />Carregando câmbio…</div> : <>
         <div className="exchange-cards" aria-label={`Câmbio vigente em ${dataBr(dataRef)}`}>
           {cambiosVigentes.size === 0
             ? <p className="exchange-empty">Nenhuma moeda tem câmbio vigente em {dataBr(dataRef)}.</p>
@@ -204,36 +205,38 @@ export function ExchangeParamsPage({ canEditCambio, canReadParametros, canEditPa
             </article>)}
         </div>
 
-        {formCambio && <form className="catalog-form exchange-form" aria-label={formCambio.editando ? 'Corrigir câmbio' : 'Novo câmbio'} onSubmit={(e) => { void salvarCambio(e) }}>
-          <h4>{formCambio.editando ? `Corrigir ${formCambio.editando.moeda} de ${dataBr(formCambio.editando.data_referencia)}` : 'Novo câmbio'}</h4>
-          <label className="field">Moeda <b aria-hidden="true">*</b><input required maxLength={3} disabled={!!formCambio.editando} placeholder="USD" value={formCambio.rascunho.moeda}
+        {formCambio && <Modal titulo={formCambio.editando ? `Corrigir ${formCambio.editando.moeda} de ${dataBr(formCambio.editando.data_referencia)}` : 'Novo câmbio'} ocupado={salvando} onFechar={() => { setFormCambio(null); setErro(null) }}>
+        {erro && <p className="catalog-error" role="alert">{erro}</p>}
+        <form className="catalog-form exchange-form" onSubmit={(e) => { void salvarCambio(e) }}>
+          <label className="field"><span>Moeda <b aria-hidden="true">*</b></span><input required maxLength={3} disabled={!!formCambio.editando} placeholder="USD" value={formCambio.rascunho.moeda}
             onChange={(e) => setFormCambio({ ...formCambio, rascunho: { ...formCambio.rascunho, moeda: e.target.value.toUpperCase().replace(/[^A-Z]/g, '') } })} /></label>
-          <label className="field">Data de referência <b aria-hidden="true">*</b><DatePicker required disabled={!!formCambio.editando} value={formCambio.rascunho.data_referencia}
+          <label className="field"><span>Data de referência <b aria-hidden="true">*</b></span><DatePicker required disabled={!!formCambio.editando} value={formCambio.rascunho.data_referencia}
             onChange={(v) => setFormCambio({ ...formCambio, rascunho: { ...formCambio.rascunho, data_referencia: v } })} /></label>
-          <label className="field">Taxa (R$ por unidade) <b aria-hidden="true">*</b><input required inputMode="decimal" placeholder="5,1234" value={formCambio.rascunho.taxa}
+          <label className="field"><span>Taxa (R$ por unidade) <b aria-hidden="true">*</b></span><input required inputMode="decimal" placeholder="5,1234" value={formCambio.rascunho.taxa}
             onChange={(e) => setFormCambio({ ...formCambio, rascunho: { ...formCambio.rascunho, taxa: e.target.value } })} /></label>
-          <label className="field">Margem de segurança (%)<input inputMode="decimal" placeholder="0" value={formCambio.rascunho.margem}
+          <label className="field"><span>Margem de segurança (%)</span><input inputMode="decimal" placeholder="0" value={formCambio.rascunho.margem}
             onChange={(e) => setFormCambio({ ...formCambio, rascunho: { ...formCambio.rascunho, margem: e.target.value } })} /></label>
-          <label className="field">Fonte<Select value={formCambio.rascunho.fonte} options={fontes}
+          <label className="field"><span>Fonte</span><Select value={formCambio.rascunho.fonte} options={fontes}
             onChange={(v) => setFormCambio({ ...formCambio, rascunho: { ...formCambio.rascunho, fonte: v as FonteCambio } })} /></label>
           <div className="catalog-form-actions"><button className="button secondary" type="button" disabled={salvando} onClick={() => setFormCambio(null)}>Cancelar</button><button className="button primary" type="submit" disabled={salvando}>{salvando ? 'Salvando…' : formCambio.editando ? 'Salvar correção' : 'Cadastrar câmbio'}</button></div>
-        </form>}
+        </form></Modal>}
 
         <div className="exchange-history-heading">
           <h4>Histórico</h4>
-          <label className="field">Moeda<Select value={filtroMoeda} onChange={setFiltroMoeda} options={[{ value: '', label: 'Todas' }, ...moedas.map((m) => ({ value: m, label: m }))]} /></label>
+          <label className="field"><span>Moeda</span><Select compacto value={filtroMoeda} onChange={setFiltroMoeda} options={[{ value: '', label: 'Todas' }, ...moedas.map((m) => ({ value: m, label: m }))]} /></label>
         </div>
         {historicoCambio.length === 0
           ? <div className="empty-list" role="status"><h3>Nenhum câmbio cadastrado</h3>{canEditCambio && <p>Cadastre a primeira cotação de moeda.</p>}</div>
           : <div className="table-scroll" role="region" aria-label="Histórico de câmbio" tabIndex={0}><table className="pricing-table exchange-table"><caption className="sr-only">Câmbio por moeda e data</caption>
-            <thead><tr><th scope="col">Moeda</th><th scope="col">Data</th><th className="numeric" scope="col">Taxa</th><th className="numeric" scope="col">Margem</th><th className="numeric" scope="col">Taxa no custo</th><th scope="col">Fonte</th>{canEditCambio && <th scope="col">Ações</th>}</tr></thead>
-            <tbody>{historicoCambio.map((c) => <tr key={c.id} className={cambiosVigentes.get(c.moeda)?.id === c.id ? 'exchange-current' : undefined}>
+            <thead><tr><th scope="col">Moeda</th><th scope="col">Data</th><th className="numeric" scope="col">Taxa</th><th className="numeric" scope="col">Margem</th><th className="numeric" scope="col">Taxa no custo</th><th scope="col">Fonte</th><th scope="col">Situação</th>{canEditCambio && <th scope="col"><span className="sr-only">Ações</span></th>}</tr></thead>
+            <tbody>{historicoCambio.map((c) => <tr key={c.id}>
               <th scope="row">{c.moeda}</th><td className="mono-cell">{dataBr(c.data_referencia)}</td>
               <td className="numeric mono-cell">{formatarDecimalBr(c.taxa, 4)}</td>
               <td className="numeric mono-cell">{formatarDecimalBr(fracaoParaPercentual(c.margem_seguranca_percentual))}%</td>
               <td className="numeric mono-cell">{formatarDecimalBr(taxaComMargem(c.taxa, c.margem_seguranca_percentual), 6)}</td>
               <td>{c.fonte === 'ptax' ? 'PTAX' : 'Manual'}</td>
-              {canEditCambio && <td>{editavel(c.data_referencia, hoje) ? <button className="button secondary" type="button" onClick={() => editarCambio(c)}>Corrigir</button> : <span className="exchange-locked">Histórico</span>}</td>}
+              <td><Situacao vigente={cambiosVigentes.get(c.moeda)?.id === c.id} futura={c.data_referencia > dataRef} /></td>
+              {canEditCambio && <td className="cell-acoes">{editavel(c.data_referencia, hoje) && <button className="button secondary compacto" type="button" onClick={() => editarCambio(c)}>Corrigir</button>}</td>}
             </tr>)}</tbody>
           </table></div>}
       </>}
@@ -246,7 +249,7 @@ export function ExchangeParamsPage({ canEditCambio, canReadParametros, canEditPa
         {canEditParametros && <button className="button primary" type="button" onClick={() => novoParametro()}>+ Nova vigência</button>}
       </div>
 
-      {carregandoParametros ? <div className="empty-list" role="status">Carregando parâmetros…</div> : <>
+      {carregandoParametros ? <div className="empty-list" role="status"><span className="np-carregando" aria-hidden="true" />Carregando parâmetros…</div> : <>
         {vigentes && vigentes.faltando.length > 0 && <p className="catalog-error" role="alert">
           Sem valor vigente em {dataBr(dataRef)}: {vigentes.faltando.map((c) => definicaoParametro(c).rotulo).join(', ')}. O cálculo não fecha sem eles.
         </p>}
@@ -257,36 +260,46 @@ export function ExchangeParamsPage({ canEditCambio, canReadParametros, canEditPa
               <header><strong>{p.rotulo}</strong><small>{atual ? `desde ${dataBr(atual.vigencia_inicio)}` : 'sem vigência'}</small></header>
               <p className="exchange-value mono-cell">{atual ? exibirParametro(p.codigo, atual.valor) : '—'}</p>
               <p className="exchange-desc">{p.descricao}</p>
-              {canEditParametros && <button className="button secondary" type="button" onClick={() => novoParametro(p.codigo)}>Nova vigência</button>}
+              {canEditParametros && <button className="button secondary compacto" type="button" onClick={() => novoParametro(p.codigo)}>Nova vigência</button>}
             </article>
           })}
         </div>
 
-        {formParametro && <form className="catalog-form exchange-form" aria-label={formParametro.editando ? 'Corrigir parâmetro' : 'Nova vigência de parâmetro'} onSubmit={(e) => { void salvarParametro(e) }}>
-          <h4>{formParametro.editando ? `Corrigir ${definicaoParametro(formParametro.editando.codigo).rotulo.toLowerCase()} de ${dataBr(formParametro.editando.vigencia_inicio)}` : 'Nova vigência'}</h4>
-          <label className="field">Parâmetro <b aria-hidden="true">*</b><Select required disabled={!!formParametro.editando} value={formParametro.rascunho.codigo}
+        {formParametro && <Modal titulo={formParametro.editando ? `Corrigir ${definicaoParametro(formParametro.editando.codigo).rotulo.toLowerCase()} de ${dataBr(formParametro.editando.vigencia_inicio)}` : 'Nova vigência de parâmetro'}
+          subtitulo="O valor passa a valer a partir da data de início; as vigências anteriores ficam no histórico." ocupado={salvando} onFechar={() => { setFormParametro(null); setErro(null) }}>
+        {erro && <p className="catalog-error" role="alert">{erro}</p>}
+        <form className="catalog-form exchange-form" onSubmit={(e) => { void salvarParametro(e) }}>
+          <label className="field"><span>Parâmetro <b aria-hidden="true">*</b></span><Select required disabled={!!formParametro.editando} value={formParametro.rascunho.codigo}
             options={PARAMETROS.map((p) => ({ value: p.codigo, label: p.rotulo }))}
             onChange={(v) => setFormParametro({ ...formParametro, rascunho: { ...formParametro.rascunho, codigo: v as CodigoParametro, valor: '' } })} /></label>
-          <label className="field">Início da vigência <b aria-hidden="true">*</b><DatePicker required disabled={!!formParametro.editando} value={formParametro.rascunho.vigencia_inicio}
+          <label className="field"><span>Início da vigência <b aria-hidden="true">*</b></span><DatePicker required disabled={!!formParametro.editando} value={formParametro.rascunho.vigencia_inicio}
             onChange={(v) => setFormParametro({ ...formParametro, rascunho: { ...formParametro.rascunho, vigencia_inicio: v } })} /></label>
-          <label className="field">{definicaoParametro(formParametro.rascunho.codigo).unidade === 'dias' ? 'Valor (dias)' : 'Valor (%)'} <b aria-hidden="true">*</b><input required inputMode="decimal" value={formParametro.rascunho.valor}
+          <label className="field"><span>{definicaoParametro(formParametro.rascunho.codigo).unidade === 'dias' ? 'Valor (dias)' : 'Valor (%)'} <b aria-hidden="true">*</b></span><input required inputMode="decimal" value={formParametro.rascunho.valor}
             onChange={(e) => setFormParametro({ ...formParametro, rascunho: { ...formParametro.rascunho, valor: e.target.value } })} /></label>
           <div className="catalog-form-actions"><button className="button secondary" type="button" disabled={salvando} onClick={() => setFormParametro(null)}>Cancelar</button><button className="button primary" type="submit" disabled={salvando}>{salvando ? 'Salvando…' : formParametro.editando ? 'Salvar correção' : 'Criar vigência'}</button></div>
-        </form>}
+        </form></Modal>}
 
         <div className="exchange-history-heading"><h4>Histórico de vigências</h4></div>
         {parametros.length === 0
           ? <div className="empty-list" role="status"><h3>Nenhuma vigência cadastrada</h3></div>
           : <div className="table-scroll" role="region" aria-label="Histórico de parâmetros globais" tabIndex={0}><table className="pricing-table exchange-table"><caption className="sr-only">Parâmetros globais por vigência</caption>
-            <thead><tr><th scope="col">Parâmetro</th><th scope="col">Vigência</th><th className="numeric" scope="col">Valor</th>{canEditParametros && <th scope="col">Ações</th>}</tr></thead>
-            <tbody>{parametros.map((p) => <tr key={p.id} className={vigentes?.parametros[p.codigo]?.id === p.id ? 'exchange-current' : undefined}>
+            <thead><tr><th scope="col">Parâmetro</th><th scope="col">Vigência</th><th className="numeric" scope="col">Valor</th><th scope="col">Situação</th>{canEditParametros && <th scope="col"><span className="sr-only">Ações</span></th>}</tr></thead>
+            <tbody>{parametros.map((p) => <tr key={p.id}>
               <th scope="row">{definicaoParametro(p.codigo).rotulo}</th><td className="mono-cell">{dataBr(p.vigencia_inicio)}</td>
               <td className="numeric mono-cell">{exibirParametro(p.codigo, p.valor)}</td>
-              {canEditParametros && <td>{editavel(p.vigencia_inicio, hoje) ? <button className="button secondary" type="button" onClick={() => editarParametro(p)}>Corrigir</button> : <span className="exchange-locked">Histórico</span>}</td>}
+              <td><Situacao vigente={vigentes?.parametros[p.codigo]?.id === p.id} futura={p.vigencia_inicio > dataRef} /></td>
+              {canEditParametros && <td className="cell-acoes">{editavel(p.vigencia_inicio, hoje) && <button className="button secondary compacto" type="button" onClick={() => editarParametro(p)}>Corrigir</button>}</td>}
             </tr>)}</tbody>
           </table></div>}
       </>}
     </section>}
     <p className="list-footnote">A taxa no custo é taxa × (1 + margem de segurança). Percentuais são gravados em fração (1,2% = 0,012), como no contrato do motor.</p>
   </section>
+}
+
+/** Situação da vigência na data consultada, em vez de pintar a linha inteira. */
+function Situacao({ vigente, futura }: { vigente: boolean, futura: boolean }) {
+  if (vigente) return <span className="status-pill status-approved"><i />Vigente</span>
+  if (futura) return <span className="status-pill status-review"><i />Agendada</span>
+  return <span className="status-pill status-neutral"><i />Encerrada</span>
 }

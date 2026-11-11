@@ -17,7 +17,13 @@
 .compacto .np-campo { min-height: 34px; padding: 0 10px; font-size: 12.5px; }
 
 /* input oculto que só serve para o `required` do formulário */
-.np-validacao { position: absolute; bottom: 0; left: 50%; width: 1px; height: 1px; padding: 0; border: 0; opacity: 0; pointer-events: none; }
+/* `.field input` dá width:100% e padding a todo input do campo; sem o reforço,
+   este input de 1px vira a largura do campo e estoura a página para o lado. */
+.neoprice .np-validacao, .np-validacao { position: absolute; bottom: 0; left: 0; width: 1px !important; min-height: 0 !important; height: 1px; padding: 0 !important; border: 0 !important; opacity: 0; pointer-events: none; }
+
+/* erro de validação (components/form/validacao.ts) */
+.np-erro-campo { color: var(--error); font-size: 11px; font-weight: 500; line-height: 1.35; animation: np-abre .16s ease-out; }
+.campo-invalido .np-campo, .campo-invalido > input, .campo-invalido > textarea, .campo-invalido > select { border-color: var(--error) !important; box-shadow: 0 0 0 3px var(--error-wash) !important; }
 
 .np-popover {
   position: absolute; z-index: 40; top: calc(100% + 6px); left: 0; min-width: 100%; padding: 6px;

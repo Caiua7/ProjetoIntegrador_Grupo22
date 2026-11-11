@@ -2,7 +2,9 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { DatePicker } from '../../components/form/DatePicker'
 import { Select } from '../../components/form/Select'
 import { Sigla } from '../../components/Sigla'
+import { Modal } from '../../components/modal/Modal'
 import { GLOSSARIO } from '../../app/glossario'
+import { deslocarDecimal, formatarDecimalBr } from '../../app/decimal'
 import {
   atualizarAliquota,
   criarAliquota,
@@ -36,19 +38,6 @@ const vazio: Rascunho = {
   uf_destino: '', ncm_codigo: '', regime_tributario: 'lucro_real', vigencia_inicio: '',
   pis_percentual: '', cofins_percentual: '', icms_percentual: '', ipi_percentual: '',
   icms_interno_percentual: '', fcp_percentual: '', mva_percentual: '',
-}
-
-function deslocarDecimal(valor: string, casas: number): string {
-  const limpo = valor.trim().replace(',', '.')
-  if (!/^\d+(?:\.\d+)?$/.test(limpo)) return ''
-  const [inteiro, fracao = ''] = limpo.split('.')
-  const digitos = `${inteiro}${fracao}`.replace(/^0+(?=\d)/, '')
-  const escala = fracao.length - casas
-  if (escala <= 0) return `${digitos}${'0'.repeat(-escala)}`
-  const preenchido = digitos.padStart(escala + 1, '0')
-  const divisor = preenchido.length - escala
-  const parteInteira = preenchido.slice(0, divisor).replace(/^0+(?=\d)/, '') || '0'
-  return `${parteInteira}.${preenchido.slice(divisor)}`.replace(/\.?0+$/, (sufixo) => sufixo.startsWith('.') ? '' : sufixo)
 }
 
 function paraPercentual(valor: string): string {
@@ -180,12 +169,12 @@ export function TaxRatesPage({ canEdit }: { canEdit: boolean }) {
 
   return <section className="content catalog-content tax-content">
     <div className="list-intro">
-      <div><span className="eyebrow">PARÂMETROS FISCAIS</span><h2>Alíquotas</h2><p>Consulte e mantenha percentuais por UF, NCM, regime e vigência.</p></div>
+      <div><span className="eyebrow">ALÍQUOTAS FISCAIS</span><h2>Tributos</h2><p>Consulte e mantenha percentuais por UF, NCM, regime e vigência.</p></div>
       {canEdit && <button className="button primary" type="button" onClick={abrirNovo}>+ Nova alíquota</button>}
     </div>
     <div className="demo-notice"><span className="notice-dot" />A área fiscal deve confirmar valores e vigências antes de usá-los em uma precificação.</div>
     {mensagem && <p className="catalog-success" role="status">{mensagem}</p>}
-    {erro && <p className="catalog-error" role="alert">{erro}</p>}
+    {erro && !formAberto && <p className="catalog-error" role="alert">{erro}</p>}
 
     <section className="form-card tax-filter-card" aria-label="Filtros das alíquotas">
       <div className="catalog-form tax-filters">
@@ -206,25 +195,26 @@ export function TaxRatesPage({ canEdit }: { canEdit: boolean }) {
       {resolvida && <div className="pending-state tax-resolved" role="status"><span aria-hidden="true">✓</span><div><strong>Regra encontrada: {resolvida.ncm_codigo ? `NCM ${resolvida.ncm_codigo}` : 'regra geral da UF'}</strong><small>{resolvida.uf_destino} · {nomeRegime(resolvida.regime_tributario)} · vigente desde {new Date(`${resolvida.vigencia_inicio}T00:00:00`).toLocaleDateString('pt-BR')}</small></div></div>}
     </section>
 
-    {formAberto && <section className="form-card catalog-form-card" aria-labelledby="tax-form-title">
-      <div className="list-card-heading"><h3 id="tax-form-title">{editando ? 'Editar alíquota' : 'Nova alíquota e vigência'}</h3></div>
-      <form className="catalog-form" onSubmit={(e) => { void salvar(e) }}>
-        <label className="field">UF de destino <b aria-hidden="true">*</b><Select required value={rascunho.uf_destino} onChange={(v) => setRascunho({ ...rascunho, uf_destino: v })} options={ufs.map((uf) => ({ value: uf, label: uf }))} /></label>
-        <label className="field">NCM <small>(vazio = regra geral)</small><input inputMode="numeric" maxLength={8} value={rascunho.ncm_codigo ?? ''} onChange={(e) => setRascunho({ ...rascunho, ncm_codigo: e.target.value.replace(/\D/g, '').slice(0, 8) })} /></label>
-        <label className="field">Regime tributário <b aria-hidden="true">*</b><Select required value={rascunho.regime_tributario} onChange={(v) => setRascunho({ ...rascunho, regime_tributario: v as RegimeTributario })} options={regimes} /></label>
-        <label className="field">Início da vigência <b aria-hidden="true">*</b><DatePicker required value={rascunho.vigencia_inicio} onChange={(v) => setRascunho({ ...rascunho, vigencia_inicio: v })} /></label>
-        {taxas.map((taxa) => <label className="field" key={taxa.key}>{taxa.label} <b aria-hidden="true">*</b><input required type="number" min="0" max={taxa.max} step="0.0001" value={rascunho[taxa.key]} onChange={(e) => setRascunho({ ...rascunho, [taxa.key]: e.target.value })} /></label>)}
+    {formAberto && <Modal tamanho="grande" titulo={editando ? 'Editar alíquota' : 'Nova alíquota e vigência'}
+      subtitulo="Percentuais em %, com vírgula ou ponto. NCM vazio vale como regra geral da UF." ocupado={salvando} onFechar={() => setFormAberto(false)}>
+      {erro && <p className="catalog-error" role="alert">{erro}</p>}
+      <form className="catalog-form tax-form" onSubmit={(e) => { void salvar(e) }}>
+        <label className="field"><span>UF de destino <b aria-hidden="true">*</b></span><Select required value={rascunho.uf_destino} onChange={(v) => setRascunho({ ...rascunho, uf_destino: v })} options={ufs.map((uf) => ({ value: uf, label: uf }))} /></label>
+        <label className="field"><span>NCM <small>(vazio = regra geral)</small></span><input inputMode="numeric" maxLength={8} value={rascunho.ncm_codigo ?? ''} onChange={(e) => setRascunho({ ...rascunho, ncm_codigo: e.target.value.replace(/\D/g, '').slice(0, 8) })} /></label>
+        <label className="field"><span>Regime tributário <b aria-hidden="true">*</b></span><Select required value={rascunho.regime_tributario} onChange={(v) => setRascunho({ ...rascunho, regime_tributario: v as RegimeTributario })} options={regimes} /></label>
+        <label className="field"><span>Início da vigência <b aria-hidden="true">*</b></span><DatePicker required value={rascunho.vigencia_inicio} onChange={(v) => setRascunho({ ...rascunho, vigencia_inicio: v })} /></label>
+        {taxas.map((taxa) => <label className="field" key={taxa.key}><span>{taxa.label} <b aria-hidden="true">*</b></span><input required type="number" min="0" max={taxa.max} step="0.0001" placeholder="0" value={rascunho[taxa.key]} onChange={(e) => setRascunho({ ...rascunho, [taxa.key]: e.target.value })} /></label>)}
         <div className="catalog-form-actions"><button className="button secondary" type="button" disabled={salvando} onClick={() => setFormAberto(false)}>Cancelar</button><button className="button primary" type="submit" disabled={salvando}>{salvando ? 'Salvando…' : editando ? 'Salvar alterações' : 'Criar vigência'}</button></div>
       </form>
-    </section>}
+    </Modal>}
 
     <section className="form-card catalog-table-card" aria-labelledby="tax-table-title">
       <div className="list-card-heading"><div><span className="heading-icon tax-icon" aria-hidden="true">%</span><h3 id="tax-table-title">Regras cadastradas</h3></div><span className="list-scope">{linhas.length} {linhas.length === 1 ? 'regra' : 'regras'}</span></div>
-      {carregando ? <div className="empty-list" role="status">Carregando alíquotas…</div>
+      {carregando ? <div className="empty-list" role="status"><span className="np-carregando" aria-hidden="true" />Carregando alíquotas…</div>
         : linhas.length === 0 ? <div className="empty-list" role="status"><span className="empty-icon" aria-hidden="true">%</span><h3>Nenhuma alíquota encontrada</h3><p>Ajuste os filtros ou cadastre uma regra.</p>{canEdit && <button className="button primary" type="button" onClick={abrirNovo}>Criar alíquota</button>}</div>
           : <div className="table-scroll" role="region" aria-label="Lista de alíquotas fiscais" tabIndex={0}><table className="pricing-table tax-table"><caption className="sr-only">Alíquotas fiscais por UF, NCM, regime e vigência</caption>
-            <thead><tr><th scope="col"><Sigla termo="UF" /></th><th scope="col"><Sigla termo="NCM" /></th><th scope="col">Regime</th><th scope="col">Vigência</th>{taxas.map((t) => <th className="numeric" scope="col" key={t.key}><RotuloTaxa label={t.label} /></th>)}{canEdit && <th scope="col">Ações</th>}</tr></thead>
-            <tbody>{linhas.map((item) => <tr key={item.id}><th scope="row">{item.uf_destino}</th><td className="mono-cell">{item.ncm_codigo ?? 'Geral'}</td><td>{nomeRegime(item.regime_tributario)}</td><td className="mono-cell">{new Date(`${item.vigencia_inicio}T00:00:00`).toLocaleDateString('pt-BR')}</td>{taxas.map((t) => <td className="numeric mono-cell" key={t.key}>{paraPercentual(item[t.key])}%</td>)}{canEdit && <td><button className="button secondary" type="button" onClick={() => abrirEdicao(item)}>Editar</button></td>}</tr>)}</tbody>
+            <thead><tr><th scope="col"><Sigla termo="UF" /></th><th scope="col"><Sigla termo="NCM" /></th><th scope="col">Regime</th><th scope="col">Vigência</th>{taxas.map((t) => <th className="numeric" scope="col" key={t.key}><RotuloTaxa label={t.label} /></th>)}{canEdit && <th scope="col"><span className="sr-only">Ações</span></th>}</tr></thead>
+            <tbody>{linhas.map((item) => <tr key={item.id}><th scope="row">{item.uf_destino}</th><td className="mono-cell">{item.ncm_codigo ?? 'Geral'}</td><td>{nomeRegime(item.regime_tributario)}</td><td className="mono-cell">{new Date(`${item.vigencia_inicio}T00:00:00`).toLocaleDateString('pt-BR')}</td>{taxas.map((t) => <td className="numeric mono-cell" key={t.key}>{formatarDecimalBr(paraPercentual(item[t.key]))}%</td>)}{canEdit && <td className="cell-acoes"><button className="button secondary compacto" type="button" onClick={() => abrirEdicao(item)}>Editar</button></td>}</tr>)}</tbody>
           </table></div>}
     </section>
     <p className="list-footnote">A consulta aplicável prioriza a regra específica de NCM; sem ela, usa a regra geral da UF. A tela preserva as vigências cadastradas e não exclui o histórico.</p>
