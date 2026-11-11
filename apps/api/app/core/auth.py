@@ -11,6 +11,8 @@ autorização: quem barra o dado continua sendo o RLS (docs/controle-de-acesso.m
 """
 
 import logging
+import threading
+import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from functools import lru_cache
@@ -172,6 +174,33 @@ def carregar_usuario(db: Session, usuario_id: UUID) -> dict | None:
     }
 
 
+# Perfil e permissões por usuário, guardados por pouco tempo: sem isso, toda
+# requisição fazia uma ida extra ao Supabase só para reler o mesmo perfil.
+# Mudança de perfil ou inativação vale em até CACHE_PERFIL_SEGUNDOS.
+CACHE_PERFIL_SEGUNDOS = 60.0
+_cache_perfis: dict[UUID, tuple[float, dict]] = {}
+_trava_cache = threading.Lock()
+
+
+def limpar_cache_usuarios() -> None:
+    with _trava_cache:
+        _cache_perfis.clear()
+
+
+def _perfil_do_usuario(db: Session, usuario_id: UUID) -> dict | None:
+    agora = time.monotonic()
+    with _trava_cache:
+        guardado = _cache_perfis.get(usuario_id)
+    if guardado and guardado[0] > agora:
+        return guardado[1]
+    dados = carregar_usuario(db, usuario_id)
+    # só guarda usuário ativo: quem acabou de ser liberado entra na hora
+    if dados is not None and dados["ativo"]:
+        with _trava_cache:
+            _cache_perfis[usuario_id] = (agora + CACHE_PERFIL_SEGUNDOS, dados)
+    return dados
+
+
 def usuario_atual(
     credenciais: HTTPAuthorizationCredentials | None = Depends(_bearer),
     db: Session = Depends(get_db),
@@ -180,7 +209,7 @@ def usuario_atual(
         raise _nao_autenticado("Faça login para continuar.")
 
     usuario_id = validar_token(credenciais.credentials)
-    dados = carregar_usuario(db, usuario_id)
+    dados = _perfil_do_usuario(db, usuario_id)
     if dados is None or not dados["ativo"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

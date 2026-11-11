@@ -6,13 +6,8 @@ import { ApiError } from '../../services/apiClient'
 import { arredondarCentavos } from './centavos'
 import { calcularCenario, calcularCenarioDemo } from './calculateService'
 import type { CalculateRequest, CalculateResponseAutorizada } from '../../types/calculate.generated'
-import type { Precificacao } from './precificacoesService'
-import { obterInsumo } from '../cadastros/insumosService'
-import { obterFormulacao } from './formulacoesService'
-import { resolverCotacao } from './cotacoesService'
-import { multiplicarDecimais } from './decimalMath'
-import { consultarCambioVigente, consultarParametrosVigentes } from '../parametros/parametrosService'
-import { resolverAliquota } from '../taxes/taxRatesService'
+import { obterEntradaCalculo, type Precificacao } from './precificacoesService'
+import { deslocarDecimal } from '../../app/decimal'
 import {
   compararCenarios,
   consultarCenario,
@@ -65,10 +60,104 @@ function percentual(value: string | null, variacao = false): string {
 }
 const TAX_FIELDS = ['pis_percentual', 'cofins_percentual', 'icms_percentual', 'ipi_percentual', 'icms_interno_percentual', 'fcp_percentual', 'mva_percentual'] as const
 const isRecord = (value: unknown): value is Record<string, unknown> => Boolean(value && typeof value === 'object' && !Array.isArray(value))
-function dataLocalISO(): string {
-  const agora = new Date()
-  return `${agora.getFullYear()}-${String(agora.getMonth() + 1).padStart(2, '0')}-${String(agora.getDate()).padStart(2, '0')}`
+/** Campos sem cadastro no sistema, digitados no modal em unidades de tela (R$, %, unidades). */
+type CamposManuais = {
+  taxa_mod: string, taxa_ggf: string, produtividade: string, numero_funcionarios: string
+  margem: string, comissao: string, frete: string, valor_material_cliente: string
+  embalagens: Record<string, { preco: string, descarte: string }>
 }
+const CAMPOS_VAZIOS: CamposManuais = { taxa_mod: '', taxa_ggf: '', produtividade: '', numero_funcionarios: '', margem: '', comissao: '', frete: '', valor_material_cliente: '', embalagens: {} }
+/** "1.234,5" → "1234.5"; "1.85" continua "1.85". */
+const lerNumero = (valor: string) => { const t = valor.trim(); return t.includes(',') ? t.replace(/\./g, '').replace(',', '.') : t }
+/** "18" (%) → "0.18" (fração que o motor espera). */
+const lerPercentual = (valor: string) => (lerNumero(valor) ? deslocarDecimal(lerNumero(valor), -2) : '')
+
+/** Junta os campos do modal à entrada (o que foi digitado vence o JSON). */
+function aplicarManuais(base: Record<string, unknown>, campos: CamposManuais): Record<string, unknown> {
+  const resultado: Record<string, unknown> = { ...base }
+  const producao: Record<string, unknown> = isRecord(base.producao) ? { ...base.producao } : {}
+  for (const chave of ['taxa_mod', 'taxa_ggf', 'produtividade', 'numero_funcionarios'] as const) if (campos[chave].trim()) producao[chave] = lerNumero(campos[chave])
+  resultado.producao = producao
+  const comercial: Record<string, unknown> = isRecord(base.comercial) ? { ...base.comercial } : {}
+  if (campos.margem.trim()) comercial.margem_desejada_percentual = lerPercentual(campos.margem)
+  if (campos.comissao.trim()) comercial.comissao_percentual = lerPercentual(campos.comissao)
+  if (campos.frete.trim()) comercial.frete_percentual = lerPercentual(campos.frete)
+  resultado.comercial = comercial
+  if (campos.valor_material_cliente.trim()) resultado.valor_material_cliente = lerNumero(campos.valor_material_cliente)
+  const atuais = Array.isArray(base.embalagens) ? base.embalagens.filter(isRecord) : []
+  const codigos = new Set([...atuais.map((linha) => String(linha.codigo)), ...Object.keys(campos.embalagens)])
+  resultado.embalagens = [...codigos].map((codigo) => {
+    const linha: Record<string, unknown> = { ...(atuais.find((item) => item.codigo === codigo) ?? { codigo }) }
+    const digitado = campos.embalagens[codigo]
+    if (digitado?.preco.trim()) Object.assign(linha, { preco_negociado: lerNumero(digitado.preco), moeda: 'BRL', cambio: '1' })
+    if (digitado?.descarte.trim()) linha.percentual_descarte = lerPercentual(digitado.descarte)
+    return linha
+  })
+  return resultado
+}
+
+const vazio = (valor: unknown) => valor == null || valor === ''
+const preenchidos = (objeto: Record<string, unknown>) => Object.fromEntries(Object.entries(objeto).filter(([, valor]) => !vazio(valor)))
+const TEXTO_PRODUCAO = { taxa_mod: 'a taxa de mão de obra (MOD)', taxa_ggf: 'a taxa de GGF', produtividade: 'a produtividade', numero_funcionarios: 'o número de funcionários' } as const
+const TEXTO_COMERCIAL = { margem_desejada_percentual: 'a margem desejada', comissao_percentual: 'a comissão', frete_percentual: 'o frete em %' } as const
+
+/** O que veio do cadastro vence; o que o analista digitou preenche o que ficou em branco. */
+function combinarItens(base: unknown, manual: unknown): Record<string, unknown>[] {
+  const digitados = Array.isArray(manual) ? manual.filter(isRecord) : []
+  return (Array.isArray(base) ? base.filter(isRecord) : []).map((linha) => {
+    const digitado = digitados.find((item) => item.codigo === linha.codigo) ?? {}
+    const item: Record<string, unknown> = { ...linha, ...preenchidos(digitado), ...preenchidos(linha) }
+    if (vazio(item.margem_seguranca_percentual)) item.margem_seguranca_percentual = '0'
+    return item
+  })
+}
+
+/** Junta a entrada montada pela API com os campos manuais e aponta o que ainda falta digitar. */
+function combinarEntrada(base: Record<string, unknown>, manual: Record<string, unknown>) {
+  const pendencias: string[] = []
+  const entrada: Record<string, unknown> = { ...manual, ...preenchidos(base) }
+  if ('materiais_primas' in base) entrada.materiais_primas = combinarItens(base.materiais_primas, manual.materiais_primas)
+  if ('embalagens' in base) entrada.embalagens = combinarItens(base.embalagens, manual.embalagens)
+  const objeto = (valor: unknown) => (isRecord(valor) ? valor : {})
+
+  const producaoManual = objeto(manual.producao)
+  const producao: Record<string, unknown> = {}
+  for (const campo of Object.keys(TEXTO_PRODUCAO) as (keyof typeof TEXTO_PRODUCAO)[]) {
+    producao[campo] = producaoManual[campo] ?? ''
+    if (vazio(producao[campo])) pendencias.push(`Informe ${TEXTO_PRODUCAO[campo]} nos campos abaixo.`)
+  }
+  entrada.producao = producao
+
+  const comercial: Record<string, unknown> = { ...objeto(manual.comercial), ...preenchidos(objeto(base.comercial)) }
+  for (const [campo, texto] of [['taxa_financeira_mensal_percentual', 'a taxa financeira mensal'], ['prazo_medio_dias', 'o prazo médio']] as const) {
+    if (vazio(comercial[campo])) { comercial[campo] = ''; pendencias.push(`Informe ${texto} (sem valor vigente em Câmbio e parâmetros).`) }
+  }
+  for (const campo of Object.keys(TEXTO_COMERCIAL) as (keyof typeof TEXTO_COMERCIAL)[]) {
+    if (vazio(comercial[campo])) { comercial[campo] = ''; pendencias.push(`Informe ${TEXTO_COMERCIAL[campo]} nos campos abaixo.`) }
+  }
+  entrada.comercial = comercial
+
+  const impostos: Record<string, unknown> = { ...objeto(manual.impostos), ...preenchidos(objeto(base.impostos)) }
+  for (const campo of TAX_FIELDS) if (vazio(impostos[campo])) impostos[campo] = ''
+  entrada.impostos = impostos
+
+  const embalagens = Array.isArray(entrada.embalagens) ? entrada.embalagens.filter(isRecord) : []
+  for (const linha of embalagens) {
+    if (vazio(linha.preco_negociado) || vazio(linha.percentual_descarte)) pendencias.push(`Informe o preço e o descarte de ${String(linha.descricao ?? linha.codigo)} nos campos abaixo.`)
+  }
+  if (vazio(entrada.perda_percentual)) entrada.perda_percentual = ''
+  if (entrada.material_fornecido_pelo_cliente == null) entrada.material_fornecido_pelo_cliente = ''
+  if (vazio(entrada.valor_material_cliente)) {
+    entrada.valor_material_cliente = ''
+    if (entrada.material_fornecido_pelo_cliente === true) pendencias.push('Informe o valor do material fornecido pelo cliente nos campos abaixo.')
+  }
+  return {
+    entrada,
+    pendencias,
+    embalagens: embalagens.map((linha) => ({ codigo: String(linha.codigo), descricao: String(linha.descricao ?? linha.codigo) })),
+  }
+}
+
 const linhasRentabilidade = [
   ['receita_operacional_bruta', 'ROB', 'Receita operacional bruta: preço sem IPI × volume'],
   ['deducoes', 'Deduções', 'PIS, COFINS e ICMS sobre a receita'],
@@ -78,7 +167,7 @@ const linhasRentabilidade = [
 ] as const
 const sentido: Record<string, string> = { subiu: 'Subiu', desceu: 'Desceu', igual: 'Sem variação', sem_base: 'Sem base' }
 
-function ScenarioHistoryPanel({ precificacaoId, codigo, precificacao, canViewCost, canEdit, canReadCatalog, canReadCambio, canReadParametros, canReadImpostos, formulaRevision = 0, onClose }: Props) {
+function ScenarioHistoryPanel({ precificacaoId, codigo, precificacao, canViewCost, canEdit, formulaRevision = 0, onClose }: Props) {
   const [versoes, setVersoes] = useState<CenarioResumo[]>([])
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState<string | null>(null)
@@ -102,182 +191,41 @@ function ScenarioHistoryPanel({ precificacaoId, codigo, precificacao, canViewCos
   const [entradaCalculada, setEntradaCalculada] = useState<CalculateRequest | null>(null)
   const [preparando, setPreparando] = useState(false)
   const [pendenciasPreparacao, setPendenciasPreparacao] = useState<string[]>([])
+  const [manuais, setManuais] = useState<CamposManuais>(CAMPOS_VAZIOS)
+  const [embalagensForm, setEmbalagensForm] = useState<{ codigo: string, descricao: string }[]>([])
+  const [precisaValorCliente, setPrecisaValorCliente] = useState(false)
 
   async function prepararEntrada(): Promise<{ entrada: Record<string, unknown>, pendencias: string[] } | null> {
     setPreparando(true); setErroSimulacao(null); setPendenciasPreparacao([])
-    const pendencias: string[] = []
-    let manual: Record<string, unknown> = {}
     try {
+      let manual: Record<string, unknown> = {}
       const texto = entradaJson.trim()
       if (texto) {
         const parseado: unknown = JSON.parse(texto)
-        if (!parseado || typeof parseado !== 'object' || Array.isArray(parseado)) throw new Error('A entrada atual precisa ser um objeto JSON.')
-        manual = parseado as Record<string, unknown>
+        if (!isRecord(parseado)) throw new Error('A entrada atual precisa ser um objeto JSON.')
+        manual = parseado
       }
-      if (!precificacao) pendencias.push('Os dados da precificação não estão disponíveis nesta tela.')
-      const candidato: Record<string, unknown> = { ...manual }
-      if (precificacao?.uf_destino) candidato.cliente_uf = precificacao.uf_destino
-      else if (!candidato.cliente_uf) pendencias.push('Preencha a UF de destino no cabeçalho da precificação.')
-      if (precificacao?.modalidade_comercial) candidato.modalidade_comercial = precificacao.modalidade_comercial
-      else if (!candidato.modalidade_comercial) pendencias.push('Preencha a modalidade comercial no cabeçalho.')
-      if (precificacao?.regime_tributario) candidato.regime_tributario = precificacao.regime_tributario
-      else if (!candidato.regime_tributario) pendencias.push('Preencha o regime tributário do cliente no cabeçalho.')
-
-      let formulario: Awaited<ReturnType<typeof obterFormulacao>> | null = null
-      if (precificacao?.produto_id) {
-        try { formulario = await obterFormulacao(precificacao.produto_id) }
-        catch (falha) { pendencias.push(falha instanceof ApiError && falha.status === 404 ? 'O produto ainda não tem formulação. Monte a composição em Formulações.' : `Formulação do produto: ${falha instanceof ApiError ? falha.message : 'não foi possível consultar.'}`) }
-      } else pendencias.push('A precificação não tem produto associado.')
-
-      const materiais: Record<string, unknown>[] = []
-      const embalagens: Record<string, unknown>[] = []
-      if (formulario) {
-        for (const item of formulario.itens) {
-          const isMateria = item.tipo_insumo === 'materia_prima'
-          const id = isMateria ? item.materia_prima_id : item.embalagem_id
-          if (!id || !canReadCatalog) {
-            pendencias.push(canReadCatalog ? 'Há um item da formulação sem insumo vinculado.' : 'Seu perfil não pode consultar os insumos da formulação.')
-            continue
-          }
-          let insumo
-          try { insumo = await obterInsumo(isMateria ? 'materias-primas' : 'embalagens', id) }
-          catch (falha) { pendencias.push(`Dados do insumo ${id}: ${falha instanceof ApiError ? falha.message : 'não foi possível consultar.'}`); continue }
-          const listaManual = isMateria ? manual.materiais_primas : manual.embalagens
-          const itemManual = Array.isArray(listaManual) ? listaManual.find((linha) => isRecord(linha) && linha.codigo === insumo.codigo) : undefined
-          const entradaItem: Record<string, unknown> = { ...(isRecord(itemManual) ? itemManual : {}), codigo: insumo.codigo, descricao: insumo.descricao, quantidade: item.quantidade, origem_material: item.origem_material }
-          if (isMateria) {
-            entradaItem.margem_seguranca_percentual ??= ''
-            if (canViewCost && item.unidade_medida === 'kg' && insumo.unidade_medida === 'kg' && volume) {
-              try {
-                const cotacao = await resolverCotacao(id, multiplicarDecimais(item.quantidade, volume))
-                entradaItem.preco_negociado = cotacao.preco
-                entradaItem.moeda = cotacao.moeda
-                if (cotacao.moeda === 'BRL') entradaItem.cambio = '1'
-                else if (canReadCambio) entradaItem.cambio = (await consultarCambioVigente(cotacao.moeda)).taxa_com_margem
-                else { entradaItem.cambio = ''; pendencias.push(`Seu perfil não pode consultar o câmbio de ${cotacao.moeda}, usado em ${insumo.descricao}.`) }
-              } catch {
-                entradaItem.preco_negociado ??= ''
-                entradaItem.moeda ??= ''
-                entradaItem.cambio ??= ''
-                pendencias.push(`Sem cotação vigente de ${insumo.descricao} para esse volume. Cadastre ou atualize em Cotações.`)
-              }
-            } else if (!canViewCost) {
-              entradaItem.preco_negociado ??= ''; entradaItem.moeda ??= ''; entradaItem.cambio ??= ''
-              pendencias.push('Seu perfil não pode ver custos, então o preço de compra dos insumos não entra no cálculo.')
-            } else if (item.unidade_medida !== 'kg' || insumo.unidade_medida !== 'kg') {
-              entradaItem.preco_negociado ??= ''; entradaItem.moeda ??= ''; entradaItem.cambio ??= ''
-              pendencias.push(`${insumo.descricao}: a cotação é por kg, então use kg na formulação.`)
-            } else {
-              entradaItem.preco_negociado ??= ''; entradaItem.moeda ??= ''; entradaItem.cambio ??= ''
-              pendencias.push('Informe o volume negociado para escolher a faixa de cotação dos insumos.')
-            }
-            materiais.push(entradaItem)
-          } else {
-            entradaItem.preco_negociado ??= ''
-            entradaItem.moeda ??= ''
-            entradaItem.cambio ??= ''
-            entradaItem.margem_seguranca_percentual ??= ''
-            entradaItem.percentual_descarte ??= ''
-            embalagens.push(entradaItem)
-            pendencias.push(`Informe o preço e o descarte da embalagem ${insumo.descricao} na entrada manual (embalagens ainda não têm cotação cadastrada).`)
-          }
-        }
-      }
-      if (formulario) {
-        candidato.materiais_primas = materiais
-        candidato.embalagens = embalagens
-        const origens = new Set(formulario.itens.map((item) => item.origem_material).filter((origem) => origem !== null))
-        if (origens.size === 1 && origens.has('fabricante') && formulario.itens.every((item) => item.origem_material)) {
-          candidato.material_fornecido_pelo_cliente = false
-          candidato.valor_material_cliente = '0'
-        } else if (origens.size === 1 && origens.has('cliente') && formulario.itens.every((item) => item.origem_material)) {
-          candidato.material_fornecido_pelo_cliente = true
-          if (candidato.valor_material_cliente == null || candidato.valor_material_cliente === '') {
-            pendencias.push('Informe o valor do material fornecido pelo cliente na entrada manual.')
-          }
-        } else if (formulario.itens.length > 0) {
-          pendencias.push('Todos os itens da formulação precisam ter a mesma origem (fabricante ou cliente).')
-        }
-      }
-
-      const comerciais = manual.comercial && typeof manual.comercial === 'object' && !Array.isArray(manual.comercial) ? manual.comercial as Record<string, unknown> : {}
-      const impostosManuais = manual.impostos && typeof manual.impostos === 'object' && !Array.isArray(manual.impostos) ? manual.impostos as Record<string, unknown> : {}
-      const comercial: Record<string, unknown> = { ...comerciais }
-      let impostos: Record<string, unknown> = { ...impostosManuais }
-      if (canReadParametros) {
-        try {
-          const vigentes = await consultarParametrosVigentes()
-          const perda = vigentes.parametros.perda_percentual?.valor
-          const taxa = vigentes.parametros.taxa_financeira_mensal_percentual?.valor
-          const prazo = vigentes.parametros.prazo_medio_padrao_dias?.valor
-          if (perda) candidato.perda_percentual = perda
-          if (taxa) comercial.taxa_financeira_mensal_percentual = taxa
-          if (prazo) comercial.prazo_medio_dias = prazo
-          for (const codigo of ['perda_percentual', 'taxa_financeira_mensal_percentual', 'prazo_medio_padrao_dias'] as const) {
-            if (vigentes.faltando.includes(codigo)) pendencias.push(`Falta um valor vigente de ${{ perda_percentual: 'perda padrão', taxa_financeira_mensal_percentual: 'taxa financeira mensal', prazo_medio_padrao_dias: 'prazo médio' }[codigo]} em Câmbio e parâmetros.`)
-          }
-        } catch (falha) { pendencias.push(`Parâmetros globais: ${falha instanceof ApiError ? falha.message : 'não foi possível consultar.'}`) }
-      } else pendencias.push('Seu perfil não pode consultar os parâmetros globais (perda, taxa financeira e prazo).')
-      for (const [campo, label] of [
-        ['taxa_financeira_mensal_percentual', 'Taxa financeira mensal'], ['prazo_medio_dias', 'Prazo médio'],
-      ] as const) {
-        if (comercial[campo] == null || comercial[campo] === '') {
-          comercial[campo] = ''
-          pendencias.push(`Informe a ${label.toLowerCase()} (sem valor vigente em Câmbio e parâmetros).`)
-        }
-      }
-
-      const ncm = precificacao?.produto?.ncm_codigo
-      if (canReadImpostos && precificacao?.uf_destino && precificacao.regime_tributario && ncm) {
-        try {
-          const aliquota = await resolverAliquota({ uf_destino: precificacao.uf_destino, ncm_codigo: ncm, regime_tributario: precificacao.regime_tributario, data_referencia: dataLocalISO() })
-          impostos = {
-            ...impostos,
-            pis_percentual: aliquota.pis_percentual,
-            cofins_percentual: aliquota.cofins_percentual,
-            icms_percentual: aliquota.icms_percentual,
-            ipi_percentual: aliquota.ipi_percentual,
-            icms_interno_percentual: aliquota.icms_interno_percentual,
-            fcp_percentual: aliquota.fcp_percentual,
-            mva_percentual: aliquota.mva_percentual,
-          }
-        } catch { pendencias.push(`Não há alíquota cadastrada para ${precificacao.uf_destino}, NCM ${ncm} e ${rotulo(REGIME, precificacao.regime_tributario)}. Cadastre em Tributos.`) }
-      } else if (!canReadImpostos) pendencias.push('Seu perfil não pode consultar os tributos, então os impostos não são preenchidos.')
-      else if (!ncm) pendencias.push('O produto não tem NCM cadastrado, então os impostos não são preenchidos.')
-
-      const producaoManual = isRecord(manual.producao) ? manual.producao : {}
-      candidato.producao = {
-        taxa_mod: producaoManual.taxa_mod ?? '', taxa_ggf: producaoManual.taxa_ggf ?? '',
-        produtividade: producaoManual.produtividade ?? '', numero_funcionarios: producaoManual.numero_funcionarios ?? '',
-      }
-      for (const campo of ['taxa_mod', 'taxa_ggf', 'produtividade', 'numero_funcionarios']) {
-        if (producaoManual[campo] == null || producaoManual[campo] === '') pendencias.push(`Informe ${{ taxa_mod: 'a taxa de mão de obra (MOD)', taxa_ggf: 'a taxa de GGF', produtividade: 'a produtividade', numero_funcionarios: 'o número de funcionários' }[campo]} na entrada manual.`)
-      }
-      for (const campo of ['margem_desejada_percentual', 'comissao_percentual', 'frete_percentual']) {
-        if (comercial[campo] == null || comercial[campo] === '') {
-          comercial[campo] = ''
-          const label = campo === 'margem_desejada_percentual' ? 'a margem desejada' : campo === 'comissao_percentual' ? 'a comissão' : 'o frete em %'
-          pendencias.push(`Informe ${label} na entrada manual.`)
-        }
-      }
-      for (const campo of TAX_FIELDS) if (impostos[campo] == null || impostos[campo] === '') impostos[campo] = ''
-      if (TAX_FIELDS.some((campo) => impostos[campo] === '') && pendencias.every((p) => !p.includes('impostos') && !p.includes('alíquota'))) pendencias.push('Faltam alíquotas de impostos para este destino.')
-      if (candidato.perda_percentual == null || candidato.perda_percentual === '') candidato.perda_percentual = ''
-      if (candidato.material_fornecido_pelo_cliente == null) candidato.material_fornecido_pelo_cliente = ''
-      if (candidato.valor_material_cliente == null || candidato.valor_material_cliente === '') candidato.valor_material_cliente = ''
-      if (candidato.perda_percentual === '') pendencias.push('Falta a perda padrão vigente em Câmbio e parâmetros.')
-      if (candidato.material_fornecido_pelo_cliente === '' && formulario && formulario.itens.length > 0) pendencias.push('Defina a origem (fabricante ou cliente) de cada item da formulação.')
-
-      candidato.comercial = comercial
-      candidato.impostos = impostos
-      setEntradaJson(JSON.stringify(candidato, null, 2))
-      setPendenciasPreparacao([...new Set(pendencias)])
-      return { entrada: candidato, pendencias: [...new Set(pendencias)] }
+      manual = aplicarManuais(manual, manuais)
+      // Uma chamada: a API reúne formulação, cotações, câmbio, parâmetros e alíquota.
+      const volumeApi = lerNumero(volume)
+      const base = await obterEntradaCalculo(precificacaoId, volumeApi && Number(volumeApi) > 0 ? volumeApi : null)
+      const combinado = combinarEntrada(base.entrada, manual)
+      const pendencias = [...new Set([...base.pendencias, ...combinado.pendencias])]
+      setEmbalagensForm(combinado.embalagens)
+      setPrecisaValorCliente(combinado.entrada.material_fornecido_pelo_cliente === true)
+      setEntradaJson(JSON.stringify(combinado.entrada, null, 2))
+      setPendenciasPreparacao(pendencias)
+      return { entrada: combinado.entrada, pendencias }
     } catch (falha) {
       setErroSimulacao(falha instanceof SyntaxError ? 'A entrada manual não é um JSON válido.' : falha instanceof Error ? falha.message : 'Não foi possível reunir os dados cadastrados.')
       return null
     } finally { setPreparando(false) }
   }
+
+  const campoManual = (chave: Exclude<keyof CamposManuais, 'embalagens'>, titulo: string, unidade: string, exemplo: string, modo: 'decimal' | 'numeric' = 'decimal') =>
+    <label className="field"><span>{titulo} <small>({unidade})</small></span><input inputMode={modo} placeholder={exemplo} value={manuais[chave]} onChange={(event) => { const valor = event.target.value; setManuais((atual) => ({ ...atual, [chave]: valor })) }} /></label>
+  const alterarEmbalagem = (codigo: string, campo: 'preco' | 'descarte', valor: string) =>
+    setManuais((atual) => ({ ...atual, embalagens: { ...atual.embalagens, [codigo]: { ...(atual.embalagens[codigo] ?? { preco: '', descarte: '' }), [campo]: valor } } }))
 
   async function simular(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -471,9 +419,35 @@ function ScenarioHistoryPanel({ precificacaoId, codigo, precificacao, canViewCos
           <ul>{pendenciasPreparacao.map((item) => <li key={item}>{item}</li>)}</ul>
         </div>}
 
+        <fieldset className="scenario-manuais">
+          <legend>Dados do cenário <small>ainda sem cadastro no sistema</small></legend>
+          <div className="scenario-manuais-grupo"><h5>Produção</h5><div className="scenario-manuais-campos">
+            {campoManual('taxa_mod', 'Taxa de MOD', 'R$/h por funcionário', 'Ex.: 38,00')}
+            {campoManual('taxa_ggf', 'Taxa de GGF', 'R$/h', 'Ex.: 52,00')}
+            {campoManual('produtividade', 'Produtividade', 'unidades/h', 'Ex.: 1200')}
+            {campoManual('numero_funcionarios', 'Funcionários na linha', 'pessoas', 'Ex.: 6', 'numeric')}
+          </div></div>
+          <div className="scenario-manuais-grupo"><h5>Comercial</h5><div className="scenario-manuais-campos">
+            {campoManual('margem', 'Margem desejada', '%', 'Ex.: 18')}
+            {campoManual('comissao', 'Comissão', '%', 'Ex.: 3')}
+            {campoManual('frete', 'Frete', '% do preço', 'Ex.: 2')}
+            {precisaValorCliente && campoManual('valor_material_cliente', 'Material do cliente', 'R$ por unidade', 'Ex.: 12,50')}
+          </div></div>
+          <div className="scenario-manuais-grupo"><h5>Embalagens</h5>
+            {embalagensForm.length
+              ? <div className="scenario-embalagens">{embalagensForm.map((emb) => <div key={emb.codigo} className="scenario-embalagem">
+                  <span className="scenario-embalagem-nome">{emb.descricao}<small>{emb.codigo}</small></span>
+                  <label className="field"><span>Preço <small>(R$/un)</small></span><input inputMode="decimal" placeholder="Ex.: 1,85" value={manuais.embalagens[emb.codigo]?.preco ?? ''} onChange={(event) => alterarEmbalagem(emb.codigo, 'preco', event.target.value)} /></label>
+                  <label className="field"><span>Descarte <small>(%)</small></span><input inputMode="decimal" placeholder="Ex.: 1" value={manuais.embalagens[emb.codigo]?.descarte ?? ''} onChange={(event) => alterarEmbalagem(emb.codigo, 'descarte', event.target.value)} /></label>
+                </div>)}</div>
+              : <p className="field-hint">As embalagens da formulação aparecem aqui depois do primeiro “Calcular cenário”.</p>}
+          </div>
+        </fieldset>
+
+
         <details className="np-avancado">
           <summary>Entrada manual (avançado)</summary>
-          <p className="field-hint">Para completar o que ainda não tem cadastro, como produção, margem desejada e comissão. O botão “Calcular cenário” preenche este campo com os dados encontrados; ajuste e calcule de novo.</p>
+          <p className="field-hint">A entrada completa que vai para o motor, já com os campos acima. Ajuste à mão só se precisar de algo fora do formulário.</p>
           <label className="field"><span>Entrada do cálculo (JSON)</span><textarea rows={12} spellCheck={false} value={entradaJson} onChange={(event) => setEntradaJson(event.target.value)} placeholder="Clique em “Calcular cenário” para gerar a entrada com os dados cadastrados." /></label>
           <div className="np-avancado-acoes">
             <button className="button secondary" type="button" disabled={ocupado} onClick={() => { void simularDemo() }}>{simulando ? 'Calculando…' : 'Simular com valores de demonstração'}</button>

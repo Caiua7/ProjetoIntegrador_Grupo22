@@ -9,6 +9,7 @@ from app.routers.cadastros import router as cadastros_router
 from app.routers.calculate import router as calculate_router
 from app.routers.cenarios import router as cenarios_router
 from app.routers.cotacoes import router as cotacoes_router
+from app.routers.entrada_calculo import router as entrada_calculo_router
 from app.routers.formulacoes import router as formulacoes_router
 from app.routers.health import router as health_router
 from app.routers.parametros_globais import router_cambio, router_parametros
@@ -44,6 +45,7 @@ app.include_router(health_router)
 app.include_router(auth_router)
 app.include_router(cadastros_router)
 app.include_router(formulacoes_router)
+app.include_router(entrada_calculo_router)
 app.include_router(precificacoes_router)
 app.include_router(cenarios_router)
 app.include_router(aprovacoes_router)

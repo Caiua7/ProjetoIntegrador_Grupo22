@@ -38,3 +38,11 @@ export const criarPrecificacao = (entrada: PrecificacaoEntrada) => apiFetch<Prec
 export const verificarSubmissao = (id: string) => apiFetch<VerificacaoSubmissao>(`/precificacoes/${id}/submissao`)
 export const submeterPrecificacao = (id: string) => apiFetch<VerificacaoSubmissao>(`/precificacoes/${id}/submissao`, { method: 'POST' })
 export const listarHistoricoStatus = (id: string) => apiFetch<HistoricoStatus[]>(`/precificacoes/${id}/historico-status`)
+
+export type EntradaCalculoMontada = { entrada: Record<string, unknown>, pendencias: string[] }
+
+/** Entrada do motor montada pela API numa chamada só (formulação, cotações, câmbio, parâmetros e alíquota). */
+export function obterEntradaCalculo(precificacaoId: string, volume: string | null) {
+  const consulta = volume ? `?volume=${encodeURIComponent(volume)}` : ''
+  return apiFetch<EntradaCalculoMontada>(`/precificacoes/${precificacaoId}/entrada-calculo${consulta}`)
+}
