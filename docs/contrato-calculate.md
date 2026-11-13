@@ -17,6 +17,10 @@ O `.ts` é mantido à mão. `apps/api/tests/test_contrato_front.py` lê esse arq
 
 Campos monetários e percentuais são decimais serializados como strings. Percentuais são frações (`0.18` representa 18%). O frontend deve enviar os campos conforme `CalculateRequest` e exibir os valores retornados sem reimplementar fórmulas. A resposta inclui custos, `PBsIPIsEncargo`, `PBsIPI`, `PBcIPI`, `PB`, `ROL`, `MaCo`, isenção de mão de obra e impostos destacados.
 
+## Isenção de mão de obra (RF15 / US20)
+
+Vale só quando `material_fornecido_pelo_cliente` é verdadeiro **e** `cliente_uf` é `SP`. Nesse caso o `CustoMOD` é descontado de `PBsIPIsEncargo` (e, por consequência, de `PBsIPI` e `PB`), e a resposta traz `isencao_mao_de_obra.aplicada = true` com o valor descontado. Nos outros três cruzamentos (cliente fora de SP, fabricante em SP, fabricante fora de SP) o valor é zero. Os quatro cruzamentos e o impacto exato no preço estão em `packages/pricing-core/tests/test_engine.py`.
+
 ## Pendências de homologação
 
 O motor implementa premissas provisórias ainda marcadas `TODO(PO)`:

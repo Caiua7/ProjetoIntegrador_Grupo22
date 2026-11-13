@@ -168,6 +168,33 @@ def test_nao_aplica_isencao_fora_de_sp():
     assert resultado.isencao_mao_de_obra.valor == Decimal("0.00")
 
 
+@pytest.mark.parametrize(
+    ("material_do_cliente", "uf", "aplica"),
+    [
+        (True, "SP", True),
+        (True, "RJ", False),
+        (False, "SP", False),
+        (False, "RJ", False),
+    ],
+)
+def test_isencao_de_mod_nos_quatro_cruzamentos(material_do_cliente, uf, aplica):
+    """US20: a isenção só vale com material do cliente E destino SP."""
+    resultado = calcular(_entrada(material_fornecido_pelo_cliente=material_do_cliente, cliente_uf=uf))
+
+    assert resultado.isencao_mao_de_obra.aplicada is aplica
+    assert resultado.isencao_mao_de_obra.valor == (resultado.custo_mod if aplica else Decimal("0.00"))
+
+
+def test_isencao_reduz_o_preco_exatamente_no_custo_de_mod():
+    # Mesma entrada, só muda o destino: a diferença no preço antes do encargo é o CustoMOD isento.
+    em_sp = calcular(_entrada(material_fornecido_pelo_cliente=True, cliente_uf="SP"))
+    fora_de_sp = calcular(_entrada(material_fornecido_pelo_cliente=True, cliente_uf="RJ"))
+
+    diferenca = fora_de_sp.preco_bruto_sem_ipi_sem_encargo - em_sp.preco_bruto_sem_ipi_sem_encargo
+    assert diferenca == em_sp.custo_mod == Decimal("20.00")
+    assert em_sp.preco_bruto < fora_de_sp.preco_bruto
+
+
 def test_icms_st_e_calculado_quando_mva_ou_fcp_estao_preenchidos():
     entrada = _entrada(
         impostos={
