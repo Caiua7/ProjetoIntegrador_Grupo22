@@ -1,9 +1,12 @@
 """Conferência dos 30 casos pela metodologia documentada (PI6), em fórmulas de Excel.
 
-Uso: pip install openpyxl formulas && python tests/conformidade/conferencia_metodologia.py tests/conformidade/casos tests/conformidade/conferencia-metodologia.xlsx
+Uso: pip install openpyxl formulas && python tests/conformidade/conferencia_metodologia.py tests/conformidade/casos tests/conformidade/conferencia-metodologia.xlsx [--gravar]
 
 Gera conferencia-metodologia.xlsx com fórmulas visíveis (nada vem do motor), avalia as fórmulas com a
 biblioteca `formulas` e compara com pricing_core.engine.calcular.
+
+Com --gravar, os valores calculados pelas fórmulas (e não pelo motor) viram a `saida_esperada` de
+cada caso. Só grava se nenhum caso divergir.
 """
 
 import json
@@ -252,4 +255,13 @@ for r, c in enumerate(casos, 2):
     resumo.append((c["id"], "confere" if maior <= Decimal("0.01") else "DIVERGE", maior))
 for linha in resumo:
     print(*linha)
-SAIDA.with_suffix(".json").write_text(json.dumps(planilha_vals, indent=1), encoding="utf-8")
+
+if "--gravar" in sys.argv[3:]:
+    if any(situacao == "DIVERGE" or situacao.startswith("motor") for _, situacao, _ in resumo):
+        raise SystemExit("há caso divergente; nada foi gravado")
+    for caso_id, vals in planilha_vals.items():
+        caminho = CASOS / f"{caso_id}.json"
+        caso = json.loads(caminho.read_text(encoding="utf-8"))
+        caso["saida_esperada"] = {campo: vals[campo] for campo in caso["saida_esperada"]}
+        caminho.write_text(json.dumps(caso, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    print(f"{len(planilha_vals)} casos gravados com a saída da metodologia")

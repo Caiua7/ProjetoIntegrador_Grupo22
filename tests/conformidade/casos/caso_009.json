@@ -116,14 +116,14 @@
     }
   },
   "saida_esperada": {
-    "preco_bruto_sem_ipi_sem_encargo": "PREENCHER_COM_PO",
-    "preco_bruto_sem_ipi": "PREENCHER_COM_PO",
-    "preco_bruto": "PREENCHER_COM_PO",
-    "receita_operacional_liquida": "PREENCHER_COM_PO",
-    "margem_contribuicao_valor": "PREENCHER_COM_PO",
-    "custo_total": "PREENCHER_COM_PO",
-    "impostos_destacados.icms_st_valor": "PREENCHER_COM_PO",
-    "preco_indicado": "PREENCHER_COM_PO"
+    "preco_bruto_sem_ipi_sem_encargo": "148.00",
+    "preco_bruto_sem_ipi": "138.03",
+    "preco_bruto": "160.49",
+    "receita_operacional_liquida": "110.23",
+    "margem_contribuicao_valor": "23.86",
+    "custo_total": "81.24",
+    "impostos_destacados.icms_st_valor": "22.46",
+    "preco_indicado": "160.49"
   },
   "observacoes": ""
 }

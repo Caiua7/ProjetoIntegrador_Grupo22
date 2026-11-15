@@ -1,18 +1,24 @@
 # Homologação dos 30 casos (Sprint 1, semana 2)
 
 > **Situação em 15/11/2026:** os 30 casos (`casos/caso_001.json` a `caso_030.json`) estão montados
-> com dados reais do staging (formulações, cotações, câmbio, alíquotas e parâmetros) e cobrem a lista
-> abaixo. Os 2 casos de erro já passam; os outros 28 aguardam o resultado do PO.
+> com dados reais do staging (formulações, cotações, câmbio, alíquotas e parâmetros) e a suíte passa
+> **30 de 30** no CI. Como a área de Pricing não tem planilha de referência, a `saida_esperada` dos 28
+> casos de cálculo vem da conferência pela metodologia documentada (`conferencia-metodologia.xlsx`,
+> fórmulas de Excel escritas a partir do PI6, sem usar o motor); os 2 casos de erro esperam
+> `DENOMINADOR_INVALIDO`. Ver `conferencia-metodologia.md`.
 >
-> **Para homologar:** leve `homologacao-30-casos.xlsx` ao PO. Ele preenche as células amarelas da aba
-> *Resultados* com os valores da planilha da área. Depois:
+> **Falta o PO:** validar por amostra (casos 001, 008, 013, 015, 017, 020 e 022) e decidir os 5 pontos
+> de `conferencia-metodologia.md`. Se ele mudar alguma premissa, ajuste a fórmula da coluna em
+> `conferencia_metodologia.py` e o motor, e regrave os valores:
 >
 > ```bash
-> pip install openpyxl
-> python tests/conformidade/planilha.py importar homologacao-30-casos.xlsx
+> pip install openpyxl formulas
+> python tests/conformidade/conferencia_metodologia.py tests/conformidade/casos tests/conformidade/conferencia-metodologia.xlsx --gravar
 > pytest tests/conformidade --relatorio-conformidade=relatorio-conformidade.md
 > ```
 >
+> Se o PO trouxer valores próprios, preencha `homologacao-30-casos.xlsx` (aba *Resultados*, já com os
+> valores atuais) e rode `python tests/conformidade/planilha.py importar homologacao-30-casos.xlsx`.
 > Mudou algum caso? Gere a planilha de novo com `python tests/conformidade/planilha.py exportar homologacao-30-casos.xlsx`.
 > Produção (MOD, GGF, produtividade, funcionários) e preço de embalagem ainda não têm cadastro e usam
 > valores fixos plausíveis; o PO pode trocá-los na própria planilha, anotando em *Observações*.

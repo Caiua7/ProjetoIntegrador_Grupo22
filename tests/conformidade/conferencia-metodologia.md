@@ -25,4 +25,6 @@ Mostrar a aba *Cálculo* nos casos 001, 008, 013, 015, 017, 020 e 022 e decidir:
 4. **Embalagem:** entra no custo só pelo descarte (`preço × quantidade × % descarte`).
 5. **PBsIPIsEncargo maior que PBsIPI:** como as duas fórmulas usam denominadores diferentes, o preço "antes do encargo" sai maior que o preço com encargo (ex.: caso 001, R$ 77,66 contra R$ 71,19). Confirmar se é o esperado.
 
-Com o ok do PO (no termo de aceite ou em comentário no #56), os valores da aba *Cálculo* viram a `saida_esperada` dos casos e a suíte passa a 30 de 30.
+## Valores gravados nos casos
+
+Os valores da aba *Cálculo* já são a `saida_esperada` dos 28 casos de cálculo (gravados com `--gravar`), e a suíte passa 30 de 30 no CI. Os casos com margem negativa (013–018 e 022–024) levam a observação do ponto 1. Se o PO mudar alguma premissa, ajuste a fórmula da coluna correspondente e o motor, rode o script com `--gravar` e a suíte volta a ser a referência.
