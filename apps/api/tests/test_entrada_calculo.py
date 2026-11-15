@@ -250,3 +250,25 @@ def test_item_sem_origem_vira_pendencia():
     )
 
     assert "Defina a origem (fabricante ou cliente) de todos os itens da formulação." in resultado["pendencias"]
+
+
+def test_cada_thread_usa_o_proprio_cliente():
+    """O cliente do Supabase não é seguro entre threads; compartilhado, gerava 503 intermitente."""
+    import threading
+
+    usados: dict[int, object] = {}
+    trava = threading.Lock()
+
+    def fabrica():
+        novo = _cliente()
+        with trava:
+            usados[threading.get_ident()] = novo
+        return novo
+
+    principal = _cliente()
+    resultado = montar_entrada(principal, _usuario(), PREC_ID, Decimal("1000"), HOJE, fabrica_cliente=fabrica)
+
+    assert resultado["pendencias"] == []
+    assert usados and principal not in usados.values()
+    assert len({id(c) for c in usados.values()}) == len(usados)  # um cliente por thread
+    assert not principal.rpcs  # as cotações saíram dos clientes das threads
