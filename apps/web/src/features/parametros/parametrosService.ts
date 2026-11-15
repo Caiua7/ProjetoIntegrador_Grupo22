@@ -25,6 +25,7 @@ export type CodigoParametro =
   | 'taxa_financeira_mensal_percentual'
   | 'prazo_medio_padrao_dias'
   | 'desvio_maximo_cotacao_percentual'
+  | 'margem_minima_contribuicao_percentual'
 
 export type ParametroGlobal = {
   id: string

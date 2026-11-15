@@ -20,6 +20,7 @@ import type { ListPreset } from './features/pricing/listPreset'
 import { ExchangeParamsPage } from './features/parametros/ExchangeParamsPage'
 import { TaxRatesPage } from './features/taxes/TaxRatesPage'
 import { ExportBIPage } from './features/bi/ExportBIPage'
+import { ApprovalsQueuePage } from './features/approvals/ApprovalsQueuePage'
 
 function App() {
   return (
@@ -202,6 +203,8 @@ function AppShell() {
         )}
 
         {current === 'bi' && <ExportBIPage />}
+
+        {current === 'approvals' && <ApprovalsQueuePage />}
       </main>
     </div>
   )

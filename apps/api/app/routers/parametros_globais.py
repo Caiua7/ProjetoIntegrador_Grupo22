@@ -27,8 +27,13 @@ CodigoParametro = Literal[
     "taxa_financeira_mensal_percentual",
     "prazo_medio_padrao_dias",
     "desvio_maximo_cotacao_percentual",
+    "margem_minima_contribuicao_percentual",
 ]
 CODIGOS_PARAMETRO: tuple[str, ...] = CodigoParametro.__args__
+# O que o motor precisa para calcular; a margem mínima é só a política da fila de aprovação (#67)
+CODIGOS_DO_CALCULO: tuple[str, ...] = tuple(
+    c for c in CODIGOS_PARAMETRO if c != "margem_minima_contribuicao_percentual"
+)
 
 
 # ------------------------------------------------------------ modelos
@@ -270,7 +275,7 @@ def consultar_parametros_vigentes(
     return {
         "data_referencia": data_referencia,
         "parametros": vigentes,
-        "faltando": [codigo for codigo in CODIGOS_PARAMETRO if codigo not in vigentes],
+        "faltando": [codigo for codigo in CODIGOS_DO_CALCULO if codigo not in vigentes],
     }
 
 

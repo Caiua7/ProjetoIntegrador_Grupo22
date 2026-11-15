@@ -47,3 +47,9 @@ test('câmbio e parâmetros abre com cambio.ler e fica em Cadastros', () => {
   const cadastros = navigationFor(perfil('cambio.ler')).find((grupo) => grupo.title === 'Cadastros')
   assert.deepEqual(cadastros?.items.map((item) => item.id), ['exchange'])
 })
+
+test('fila de aprovação exige aprovar e enxergar custo', () => {
+  assert.equal(canOpen('approvals', perfil('precificacao.aprovar')), false)
+  assert.equal(canOpen('approvals', perfil('custo.ler')), false)
+  assert.equal(canOpen('approvals', perfil('precificacao.aprovar', 'custo.ler')), true)
+})

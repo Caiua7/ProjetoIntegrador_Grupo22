@@ -1,0 +1,22 @@
+/* Fila de aprovação do gerente (US36, #67) */
+.approvals-content .list-intro { align-items: flex-start; gap: 16px; }
+.fila-politica { display: flex; flex-direction: column; gap: 2px; padding: 10px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-2); min-width: 220px; }
+.fila-politica strong { color: var(--text); font-size: 12px; }
+.fila-politica small { color: var(--text-3); font-size: 11px; }
+.fila-politica.sem-politica { border-color: var(--warning); background: var(--warning-wash); }
+.fila-filtros { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; }
+.fila-filtros .field { min-width: 220px; margin: 0; }
+.fila-tabela td, .fila-tabela th { vertical-align: top; }
+.fila-linha-abaixo > th:first-child { box-shadow: inset 3px 0 0 var(--error); }
+.fila-distancia { display: inline-block; padding: 2px 8px; border-radius: 999px; font: 600 11px var(--f-numero); white-space: nowrap; }
+.fila-distancia.abaixo { background: var(--error-wash); color: var(--error); }
+.fila-distancia.dentro { background: var(--green-wash); color: var(--green); }
+.fila-comparacao > td { background: var(--surface-2); padding: 14px 16px; }
+.fila-comparacao h4 { margin: 0 0 10px; font-size: 12px; color: var(--text-2); }
+.fila-comparacao-tabela { min-width: 640px; }
+.fila-sentido-subiu td:last-child { color: var(--green); }
+.fila-sentido-desceu td:last-child { color: var(--error); }
+@media (max-width: 760px) {
+  .approvals-content .list-intro { flex-direction: column; }
+  .fila-filtros .field { min-width: 0; flex: 1 1 100%; }
+}

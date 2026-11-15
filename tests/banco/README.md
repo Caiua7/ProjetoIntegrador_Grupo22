@@ -7,6 +7,9 @@
   analista restrito a uma carteira não enxerga clientes nem precificações de
   outra, cada perfil só alcança o que a matriz de acesso permite e ninguém
   consegue se promover.
+- `test_fila_aprovacao.py` (issue #67): a fila mostra só as precificações em
+  aprovação, só para quem aprova e enxerga custo, na carteira dele, com a
+  margem da versão vigente e a versão anterior.
 - `test_cenario_versionado.py` (issue #63): uma nova versão de cenário mantém a
   anterior consultável e igual; ninguém altera nem apaga versão salva, e quem
   só negocia vê o preço das versões, não o custo.
