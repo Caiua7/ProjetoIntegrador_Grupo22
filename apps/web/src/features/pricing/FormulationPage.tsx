@@ -103,10 +103,12 @@ export function FormulationPage({ canEdit, canViewCost, canReadCatalog, canReadC
     setItens((atuais) => atuais.map((item, posicao) => posicao === index ? { ...item, ...patch } : item)); setMensagem(null)
   }
   async function salvar() {
-    if (!produtoId) return
-    if (itens.some((item) => !item.origem_material || !quantidadeValida(item.quantidade) ||
+    if (!produtoId || !canEdit) return
+    if (itens.length === 0) { setErroSalvar('Adicione ao menos um componente antes de salvar.'); return }
+    if (itens.some((item) => !(item.tipo_insumo === 'materia_prima' ? item.materia_prima_id : item.embalagem_id) ||
+      !item.origem_material || !quantidadeValida(item.quantidade) ||
       (item.perda_percentual !== '' && !perdaValida(item.perda_percentual)))) {
-      setErroSalvar('Revise a origem, as quantidades e as perdas antes de salvar.'); return
+      setErroSalvar('Revise o insumo, a origem, as quantidades e as perdas antes de salvar.'); return
     }
     setSalvando(true); setErroSalvar(null); setMensagem(null)
     try { const salva = await salvarFormulacao(produtoId, itens.map((item) => ({ tipo_insumo: item.tipo_insumo,
@@ -126,6 +128,7 @@ export function FormulationPage({ canEdit, canViewCost, canReadCatalog, canReadC
   return <section className="content catalog-content">
     <div className="list-intro"><div><span className="eyebrow">COMPOSIÇÃO DO PRODUTO</span><h2>Formulações</h2><p>Monte e mantenha os insumos associados a cada produto.</p></div></div>
     {erro && <p className="catalog-error" role="alert">{erro}</p>}
+    {produtoId && !canEdit && <p className="field-hint" role="status">Modo de visualização: seu perfil não pode editar formulações.</p>}
     <section className="form-card formulation-selector">
       <label className="field"><span>Produto</span>
         <Select pesquisavel value={produtoId} disabled={salvando || carregandoCatalogos || !canReadCatalog}
@@ -173,7 +176,7 @@ export function FormulationPage({ canEdit, canViewCost, canReadCatalog, canReadC
           </tbody></table></div>}
         {canEdit && <div className="formulation-add-footer">
           {mensagem ? <p className="np-sucesso" role="status">{mensagem}</p> : erroSalvar ? <p className="np-erro-campo" role="alert">{erroSalvar}</p> : <span />}
-          <button className="button primary" type="button" disabled={salvando || carregandoCatalogos || carregandoFormulacao} onClick={() => { void salvar() }}>{salvando ? 'Salvando…' : 'Salvar formulação'}</button>
+          <button className="button primary" type="button" disabled={salvando || carregandoCatalogos || carregandoFormulacao || itens.length === 0} onClick={() => { void salvar() }}>{salvando ? 'Salvando…' : 'Salvar formulação'}</button>
         </div>}
       </section>
       </div>
