@@ -1,7 +1,9 @@
 """Suíte de conformidade do motor de precificação (RNF08 / US22).
 
-Compara a saída de `pricing_core.engine.calcular` contra os 30 casos
-homologados com o PO. Critério de aceite (RNF08): divergência máxima de
+Compara a saída de `pricing_core.engine.calcular` contra os 30 casos de
+referência. A saída esperada vem da conferência pela metodologia documentada
+(`conferencia_metodologia.py`, fórmulas de Excel independentes do motor) e
+fica sujeita à validação por amostra do PO. Critério de aceite (RNF08): divergência máxima de
 R$ 0,01 por campo monetário. A regra de comparação está em
 `conferencia.py`; o relatório por caso, em `conftest.py`.
 

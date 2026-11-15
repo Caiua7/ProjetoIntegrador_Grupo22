@@ -96,14 +96,14 @@
     }
   },
   "saida_esperada": {
-    "preco_bruto_sem_ipi_sem_encargo": "PREENCHER_COM_PO",
-    "preco_bruto_sem_ipi": "PREENCHER_COM_PO",
-    "preco_bruto": "PREENCHER_COM_PO",
-    "receita_operacional_liquida": "PREENCHER_COM_PO",
-    "margem_contribuicao_valor": "PREENCHER_COM_PO",
-    "custo_total": "PREENCHER_COM_PO",
-    "impostos_destacados.icms_st_valor": "PREENCHER_COM_PO",
-    "preco_indicado": "PREENCHER_COM_PO"
+    "preco_bruto_sem_ipi_sem_encargo": "25.22",
+    "preco_bruto_sem_ipi": "21.10",
+    "preco_bruto": "21.10",
+    "receita_operacional_liquida": "16.85",
+    "margem_contribuicao_valor": "-13.18",
+    "custo_total": "29.80",
+    "impostos_destacados.icms_st_valor": "0.00",
+    "preco_indicado": "21.10"
   },
-  "observacoes": ""
+  "observacoes": "Saída pela metodologia documentada (PI6). MaCo$ negativa: a fórmula desconta o custo total de MP, inclusive a fornecida pelo cliente, enquanto o preço já exclui esse material. Ponto 1 de conferencia-metodologia.md, aguardando decisão do PO."
 }
