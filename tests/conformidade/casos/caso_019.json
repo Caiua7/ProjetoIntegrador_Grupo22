@@ -1,0 +1,121 @@
+{
+  "id": "caso_019",
+  "descricao": "Entrada antiga: valor global de material do cliente (R$ 5,00), SP — PA-0006 Hipercalórico 3 kg",
+  "entrada": {
+    "cliente_uf": "SP",
+    "modalidade_comercial": "full_service_nacional",
+    "regime_tributario": "lucro_real",
+    "materiais_primas": [
+      {
+        "codigo": "MP-0006",
+        "descricao": "Maltodextrina DE 18",
+        "quantidade": "2.1",
+        "preco_negociado": "6.9",
+        "moeda": "BRL",
+        "cambio": "1",
+        "margem_seguranca_percentual": "0"
+      },
+      {
+        "codigo": "MP-0001",
+        "descricao": "Whey protein concentrado 80%",
+        "quantidade": "0.75",
+        "preco_negociado": "11.8",
+        "moeda": "USD",
+        "cambio": "5.604",
+        "margem_seguranca_percentual": "0.02"
+      },
+      {
+        "codigo": "MP-0004",
+        "descricao": "Cacau alcalino 10/12",
+        "quantidade": "0.12",
+        "preco_negociado": "38.5",
+        "moeda": "BRL",
+        "cambio": "1",
+        "margem_seguranca_percentual": "0"
+      },
+      {
+        "codigo": "MP-0009",
+        "descricao": "Blend de enzimas digestivas",
+        "quantidade": "0.006",
+        "preco_negociado": "96",
+        "moeda": "USD",
+        "cambio": "5.604",
+        "margem_seguranca_percentual": "0.02"
+      },
+      {
+        "codigo": "MP-0005",
+        "descricao": "Sucralose 25%",
+        "quantidade": "0.024",
+        "preco_negociado": "42",
+        "moeda": "USD",
+        "cambio": "5.604",
+        "margem_seguranca_percentual": "0.02"
+      }
+    ],
+    "embalagens": [
+      {
+        "codigo": "EMB-0001",
+        "descricao": "Pote PET 1200 ml + tampa",
+        "quantidade": "2",
+        "preco_negociado": "1.95",
+        "moeda": "BRL",
+        "cambio": "1",
+        "percentual_descarte": "0.02"
+      },
+      {
+        "codigo": "EMB-0003",
+        "descricao": "Rótulo BOPP adesivo",
+        "quantidade": "2",
+        "preco_negociado": "0.12",
+        "moeda": "BRL",
+        "cambio": "1",
+        "percentual_descarte": "0.02"
+      },
+      {
+        "codigo": "EMB-0004",
+        "descricao": "Selo de indução em alumínio",
+        "quantidade": "2",
+        "preco_negociado": "0.18",
+        "moeda": "BRL",
+        "cambio": "1",
+        "percentual_descarte": "0.02"
+      }
+    ],
+    "perda_percentual": "0.02",
+    "material_fornecido_pelo_cliente": true,
+    "valor_material_cliente": "5",
+    "producao": {
+      "taxa_mod": "34",
+      "taxa_ggf": "20",
+      "produtividade": "90",
+      "numero_funcionarios": "5"
+    },
+    "impostos": {
+      "pis_percentual": "0.0165",
+      "cofins_percentual": "0.076",
+      "icms_percentual": "0.12",
+      "ipi_percentual": "0",
+      "icms_interno_percentual": "0",
+      "fcp_percentual": "0",
+      "mva_percentual": "0"
+    },
+    "comercial": {
+      "margem_desejada_percentual": "0.25",
+      "comissao_percentual": "0.03",
+      "frete_percentual": "0.02",
+      "prazo_medio_dias": "0",
+      "taxa_financeira_mensal_percentual": "0.012"
+    }
+  },
+  "saida_esperada": {
+    "preco_bruto_sem_ipi_sem_encargo": "PREENCHER_COM_PO",
+    "preco_bruto_sem_ipi": "PREENCHER_COM_PO",
+    "preco_bruto": "PREENCHER_COM_PO",
+    "receita_operacional_liquida": "PREENCHER_COM_PO",
+    "margem_contribuicao_valor": "PREENCHER_COM_PO",
+    "custo_total": "PREENCHER_COM_PO",
+    "impostos_destacados.icms_st_valor": "PREENCHER_COM_PO",
+    "preco_indicado": "PREENCHER_COM_PO"
+  },
+  "observacoes": ""
+}

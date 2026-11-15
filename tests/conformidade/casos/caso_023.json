@@ -1,0 +1,139 @@
+{
+  "id": "caso_023",
+  "descricao": "Industrialização por encomenda no PR, insumos do cliente — PA-0004 Pré-treino 300 g — marca própria",
+  "entrada": {
+    "cliente_uf": "PR",
+    "modalidade_comercial": "industrializacao_por_encomenda",
+    "regime_tributario": "lucro_presumido",
+    "materiais_primas": [
+      {
+        "codigo": "MP-0003",
+        "descricao": "Creatina monoidratada micronizada",
+        "quantidade": "0.09",
+        "origem_material": "cliente",
+        "preco_negociado": "9.7",
+        "moeda": "EUR",
+        "cambio": "6.093",
+        "margem_seguranca_percentual": "0.02"
+      },
+      {
+        "codigo": "MP-0008",
+        "descricao": "BCAA 2:1:1 instantâneo",
+        "quantidade": "0.06",
+        "origem_material": "cliente",
+        "preco_negociado": "118",
+        "moeda": "BRL",
+        "cambio": "1",
+        "margem_seguranca_percentual": "0"
+      },
+      {
+        "codigo": "MP-0006",
+        "descricao": "Maltodextrina DE 18",
+        "quantidade": "0.12",
+        "origem_material": "cliente",
+        "preco_negociado": "6.9",
+        "moeda": "BRL",
+        "cambio": "1",
+        "margem_seguranca_percentual": "0"
+      },
+      {
+        "codigo": "MP-0011",
+        "descricao": "Ácido cítrico anidro",
+        "quantidade": "0.018",
+        "origem_material": "cliente",
+        "preco_negociado": "14.2",
+        "moeda": "BRL",
+        "cambio": "1",
+        "margem_seguranca_percentual": "0"
+      },
+      {
+        "codigo": "MP-0012",
+        "descricao": "Vitamina C (ácido ascórbico)",
+        "quantidade": "0.009",
+        "origem_material": "cliente",
+        "preco_negociado": "61",
+        "moeda": "BRL",
+        "cambio": "1",
+        "margem_seguranca_percentual": "0"
+      },
+      {
+        "codigo": "MP-0005",
+        "descricao": "Sucralose 25%",
+        "quantidade": "0.003",
+        "origem_material": "cliente",
+        "preco_negociado": "42",
+        "moeda": "USD",
+        "cambio": "5.604",
+        "margem_seguranca_percentual": "0.02"
+      }
+    ],
+    "embalagens": [
+      {
+        "codigo": "EMB-0002",
+        "descricao": "Pote PEAD 500 ml + tampa",
+        "quantidade": "1",
+        "origem_material": "cliente",
+        "preco_negociado": "0.85",
+        "moeda": "BRL",
+        "cambio": "1",
+        "percentual_descarte": "0.02"
+      },
+      {
+        "codigo": "EMB-0003",
+        "descricao": "Rótulo BOPP adesivo",
+        "quantidade": "1",
+        "origem_material": "cliente",
+        "preco_negociado": "0.12",
+        "moeda": "BRL",
+        "cambio": "1",
+        "percentual_descarte": "0.02"
+      },
+      {
+        "codigo": "EMB-0004",
+        "descricao": "Selo de indução em alumínio",
+        "quantidade": "1",
+        "origem_material": "cliente",
+        "preco_negociado": "0.18",
+        "moeda": "BRL",
+        "cambio": "1",
+        "percentual_descarte": "0.02"
+      }
+    ],
+    "perda_percentual": "0.02",
+    "material_fornecido_pelo_cliente": true,
+    "valor_material_cliente": "0",
+    "producao": {
+      "taxa_mod": "32",
+      "taxa_ggf": "18",
+      "produtividade": "120",
+      "numero_funcionarios": "4"
+    },
+    "impostos": {
+      "pis_percentual": "0.0165",
+      "cofins_percentual": "0.076",
+      "icms_percentual": "0.12",
+      "ipi_percentual": "0",
+      "icms_interno_percentual": "0",
+      "fcp_percentual": "0",
+      "mva_percentual": "0"
+    },
+    "comercial": {
+      "margem_desejada_percentual": "0.20",
+      "comissao_percentual": "0",
+      "frete_percentual": "0.02",
+      "prazo_medio_dias": "0",
+      "taxa_financeira_mensal_percentual": "0.012"
+    }
+  },
+  "saida_esperada": {
+    "preco_bruto_sem_ipi_sem_encargo": "PREENCHER_COM_PO",
+    "preco_bruto_sem_ipi": "PREENCHER_COM_PO",
+    "preco_bruto": "PREENCHER_COM_PO",
+    "receita_operacional_liquida": "PREENCHER_COM_PO",
+    "margem_contribuicao_valor": "PREENCHER_COM_PO",
+    "custo_total": "PREENCHER_COM_PO",
+    "impostos_destacados.icms_st_valor": "PREENCHER_COM_PO",
+    "preco_indicado": "PREENCHER_COM_PO"
+  },
+  "observacoes": ""
+}
