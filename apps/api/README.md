@@ -1,3 +1,4 @@
+
 # api
 
 API REST do NeoPrice: FastAPI, Pydantic v2 e SQLAlchemy 2.0. Orquestra os casos de uso, faz a autorização e chama o `pricing-core` para calcular. Não contém regra de preço.
@@ -112,5 +113,24 @@ Na listagem, `busca` (opcional, até 100 caracteres) pesquisa código, descriç�
 | `margem_bruta` (MB) | (ROL unitária − custo total) × volume |
 
 O volume já é guardado em cada versão (`cenario.volume`, #63), então não há migration nova. Sem volume, `rentabilidade` vem `null`: só existe a margem unitária. Os valores vêm sem arredondamento, como texto; a tela arredonda para centavos ao exibir. A derivação está em `pricing_core.rentabilidade` e as premissas (ROB sobre o preço sem IPI e MB sem despesas comerciais) aguardam confirmação do PO na homologação dos 30 casos. A rota exige `custo.ler`, como o resto do detalhe da versão.
+
+## Exportação de cenários para BI (issue #69)
+
+A API disponibiliza a exportação dos cenários de precificação nos formatos CSV e XLSX.
+
+| Método e rota | Operação |
+| :--- | :--- |
+| `GET /exportacoes/cenarios?formato=csv` | Exporta os cenários em CSV |
+| `GET /exportacoes/cenarios?formato=xlsx` | Exporta os cenários em Excel |
+
+A exportação inclui todas as versões dos cenários acessíveis ao usuário, não apenas a versão vigente.
+
+O endpoint exige `precificacao.ler` e utiliza o JWT do usuário por meio de `supabase_do_usuario`, respeitando as políticas RLS e as restrições de carteira.
+
+Indicadores de custo, margem e rentabilidade são disponibilizados somente para usuários com `custo.ler`. Usuários sem essa permissão recebem somente os dados gerais e de preço permitidos pela view `cenario_preco`.
+
+A exportação CSV utiliza UTF-8 com BOM e separador por vírgula. O XLSX gera uma planilha chamada `Cenários`, com cabeçalho formatado, filtros e primeira linha congelada.
+
+O dicionário completo de colunas e as regras da exportação estão em [docs/exportacao-bi.md](../../docs/exportacao-bi.md).
 
 Testes: `cd apps/api && python -m pytest tests`.
