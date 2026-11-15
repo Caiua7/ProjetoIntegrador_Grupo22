@@ -215,3 +215,38 @@ def test_precificacao_fora_da_carteira_devolve_404():
     with pytest.raises(HTTPException) as erro:
         montar_entrada(_cliente(precificacao=[]), _usuario(), PREC_ID, Decimal("1"), HOJE)
     assert erro.value.status_code == 404
+
+
+def _com_origens(*origens):
+    cliente = _cliente()
+    for item, origem in zip(cliente.tabelas["formulacao"][0]["formulacao_item"], origens, strict=True):
+        item["origem_material"] = origem
+    return cliente
+
+
+def test_origens_misturadas_vao_por_item_ao_motor():
+    """#62: cliente e fabricante no mesmo cenário; o motor soma o custo dos itens do cliente."""
+    resultado = montar_entrada(
+        _com_origens("fabricante", "cliente", "fabricante"), _usuario(), PREC_ID, Decimal("1000"), HOJE
+    )
+    entrada = resultado["entrada"]
+
+    assert resultado["pendencias"] == []
+    assert [m["origem_material"] for m in entrada["materiais_primas"]] == ["cliente", "fabricante"]
+    assert entrada["material_fornecido_pelo_cliente"] is False and entrada["valor_material_cliente"] == "0"
+
+
+def test_tudo_do_cliente_marca_a_flag_da_isencao():
+    entrada = montar_entrada(_com_origens("cliente", "cliente", "cliente"), _usuario(), PREC_ID, Decimal("1000"), HOJE)[
+        "entrada"
+    ]
+
+    assert entrada["material_fornecido_pelo_cliente"] is True and entrada["valor_material_cliente"] == "0"
+
+
+def test_item_sem_origem_vira_pendencia():
+    resultado = montar_entrada(
+        _com_origens("fabricante", None, "fabricante"), _usuario(), PREC_ID, Decimal("1000"), HOJE
+    )
+
+    assert "Defina a origem (fabricante ou cliente) de todos os itens da formulação." in resultado["pendencias"]

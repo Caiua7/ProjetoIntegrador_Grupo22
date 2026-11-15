@@ -308,3 +308,153 @@ def test_impostos_destacados_usam_as_bases_da_formula_da_rol():
         resultado.impostos_destacados.ipi_valor,
         pbsipi * entrada.impostos.ipi_percentual,
     )
+
+
+# ---------------------------------------------------------------------------
+# Testes da origem individual dos insumos (US30)
+# ---------------------------------------------------------------------------
+
+
+def test_formula_mista_aceita_origens_diferentes_no_mesmo_cenario():
+    entrada = _entrada(
+        materiais_primas=[
+            {
+                "codigo": "MP-001",
+                "preco_negociado": "100",
+                "quantidade": "2",
+                "cambio": "1",
+                "margem_seguranca_percentual": "0.10",
+                "origem_material": "fabricante",
+            }
+        ],
+        embalagens=[
+            {
+                "codigo": "EMB-001",
+                "preco_negociado": "5",
+                "quantidade": "2",
+                "percentual_descarte": "0.10",
+                "origem_material": "cliente",
+            }
+        ],
+        material_fornecido_pelo_cliente=False,
+    )
+
+    resultado = calcular(entrada)
+
+    assert resultado.custo_mp == Decimal("220.00")
+    assert resultado.custo_embalagem == Decimal("1.00")
+    assert resultado.custo_perda == Decimal("11.00")
+    assert resultado.isencao_mao_de_obra.aplicada is False
+
+
+def test_material_do_cliente_e_deduzido_do_preco():
+    entrada_cliente = _entrada(
+        materiais_primas=[
+            {
+                "codigo": "MP-001",
+                "preco_negociado": "100",
+                "quantidade": "2",
+                "cambio": "1",
+                "margem_seguranca_percentual": "0.10",
+                "origem_material": "fabricante",
+            }
+        ],
+        embalagens=[
+            {
+                "codigo": "EMB-001",
+                "preco_negociado": "5",
+                "quantidade": "2",
+                "percentual_descarte": "0.10",
+                "origem_material": "cliente",
+            }
+        ],
+        material_fornecido_pelo_cliente=False,
+    )
+
+    entrada_fabricante = _entrada(
+        materiais_primas=[
+            {
+                "codigo": "MP-001",
+                "preco_negociado": "100",
+                "quantidade": "2",
+                "cambio": "1",
+                "margem_seguranca_percentual": "0.10",
+                "origem_material": "fabricante",
+            }
+        ],
+        embalagens=[
+            {
+                "codigo": "EMB-001",
+                "preco_negociado": "5",
+                "quantidade": "2",
+                "percentual_descarte": "0.10",
+                "origem_material": "fabricante",
+            }
+        ],
+        material_fornecido_pelo_cliente=False,
+    )
+
+    resultado_cliente = calcular(entrada_cliente)
+    resultado_fabricante = calcular(entrada_fabricante)
+
+    assert resultado_cliente.preco_bruto_sem_ipi_sem_encargo < resultado_fabricante.preco_bruto_sem_ipi_sem_encargo
+    assert resultado_cliente.preco_bruto_sem_ipi < resultado_fabricante.preco_bruto_sem_ipi
+
+
+def test_todos_os_insumos_do_cliente_sao_calculados_individualmente():
+    entrada = _entrada(
+        materiais_primas=[
+            {
+                "codigo": "MP-001",
+                "preco_negociado": "100",
+                "quantidade": "2",
+                "cambio": "1",
+                "margem_seguranca_percentual": "0.10",
+                "origem_material": "cliente",
+            }
+        ],
+        embalagens=[
+            {
+                "codigo": "EMB-001",
+                "preco_negociado": "5",
+                "quantidade": "2",
+                "percentual_descarte": "0.10",
+                "origem_material": "cliente",
+            }
+        ],
+        material_fornecido_pelo_cliente=True,
+    )
+
+    resultado = calcular(entrada)
+
+    # MP do cliente: 100 * 2 * 1.10 = 220.
+    # Embalagem do cliente: 5 * 2 * 0.10 = 1.
+    # Todo o custo de material é fornecido pelo cliente.
+    assert resultado.custo_perda == Decimal("0.00")
+    assert resultado.isencao_mao_de_obra.aplicada is True
+    assert resultado.isencao_mao_de_obra.valor == Decimal("20.00")
+
+
+def test_rejeita_formula_com_apenas_alguns_itens_sem_origem():
+    with pytest.raises(ValueError, match="origem_material de todos os insumos"):
+        _entrada(
+            materiais_primas=[
+                {
+                    "codigo": "MP-001",
+                    "preco_negociado": "100",
+                    "quantidade": "2",
+                    "cambio": "1",
+                    "margem_seguranca_percentual": "0.10",
+                    "origem_material": "fabricante",
+                }
+            ],
+            embalagens=[
+                {
+                    "codigo": "EMB-001",
+                    "preco_negociado": "5",
+                    "quantidade": "2",
+                    "percentual_descarte": "0.10",
+                }
+            ],
+            material_fornecido_pelo_cliente=False,
+        )

@@ -47,7 +47,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, PlainSerializer, model_validator
 
-ENGINE_CONTRACT_VERSION = "0.3.0"
+ENGINE_CONTRACT_VERSION = "0.4.0"
 
 DecimalComoString = Annotated[
     Decimal,
@@ -69,6 +69,8 @@ class ItemInsumo(BaseModel):
     (RF05). `percentual_descarte` só entra na fórmula de custo para itens
     de embalagem (seção 2.3); para matéria-prima o campo é aceito por
     completude do cadastro, mas hoje não é usado no cálculo.
+
+    `origem_material` identifica individualmente quem fornece o insumo.
     """
 
     model_config = ConfigDict(str_strip_whitespace=True)
@@ -76,7 +78,8 @@ class ItemInsumo(BaseModel):
     codigo: str = Field(..., min_length=1, description="Código do insumo no cadastro mestre (RF03)")
     descricao: str | None = None
     origem_material: Literal["fabricante", "cliente"] | None = Field(
-        default=None, description="Origem informada no editor; o motor atual aceita apenas uma origem global"
+        default=None,
+        description="Origem individual do insumo na formulação",
     )
     preco_negociado: DecimalComoString = Field(..., ge=0, description="PrecoNeg — preço cotado, na moeda de origem")
     moeda: str = Field("BRL", min_length=3, max_length=3, description="Código ISO da moeda da cotação")
@@ -134,11 +137,16 @@ class CalculateRequest(BaseModel):
     embalagens: list[ItemInsumo] = Field(default_factory=list)
     perda_percentual: DecimalComoString = Field(Decimal("0"), ge=0, le=1, description="Perda")
 
-    material_fornecido_pelo_cliente: bool = Field(False, description="Origem do material (RF05)")
+    # Campo legado: mantido para compatibilidade e para a regra antiga
+    # de isenção de mão de obra.
+    material_fornecido_pelo_cliente: bool = Field(
+        False,
+        description="Indica fornecimento global pelo cliente (compatibilidade legada e isenção de MDO)",
+    )
     valor_material_cliente: DecimalComoString = Field(
         Decimal("0"),
         ge=0,
-        description="MaterialCliente / CustoEnviadoCliente — ver decisão em aberto (3) no topo do módulo",
+        description="Valor global legado de material fornecido pelo cliente",
     )
 
     producao: ParametrosProducao
@@ -147,17 +155,38 @@ class CalculateRequest(BaseModel):
 
     @model_validator(mode="after")
     def _exige_ao_menos_um_insumo(self) -> CalculateRequest:
-        if not self.materiais_primas and not self.embalagens:
+        itens = (*self.materiais_primas, *self.embalagens)
+
+        if not itens:
             raise ValueError("informe ao menos um item em materiais_primas ou embalagens")
-        origens = {item.origem_material for item in (*self.materiais_primas, *self.embalagens) if item.origem_material}
-        if len(origens) > 1:
-            raise ValueError("o motor real ainda não suporta origens de material diferentes no mesmo cenário")
-        if origens == {"cliente"} and not self.material_fornecido_pelo_cliente:
-            raise ValueError("marque material_fornecido_pelo_cliente para itens cuja origem seja cliente")
-        if origens == {"fabricante"} and self.material_fornecido_pelo_cliente:
-            raise ValueError("a origem dos itens e material_fornecido_pelo_cliente não correspondem")
-        if self.material_fornecido_pelo_cliente and "valor_material_cliente" not in self.model_fields_set:
-            raise ValueError("informe valor_material_cliente para calcular material fornecido pelo cliente")
+
+        origens = [item.origem_material for item in itens]
+        possui_origem_individual = any(origem is not None for origem in origens)
+
+        # Novo modelo: se algum item tiver origem individual, todos devem
+        # ter origem definida. Isso evita tratar silenciosamente um item
+        # sem origem como material do fabricante.
+        if possui_origem_individual:
+            if any(origem is None for origem in origens):
+                raise ValueError("informe a origem_material de todos os insumos da formulação")
+
+            conjunto_origens = set(origens)
+
+            # Quando todos os itens são do cliente, a flag global continua
+            # sendo necessária para preservar a regra legada de isenção de MOD.
+            if conjunto_origens == {"cliente"} and not self.material_fornecido_pelo_cliente:
+                raise ValueError("marque material_fornecido_pelo_cliente quando todos os itens forem do cliente")
+
+            # Quando existe pelo menos um item do fabricante, a flag global
+            # não pode indicar que toda a formulação é fornecida pelo cliente.
+            if "fabricante" in conjunto_origens and self.material_fornecido_pelo_cliente:
+                raise ValueError("material_fornecido_pelo_cliente deve ser falso quando houver item do fabricante")
+
+        else:
+            # Compatibilidade com payloads antigos, sem origem individual.
+            if self.material_fornecido_pelo_cliente and "valor_material_cliente" not in self.model_fields_set:
+                raise ValueError("informe valor_material_cliente para calcular material fornecido pelo cliente")
+
         return self
 
 

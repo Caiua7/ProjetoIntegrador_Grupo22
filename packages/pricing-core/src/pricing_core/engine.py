@@ -7,9 +7,9 @@ ATENÇÃO — três premissas abaixo são provisórias e DEVEM ser confirmadas
 com o Product Owner antes da homologação comercial:
 1. ``Base = CustoTotal`` na parcela ``m × Base``.
 2. ``Comissao$ = Comissao × PB``.
-3. ``MaterialCliente = CustoEnviadoCliente = valor_material_cliente``.
-As premissas foram mantidas para viabilizar a implementação e os testes,
-não representam confirmação de regra fiscal/comercial pelo PO.
+3. ``MaterialCliente = CustoEnviadoCliente``: para payloads novos,
+   corresponde à soma dos custos dos insumos com origem ``cliente``.
+   Para payloads legados, utiliza ``valor_material_cliente``.
 """
 
 from decimal import ROUND_HALF_UP, Decimal, localcontext
@@ -74,6 +74,31 @@ def _validar_denominador(valor: Decimal, *, etapa: str, termo_impostos: Decimal)
         )
 
 
+def _calcular_valor_material_cliente(entrada: CalculateRequest) -> Decimal:
+    """Calcula o valor dos insumos fornecidos individualmente pelo cliente.
+
+    Quando a formulação possui origem individual, soma os custos das
+    matérias-primas e embalagens cuja origem é ``cliente``.
+
+    Quando nenhum item possui origem individual, utiliza o campo legado
+    ``valor_material_cliente``.
+    """
+
+    itens = (*entrada.materiais_primas, *entrada.embalagens)
+    possui_origem_individual = any(item.origem_material is not None for item in itens)
+
+    if not possui_origem_individual:
+        return entrada.valor_material_cliente
+
+    materiais_cliente = [item for item in entrada.materiais_primas if item.origem_material == "cliente"]
+    embalagens_cliente = [item for item in entrada.embalagens if item.origem_material == "cliente"]
+
+    valor_materiais_cliente = calcular_custo_mp(materiais_cliente)
+    valor_embalagens_cliente = calcular_custo_embalagem(embalagens_cliente)
+
+    return valor_materiais_cliente + valor_embalagens_cliente
+
+
 def calcular(entrada: CalculateRequest) -> CalculateResponse:
     """Calcula a estrutura completa de preço sem alterar a entrada.
 
@@ -107,10 +132,15 @@ def calcular(entrada: CalculateRequest) -> CalculateResponse:
 
         custo_mp = calcular_custo_mp(entrada.materiais_primas)
         custo_embalagem = calcular_custo_embalagem(entrada.embalagens)
+
+        # Novo modelo: o valor fornecido pelo cliente é obtido pela origem
+        # de cada insumo. Modelo antigo: utiliza o valor global informado.
+        valor_material_cliente = _calcular_valor_material_cliente(entrada)
+
         custo_perda = calcular_custo_perda(
             custo_mp,
             custo_embalagem,
-            entrada.valor_material_cliente,
+            valor_material_cliente,
             entrada.perda_percentual,
         )
 
@@ -150,8 +180,8 @@ def calcular(entrada: CalculateRequest) -> CalculateResponse:
         isencao_valor = custo_mod if entrada.material_fornecido_pelo_cliente and entrada.cliente_uf == "SP" else ZERO
 
         # TODO(PO): confirmar se CustoEnviadoCliente deve usar o mesmo
-        # valor informado para MaterialCliente em CustoPerda.
-        custo_enviado_cliente = entrada.valor_material_cliente
+        # valor calculado para MaterialCliente em CustoPerda.
+        custo_enviado_cliente = valor_material_cliente
 
         # TODO(PO): confirmar se a base da margem desejada é CustoTotal.
         base_margem = custo_total

@@ -212,7 +212,7 @@ function ScenarioHistoryPanel({ precificacaoId, codigo, precificacao, canViewCos
       const combinado = combinarEntrada(base.entrada, manual)
       const pendencias = [...new Set([...base.pendencias, ...combinado.pendencias])]
       setEmbalagensForm(combinado.embalagens)
-      setPrecisaValorCliente(combinado.entrada.material_fornecido_pelo_cliente === true)
+      setPrecisaValorCliente(combinado.entrada.material_fornecido_pelo_cliente === true && combinado.entrada.valor_material_cliente === '')
       setEntradaJson(JSON.stringify(combinado.entrada, null, 2))
       setPendenciasPreparacao(pendencias)
       return { entrada: combinado.entrada, pendencias }
