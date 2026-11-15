@@ -12,7 +12,7 @@
 // direto, ou você reintroduz o mesmo problema de arredondamento que o
 // motor foi desenhado para evitar (ver README.md, seção "Arquitetura").
 
-export const ENGINE_CONTRACT_VERSION = "0.3.0";
+export const ENGINE_CONTRACT_VERSION = "0.4.0";
 
 export type ModalidadeComercial =
   | "full_service_nacional"

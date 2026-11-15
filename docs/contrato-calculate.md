@@ -21,13 +21,17 @@ Campos monetários e percentuais são decimais serializados como strings. Percen
 
 Vale só quando `material_fornecido_pelo_cliente` é verdadeiro **e** `cliente_uf` é `SP`. Nesse caso o `CustoMOD` é descontado de `PBsIPIsEncargo` (e, por consequência, de `PBsIPI` e `PB`), e a resposta traz `isencao_mao_de_obra.aplicada = true` com o valor descontado. Nos outros três cruzamentos (cliente fora de SP, fabricante em SP, fabricante fora de SP) o valor é zero. Os quatro cruzamentos e o impacto exato no preço estão em `packages/pricing-core/tests/test_engine.py`.
 
+## Origem do material por item (#62)
+
+Cada insumo pode vir do fabricante ou do cliente no mesmo cenário. Se algum item informar `origem_material`, todos precisam informar. `material_fornecido_pelo_cliente` só é verdadeiro quando todos os itens são do cliente (é o que dispara a isenção de mão de obra em SP); com qualquer item do fabricante, ele deve ser falso. `GET /precificacoes/{id}/entrada-calculo` já monta a entrada assim a partir da formulação.
+
 ## Pendências de homologação
 
 O motor implementa premissas provisórias ainda marcadas `TODO(PO)`:
 
 1. `Base = CustoTotal` para a parcela de margem;
 2. `Comissao$ = Comissao × PB`;
-3. `MaterialCliente = CustoEnviadoCliente = valor_material_cliente`.
+3. `MaterialCliente = CustoEnviadoCliente`: com origem por item (`origem_material` em cada insumo), é a soma do custo dos itens de origem `cliente`; sem origem por item (payload antigo), usa `valor_material_cliente`.
 
 As bases usadas para destacar impostos também aguardam confirmação do PO. Portanto, `is_mock=false` significa que o código chama o motor implementado, não que as fórmulas já foram homologadas comercialmente. Os casos oficiais de conformidade e validação PO continuam necessários.
 

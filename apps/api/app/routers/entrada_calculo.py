@@ -212,14 +212,13 @@ def montar_entrada(cliente, usuario: UsuarioAutenticado, precificacao_id: UUID, 
 
             entrada["materiais_primas"] = materiais
             entrada["embalagens"] = embalagens
-            origens = {item.get("origem_material") for item in itens}
-            if origens == {"fabricante"}:
-                entrada["material_fornecido_pelo_cliente"] = False
+            # Origem por item (#62): o motor soma o custo dos itens do cliente; o valor global fica zerado.
+            origens = [item.get("origem_material") for item in itens]
+            if itens and all(origem in ("fabricante", "cliente") for origem in origens):
+                entrada["material_fornecido_pelo_cliente"] = all(origem == "cliente" for origem in origens)
                 entrada["valor_material_cliente"] = "0"
-            elif origens == {"cliente"}:
-                entrada["material_fornecido_pelo_cliente"] = True
             elif itens:
-                pendencias.append("Todos os itens da formulação precisam ter a mesma origem (fabricante ou cliente).")
+                pendencias.append("Defina a origem (fabricante ou cliente) de todos os itens da formulação.")
 
     # ---------------- parâmetros globais e impostos
     comercial: dict = {}
