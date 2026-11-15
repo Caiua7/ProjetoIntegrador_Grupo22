@@ -12,6 +12,7 @@ export type Screen =
   | 'exchange'
   | 'quotes'
   | 'bi'
+  | 'approvals'
 
 export type NavItem = {
   id: string
@@ -34,6 +35,7 @@ export const IMPLEMENTED_SCREENS: readonly Screen[] = [
   'exchange',
   'quotes',
   'bi',
+  'approvals',
 ]
 
 export const SCREEN_HEADER: Record<Screen, { title: string, subtitle: string }> = {
@@ -46,6 +48,7 @@ export const SCREEN_HEADER: Record<Screen, { title: string, subtitle: string }> 
   quotes: { title: 'Cotações', subtitle: 'Cotações vigentes por faixa de volume' },
   exchange: { title: 'Câmbio e parâmetros', subtitle: 'Câmbio por moeda e parâmetros globais do cálculo' },
   bi: { title: 'Exportar para BI', subtitle: 'Exportação de dados de precificação para análise' },
+  approvals: { title: 'Aprovações', subtitle: 'Fila de precificações esperando a sua decisão' },
 }
 
 export const NAVIGATION: NavGroup[] = [
@@ -59,7 +62,7 @@ export const NAVIGATION: NavGroup[] = [
       { id: 'scenario', label: 'Cenário aberto', icon: 'cenario', permission: 'precificacao.ler', description: 'Detalhe de um cenário: custos, impostos e margens' },
       { id: 'inverse', label: 'Modo inverso', icon: 'inverso', permission: 'precificacao.editar', description: 'Informe a margem desejada e descubra o preço' },
       { id: 'compare', label: 'Comparar cenários', icon: 'comparar', permission: 'precificacao.ler', description: 'Compare versões e cenários lado a lado' },
-      { id: 'approvals', label: 'Aprovações', icon: 'aprovacoes', permission: 'precificacao.aprovar', description: 'Cenários esperando a sua decisão' },
+      { id: 'approvals', label: 'Aprovações', icon: 'aprovacoes', permission: 'precificacao.aprovar', additionalPermissions: ['custo.ler'], description: 'Cenários esperando a sua decisão' },
       { id: 'proposal', label: 'Proposta comercial', icon: 'proposta', permission: 'precificacao.ler', description: 'Gere a proposta para enviar ao cliente' },
     ],
   },

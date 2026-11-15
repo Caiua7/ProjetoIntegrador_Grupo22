@@ -14,6 +14,7 @@ export const PARAMETROS: readonly { codigo: CodigoParametro, rotulo: string, uni
   { codigo: 'taxa_financeira_mensal_percentual', rotulo: 'Taxa financeira mensal', unidade: 'percentual', descricao: 'Custo do dinheiro usado no encargo financeiro do prazo' },
   { codigo: 'prazo_medio_padrao_dias', rotulo: 'Prazo médio padrão', unidade: 'dias', descricao: 'Prazo de pagamento sugerido quando o cenário não informa outro' },
   { codigo: 'desvio_maximo_cotacao_percentual', rotulo: 'Desvio máximo de cotação', unidade: 'percentual', descricao: 'Alerta quando a cotação foge da média histórica além deste limite' },
+  { codigo: 'margem_minima_contribuicao_percentual', rotulo: 'Margem mínima da política', unidade: 'percentual', descricao: 'Margem de contribuição mínima: abaixo dela o cenário aparece como fora da política na fila de aprovação' },
 ]
 
 export function definicaoParametro(codigo: CodigoParametro) {

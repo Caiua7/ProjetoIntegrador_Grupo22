@@ -48,7 +48,7 @@ Os seeds podem rodar quantas vezes for preciso: cada `INSERT` usa `ON CONFLICT` 
 | `precificacao` | `codigo` | Cabeçalho mínimo da precificação (completado na US29) |
 | `auditoria` | `id` | Trilha imutável de toda inserção, alteração e exclusão, com usuário e diff |
 | `cambio` | moeda e data | Taxa em reais por unidade da moeda, com margem de segurança e origem (manual ou PTAX) |
-| `parametro_global` | código e início de vigência | Perda, taxa financeira mensal, prazo médio padrão e desvio máximo de cotação |
+| `parametro_global` | código e início de vigência | Perda, taxa financeira mensal, prazo médio padrão, desvio máximo de cotação e margem mínima da política de aprovação |
 | `cenario` | precificação e versão | Versões imutáveis do cenário: entrada e resultado do motor, volume, versão do motor e data do cálculo |
 
 ## Convenções
@@ -76,6 +76,12 @@ Cada gravação de cenário cria uma nova versão em `cenario`, numerada em sequ
 A versão guarda custo e margem, então ler `cenario` exige `custo.ler` e o alcance da precificação. Quem só negocia, como a executiva de contas, lê a visão `cenario_preco`: versão, volume e preço, sem custo nem margem.
 
 API: `GET/POST /precificacoes/{id}/cenarios`, `GET .../{versao}`, `POST .../{versao}/duplicar`, `GET .../comparacao?de=&para=` e `GET .../precos`.
+
+## Fila de aprovação
+
+A visão `fila_aprovacao` lista as precificações em aprovação para o gerente: data da última submissão e quem submeteu, versão vigente do cenário com preço e margem, e a versão anterior para comparar. Ela aplica o acesso por conta própria: só aparece para quem tem `precificacao.aprovar` e `custo.ler`, e só na carteira dele.
+
+A política de margem é o parâmetro global `margem_minima_contribuicao_percentual` (fração, 0.24 = 24%), versionado por vigência como os demais. A API `GET /aprovacoes/fila` compara a margem de cada item com ela e filtra por cliente, por situação (`abaixo_da_politica` ou `dentro_da_politica`) e por teto de margem, ordenando pela data de submissão.
 
 ## Câmbio e parâmetros globais
 

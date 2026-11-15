@@ -53,6 +53,7 @@ SELECT * FROM trilha_auditoria('decisao_aprovacao', '<decisao_id>');
 | :--- | :--- | :--- |
 | `POST /precificacoes/{id}/decisoes` | `precificacao.aprovar` | Registra a decisão: `{"decisao": "aprovado" \| "reprovado", "comentario": "..."}` |
 | `GET /precificacoes/{id}/decisoes` | `precificacao.ler` | Lista as decisões da mais recente para a mais antiga |
+| `GET /aprovacoes/fila` | `precificacao.aprovar` | Fila do gerente (#67): em aprovação na carteira, ordenada pela submissão; filtros `cliente_id`, `situacao` (`abaixo_da_politica` \| `dentro_da_politica`), `margem_ate` e `ordem` |
 
 Respostas de erro: `422` para reprovação sem comentário (a API recusa antes de ir ao banco) ou decisão fora do domínio; `409` quando a precificação não está em aprovação; `404` quando ela não existe ou está fora da carteira de quem decide; `403` sem a permissão.
 
@@ -60,3 +61,4 @@ Respostas de erro: `422` para reprovação sem comentário (a API recusa antes d
 
 - Banco: `tests/banco/test_decisao_aprovacao.py` (critério de aceite, estado, carteira, guarda de status, imutabilidade, auditoria e histórico).
 - API: `apps/api/tests/test_aprovacoes.py`.
+- Fila (#67): `tests/banco/test_fila_aprovacao.py` e `apps/api/tests/test_fila_aprovacao.py`.

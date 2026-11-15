@@ -16,6 +16,7 @@ from app.routers.cenarios import router as cenarios_router
 from app.routers.cotacoes import router as cotacoes_router
 from app.routers.entrada_calculo import router as entrada_calculo_router
 from app.routers.exportacoes import router as exportacoes_router
+from app.routers.fila_aprovacao import router as fila_aprovacao_router
 from app.routers.formulacoes import router as formulacoes_router
 from app.routers.health import router as health_router
 from app.routers.parametros_globais import router_cambio, router_parametros
@@ -55,6 +56,7 @@ app.include_router(entrada_calculo_router)
 app.include_router(precificacoes_router)
 app.include_router(cenarios_router)
 app.include_router(aprovacoes_router)
+app.include_router(fila_aprovacao_router)
 app.include_router(calculate_router)
 app.include_router(tax_rates_router)
 app.include_router(cotacoes_router)
