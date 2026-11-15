@@ -99,10 +99,22 @@ export function FormulationPage({ canEdit, canViewCost, canReadCatalog, canReadC
     setItens((atuais) => atuais.map((item, posicao) => posicao === index ? { ...item, ...patch } : item)); setMensagem(null)
   }
   async function salvar() {
-    if (!produtoId) return
-    if (itens.some((item) => !item.origem_material || !quantidadeValida(item.quantidade) ||
-      (item.perda_percentual !== '' && !perdaValida(item.perda_percentual)))) {
-      setErro('Revise as quantidades e perdas antes de salvar.'); return
+    if (!produtoId || !canEdit) return
+    if (itens.length === 0) {
+      setErro('A formulação precisa ter ao menos um componente.')
+      return
+    }
+    if (itens.some((item) => {
+      const possuiInsumo = item.tipo_insumo === 'materia_prima'
+        ? Boolean(item.materia_prima_id)
+        : Boolean(item.embalagem_id)
+      return !possuiInsumo
+        || !item.origem_material
+        || !quantidadeValida(item.quantidade)
+        || (item.perda_percentual !== '' && !perdaValida(item.perda_percentual))
+    })) {
+      setErro('Revise o insumo, a origem, as quantidades e as perdas antes de salvar.')
+      return
     }
     setSalvando(true); setErro(null); setMensagem(null)
     try { const salva = await salvarFormulacao(produtoId, itens.map((item) => ({ tipo_insumo: item.tipo_insumo,
@@ -119,6 +131,10 @@ export function FormulationPage({ canEdit, canViewCost, canReadCatalog, canReadC
     <div className="list-intro"><div><span className="eyebrow">COMPOSIÇÃO DO PRODUTO</span><h2>Editor de formulação</h2><p>Monte e mantenha os insumos associados a cada produto.</p></div></div>
     {erro && <p className="catalog-error" role="alert">{erro}</p>}
     {mensagem && <p className="catalog-success" role="status">{mensagem}</p>}
+    {produtoId && !canEdit && <p className="field-hint" role="status">
+      Você está em modo de visualização. Para adicionar, alterar a origem, editar quantidades,
+      remover componentes ou salvar a formulação, sua conta precisa da permissão de edição de formulações.
+    </p>}
     <section className="form-card formulation-selector">
       <label className="field" htmlFor="formulation-product">Produto
         <select id="formulation-product" value={produtoId} disabled={salvando || carregandoCatalogos || !canReadCatalog} onChange={(event) => { setProdutoId(event.target.value); setItens([]); setCarregandoFormulacao(Boolean(event.target.value)); setErro(null); setMensagem(null) }}>
@@ -170,7 +186,13 @@ export function FormulationPage({ canEdit, canViewCost, canReadCatalog, canReadC
                 {canEdit && <td><button type="button" className="button secondary" onClick={() => { setItens((atuais) => atuais.filter((_, posicao) => posicao !== index)); setMensagem(null) }}>Remover</button></td>}</tr>
             })}
           </tbody></table></div>}
-        {canEdit && <div className="catalog-form-actions"><button className="button primary" type="button" disabled={salvando || carregandoCatalogos || carregandoFormulacao} onClick={() => { void salvar() }}>{salvando ? 'Salvando…' : 'Salvar formulação'}</button></div>}
+        {canEdit && <div className="catalog-form-actions">
+          <button className="button primary" type="button"
+            disabled={salvando || carregandoCatalogos || carregandoFormulacao || itens.length === 0}
+            onClick={() => { void salvar() }}>
+            {salvando ? 'Salvando…' : 'Salvar formulação'}
+          </button>
+        </div>}
       </section>
       </div>
     </div>}

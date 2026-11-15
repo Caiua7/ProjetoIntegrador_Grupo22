@@ -181,17 +181,24 @@ function ScenarioHistoryPanel({ precificacaoId, codigo, precificacao, canViewCos
       if (formulario) {
         candidato.materiais_primas = materiais
         candidato.embalagens = embalagens
-        const origens = new Set(formulario.itens.map((item) => item.origem_material).filter((origem) => origem !== null))
-        if (origens.size === 1 && origens.has('fabricante') && formulario.itens.every((item) => item.origem_material)) {
-          candidato.material_fornecido_pelo_cliente = false
+
+        const todosItensComOrigem = formulario.itens.length > 0
+          && formulario.itens.every((item) =>
+            item.origem_material === 'fabricante' || item.origem_material === 'cliente'
+          )
+
+        if (!todosItensComOrigem) {
+          pendencias.push('Defina a origem (fabricante ou cliente) de todos os itens da formulação.')
+        } else {
+          const todosItensDoCliente = formulario.itens.every(
+            (item) => item.origem_material === 'cliente'
+          )
+
+          // A origem individual de cada insumo é enviada ao motor.
+          // A flag global permanece apenas para preservar a regra legada
+          // de isenção de mão de obra quando todos os itens são do cliente.
+          candidato.material_fornecido_pelo_cliente = todosItensDoCliente
           candidato.valor_material_cliente = '0'
-        } else if (origens.size === 1 && origens.has('cliente') && formulario.itens.every((item) => item.origem_material)) {
-          candidato.material_fornecido_pelo_cliente = true
-          if (candidato.valor_material_cliente == null || candidato.valor_material_cliente === '') {
-            pendencias.push('Valor global de material do cliente; o motor ainda não calcula valores por item.')
-          }
-        } else if (formulario.itens.length > 0) {
-          pendencias.push('Defina uma origem para cada item. O motor real também não aceita origens diferentes no mesmo cenário; use demonstração explícita para testar a conversão simulada.')
         }
       }
 
@@ -259,9 +266,28 @@ function ScenarioHistoryPanel({ precificacaoId, codigo, precificacao, canViewCos
       if (candidato.perda_percentual == null || candidato.perda_percentual === '') candidato.perda_percentual = ''
       if (candidato.material_fornecido_pelo_cliente == null) candidato.material_fornecido_pelo_cliente = ''
       if (candidato.valor_material_cliente == null || candidato.valor_material_cliente === '') candidato.valor_material_cliente = ''
-      if (candidato.perda_percentual === '') pendencias.push('Perda percentual; informe a vigência global ou o valor aprovado para este cenário.')
-      if (candidato.material_fornecido_pelo_cliente === '') pendencias.push('Informe se há material fornecido pelo cliente; o formulário não presume false.')
-      if (candidato.valor_material_cliente === '') pendencias.push('Valor do material fornecido pelo cliente; o motor ainda recebe um valor global, não por matéria-prima.')
+
+      if (candidato.perda_percentual === '') {
+        pendencias.push('Perda percentual; informe a vigência global ou o valor aprovado para este cenário.')
+      }
+      if (candidato.material_fornecido_pelo_cliente === '') {
+        pendencias.push('Informe se há material fornecido pelo cliente; o formulário não presume false.')
+      }
+
+      // Quando a formulação possui origem individual definida, o motor
+      // calcula o valor dos insumos do cliente a partir de cada item.
+      // O valor global fica zerado e não precisa ser informado manualmente.
+      const possuiOrigemIndividualCompleta = formulario !== null
+        && formulario.itens.length > 0
+        && formulario.itens.every((item) =>
+          item.origem_material === 'fabricante' || item.origem_material === 'cliente'
+        )
+
+      if (possuiOrigemIndividualCompleta) {
+        candidato.valor_material_cliente = '0'
+      } else if (candidato.valor_material_cliente === '') {
+        pendencias.push('Valor do material fornecido pelo cliente; informe o valor global para uma entrada legada sem origem individual.')
+      }
 
       candidato.comercial = comercial
       candidato.impostos = impostos
@@ -443,7 +469,7 @@ function ScenarioHistoryPanel({ precificacaoId, codigo, precificacao, canViewCos
     {canEdit && <section className="scenario-simulation" aria-label="Simular com o motor de precificação">
       <h4>Nova simulação</h4>
       {precificacao && <p className="field-hint">UF de destino, modalidade comercial e regime tributário serão preenchidos do cabeçalho salvo. {precificacao.uf_destino ? `UF: ${precificacao.uf_destino}. ` : 'UF de destino ausente no cabeçalho. '}{precificacao.modalidade_comercial} · {precificacao.regime_tributario ?? 'regime ausente'}.</p>}
-      <p className="field-hint">Complete os demais campos de <code>CalculateRequest</code>. A formulação não contém preços unitários; embalagens não têm endpoint de cotação; e faltam parâmetros de produção, NCM do produto, margem desejada, comissão e frete percentual. Os valores são enviados à API; nenhum cálculo é feito no navegador.</p>
+      <p className="field-hint">Complete os demais campos de <code>CalculateRequest</code>. A origem de cada matéria-prima e embalagem é enviada individualmente ao motor. A formulação não contém preços unitários; embalagens não têm endpoint de cotação; e faltam parâmetros de produção, NCM do produto, margem desejada, comissão e frete percentual. Os valores são enviados à API; nenhum cálculo é feito no navegador.</p>
       <button className="button primary" type="button" disabled={preparando || simulando || salvandoCenario} onClick={() => { void prepararECalcular() }}>{preparando ? 'Consultando APIs…' : simulando ? 'Calculando…' : 'Preparar dados reais e calcular'}</button>
       {pendenciasPreparacao.length > 0 && <div className="catalog-error" role="status"><strong>Informações que ainda precisam ser preenchidas ou resolvidas:</strong><ul>{pendenciasPreparacao.map((item) => <li key={item}>{item}</li>)}</ul></div>}
       <form onSubmit={(event) => { void simular(event) }}>
