@@ -1,4 +1,3 @@
-
 import csv
 import io
 from uuid import uuid4
@@ -44,7 +43,7 @@ class ConsultaFalsa:
     def execute(self):
         dados = self.cliente.tabelas.get(self.tabela, [])
         fim = self.fim + 1 if self.fim is not None else None
-        return RespostaFalsa(dados[self.inicio:fim])
+        return RespostaFalsa(dados[self.inicio : fim])
 
 
 class ClienteFalso:
@@ -140,17 +139,13 @@ def ambiente(monkeypatch):
     monkeypatch.setattr(
         auth,
         "validar_token",
-        lambda token: USUARIO_ID
-        if token == "token-exportacao"
-        else None,
+        lambda token: USUARIO_ID if token == "token-exportacao" else None,
     )
 
     monkeypatch.setattr(
         auth,
         "carregar_usuario",
-        lambda db, usuario_id: dados_usuario
-        if usuario_id == USUARIO_ID
-        else None,
+        lambda db, usuario_id: dados_usuario if usuario_id == USUARIO_ID else None,
     )
 
     monkeypatch.setattr(
@@ -208,10 +203,7 @@ def test_exportar_cenarios_em_xlsx(ambiente):
     resposta = http.get(URL, headers=TOKEN, params={"formato": "xlsx"})
 
     assert resposta.status_code == 200
-    assert (
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        in resposta.headers["content-type"]
-    )
+    assert "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" in resposta.headers["content-type"]
 
     workbook = load_workbook(io.BytesIO(resposta.content))
     planilha = workbook["Cenários"]

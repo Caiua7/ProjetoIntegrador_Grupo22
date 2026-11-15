@@ -1,4 +1,3 @@
-
 """Exportação de cenários e indicadores para BI (issue #69)."""
 
 import csv
@@ -95,41 +94,29 @@ def _montar_linhas(usuario: UsuarioAutenticado):
         .order("codigo")
     )
 
-    precificacoes_por_id = {
-        str(item["id"]): item for item in precificacoes
-    }
+    precificacoes_por_id = {str(item["id"]): item for item in precificacoes}
 
     # Usuários sem custo.ler consultam exclusivamente a view segura.
     if tem_custo:
-        consulta = (
-            cliente_supabase.table("cenario")
-            .select(
-                "id,precificacao_id,versao,observacao,volume,data_calculo,"
-                "versao_motor,preco_bruto,preco_bruto_sem_ipi,created_at,"
-                "entrada,resultado"
-            )
+        consulta = cliente_supabase.table("cenario").select(
+            "id,precificacao_id,versao,observacao,volume,data_calculo,"
+            "versao_motor,preco_bruto,preco_bruto_sem_ipi,created_at,"
+            "entrada,resultado"
         )
     else:
-        consulta = (
-            cliente_supabase.table("cenario_preco")
-            .select(
-                "id,precificacao_id,versao,volume,data_calculo,"
-                "versao_motor,preco_bruto,preco_bruto_sem_ipi,"
-                "created_at,vigente"
-            )
+        consulta = cliente_supabase.table("cenario_preco").select(
+            "id,precificacao_id,versao,volume,data_calculo,"
+            "versao_motor,preco_bruto,preco_bruto_sem_ipi,"
+            "created_at,vigente"
         )
 
-    cenarios = _buscar_todas(
-        consulta.order("precificacao_id").order("versao")
-    )
+    cenarios = _buscar_todas(consulta.order("precificacao_id").order("versao"))
 
     maiores_versoes = {}
     for cenario in cenarios:
         chave = str(cenario["precificacao_id"])
         versao = cenario["versao"]
-        maiores_versoes[chave] = max(
-            versao, maiores_versoes.get(chave, 0)
-        )
+        maiores_versoes[chave] = max(versao, maiores_versoes.get(chave, 0))
 
     linhas = []
 
@@ -144,18 +131,12 @@ def _montar_linhas(usuario: UsuarioAutenticado):
         linha = {
             "precificacao_codigo": precificacao.get("codigo"),
             "precificacao_status": precificacao.get("status"),
-            "cliente": _nome_relacionado(
-                precificacao, "cliente", "razao_social"
-            ),
-            "produto": _nome_relacionado(
-                precificacao, "produto", "descricao"
-            ),
+            "cliente": _nome_relacionado(precificacao, "cliente", "razao_social"),
+            "produto": _nome_relacionado(precificacao, "produto", "descricao"),
             "cenario_id": cenario.get("id"),
             "versao": cenario.get("versao"),
             "vigente": (
-                cenario.get("vigente")
-                if not tem_custo
-                else cenario["versao"] == maiores_versoes[precificacao_id]
+                cenario.get("vigente") if not tem_custo else cenario["versao"] == maiores_versoes[precificacao_id]
             ),
             "observacao": cenario.get("observacao"),
             "volume": cenario.get("volume"),
@@ -174,26 +155,22 @@ def _montar_linhas(usuario: UsuarioAutenticado):
             custo_mod = _decimal(resultado.get("custo_mod")) or Decimal("0")
             custo_ggf = _decimal(resultado.get("custo_ggf")) or Decimal("0")
 
-            linha.update({
-                "margem_aplicada": comercial.get(
-                    "margem_desejada_percentual"
-                ),
-                "custo_mp": resultado.get("custo_mp"),
-                "custo_embalagem": resultado.get("custo_embalagem"),
-                "custo_perda": resultado.get("custo_perda"),
-                "custo_mod": resultado.get("custo_mod"),
-                "custo_ggf": resultado.get("custo_ggf"),
-                "custo_conversao": custo_mod + custo_ggf,
-                "custo_total": resultado.get("custo_total"),
-                "margem_contribuicao_valor": resultado.get(
-                    "margem_contribuicao_valor"
-                ),
-                "margem_contribuicao_percentual": resultado.get(
-                    "margem_contribuicao_percentual"
-                ),
-                "receita_operacional_bruta": None,
-                "margem_contribuicao_absoluta": None,
-            })
+            linha.update(
+                {
+                    "margem_aplicada": comercial.get("margem_desejada_percentual"),
+                    "custo_mp": resultado.get("custo_mp"),
+                    "custo_embalagem": resultado.get("custo_embalagem"),
+                    "custo_perda": resultado.get("custo_perda"),
+                    "custo_mod": resultado.get("custo_mod"),
+                    "custo_ggf": resultado.get("custo_ggf"),
+                    "custo_conversao": custo_mod + custo_ggf,
+                    "custo_total": resultado.get("custo_total"),
+                    "margem_contribuicao_valor": resultado.get("margem_contribuicao_valor"),
+                    "margem_contribuicao_percentual": resultado.get("margem_contribuicao_percentual"),
+                    "receita_operacional_bruta": None,
+                    "margem_contribuicao_absoluta": None,
+                }
+            )
 
             volume = _decimal(cenario.get("volume"))
 
@@ -201,27 +178,17 @@ def _montar_linhas(usuario: UsuarioAutenticado):
                 rentabilidade = derivar_rentabilidade(
                     volume,
                     preco_bruto_sem_ipi=resultado["preco_bruto_sem_ipi"],
-                    receita_operacional_liquida=resultado[
-                        "receita_operacional_liquida"
-                    ],
-                    margem_contribuicao_valor=resultado[
-                        "margem_contribuicao_valor"
-                    ],
+                    receita_operacional_liquida=resultado["receita_operacional_liquida"],
+                    margem_contribuicao_valor=resultado["margem_contribuicao_valor"],
                     custo_total=resultado["custo_total"],
                 )
 
-                linha["receita_operacional_bruta"] = (
-                    rentabilidade.receita_operacional_bruta
-                )
-                linha["margem_contribuicao_absoluta"] = (
-                    rentabilidade.margem_contribuicao
-                )
+                linha["receita_operacional_bruta"] = rentabilidade.receita_operacional_bruta
+                linha["margem_contribuicao_absoluta"] = rentabilidade.margem_contribuicao
 
         linhas.append(linha)
 
-    colunas = COLUNAS_BASE + (
-        COLUNAS_CUSTO if tem_custo else []
-    )
+    colunas = COLUNAS_BASE + (COLUNAS_CUSTO if tem_custo else [])
 
     return linhas, colunas
 
@@ -275,14 +242,9 @@ def _gerar_xlsx(
 
     for indice, (_, rotulo) in enumerate(colunas, start=1):
         tamanhos = [len(str(rotulo))]
-        tamanhos.extend(
-            len(str(planilha.cell(row, indice).value or ""))
-            for row in range(2, planilha.max_row + 1)
-        )
+        tamanhos.extend(len(str(planilha.cell(row, indice).value or "")) for row in range(2, planilha.max_row + 1))
 
-        planilha.column_dimensions[
-            get_column_letter(indice)
-        ].width = min(max(max(tamanhos) + 2, 12), 40)
+        planilha.column_dimensions[get_column_letter(indice)].width = min(max(max(tamanhos) + 2, 12), 40)
 
     buffer = io.BytesIO()
     workbook.save(buffer)
@@ -293,9 +255,7 @@ def _gerar_xlsx(
 @router.get("/cenarios")
 def exportar_cenarios(
     formato: Literal["csv", "xlsx"] = Query(default="csv"),
-    usuario: UsuarioAutenticado = Depends(
-        exigir_permissao("precificacao.ler")
-    ),
+    usuario: UsuarioAutenticado = Depends(exigir_permissao("precificacao.ler")),
 ):
     """Exporta todas as versões visíveis ao usuário para BI."""
     try:
@@ -306,10 +266,7 @@ def exportar_cenarios(
             media_type = "text/csv; charset=utf-8"
         else:
             conteudo = _gerar_xlsx(linhas, colunas)
-            media_type = (
-                "application/vnd.openxmlformats-officedocument."
-                "spreadsheetml.sheet"
-            )
+            media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
     except HTTPException:
         raise
@@ -322,9 +279,5 @@ def exportar_cenarios(
     return StreamingResponse(
         iter([conteudo]),
         media_type=media_type,
-        headers={
-            "Content-Disposition": (
-                f'attachment; filename="neoprice-cenarios.{formato}"'
-            )
-        },
+        headers={"Content-Disposition": (f'attachment; filename="neoprice-cenarios.{formato}"')},
     )
