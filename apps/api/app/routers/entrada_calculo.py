@@ -8,9 +8,13 @@ alíquota. Campos sem cadastro no sistema (embalagem, produção, margem...) vê
 em branco: o front completa com o que o analista digita.
 """
 
+import logging
+import threading
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date
 from decimal import Decimal
+from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -22,6 +26,7 @@ from app.routers.parametros_globais import CODIGOS_PARAMETRO, escolher_vigente, 
 from app.routers.tax_rates import escolher_aliquota_aplicavel
 from pricing_core.cotacao import CotacaoAmbigua, CotacaoNaoEncontrada, resolver_cotacao
 
+logger = logging.getLogger("neoprice")
 router = APIRouter(prefix="/precificacoes", tags=["precificações"])
 
 REGIMES = {"lucro_real": "Lucro Real", "lucro_presumido": "Lucro Presumido", "simples_nacional": "Simples Nacional"}
@@ -58,7 +63,25 @@ def _para_cotacao(linha: dict):
     return converter(linha)
 
 
-def montar_entrada(cliente, usuario: UsuarioAutenticado, precificacao_id: UUID, volume: Decimal | None, hoje: date):
+def montar_entrada(
+    cliente,
+    usuario: UsuarioAutenticado,
+    precificacao_id: UUID,
+    volume: Decimal | None,
+    hoje: date,
+    fabrica_cliente: Callable[[], Any] | None = None,
+):
+    # O cliente do Supabase (httpx com HTTP/2) não é seguro entre threads: compartilhado,
+    # derrubava a conexão de vez em quando e o endpoint respondia 503. Cada thread usa o seu.
+    local = threading.local()
+
+    def cli():
+        if fabrica_cliente is None:
+            return cliente
+        if not hasattr(local, "cliente"):
+            local.cliente = fabrica_cliente()
+        return local.cliente
+
     pendencias: list[str] = []
     linhas = (
         cliente.table("precificacao")
@@ -89,7 +112,8 @@ def montar_entrada(cliente, usuario: UsuarioAutenticado, precificacao_id: UUID, 
         if not prec.get("produto_id"):
             return None
         resposta = (
-            cliente.table("formulacao")
+            cli()
+            .table("formulacao")
             .select(
                 "id,formulacao_item(tipo_insumo,materia_prima_id,embalagem_id,quantidade,unidade_medida,origem_material,ordem,"
                 "materia_prima(codigo,descricao,unidade_medida),embalagem(codigo,descricao,unidade_medida))"
@@ -103,14 +127,15 @@ def montar_entrada(cliente, usuario: UsuarioAutenticado, precificacao_id: UUID, 
     def ler_parametros():
         if not pode_ler("parametro_global.ler"):
             return None
-        resposta = cliente.table("parametro_global").select("*").lte("vigencia_inicio", hoje.isoformat()).execute()
+        resposta = cli().table("parametro_global").select("*").lte("vigencia_inicio", hoje.isoformat()).execute()
         return parametros_vigentes(resposta.data or [], hoje)
 
     def ler_aliquota():
         if not (pode_ler("parametro_fiscal.ler") and prec.get("uf_destino") and prec.get("regime_tributario") and ncm):
             return None
         resposta = (
-            cliente.table("aliquota_fiscal")
+            cli()
+            .table("aliquota_fiscal")
             .select("*")
             .eq("uf_destino", prec["uf_destino"])
             .eq("regime_tributario", prec["regime_tributario"])
@@ -147,13 +172,13 @@ def montar_entrada(cliente, usuario: UsuarioAutenticado, precificacao_id: UUID, 
                 ):
                     quantidade = Decimal(str(item["quantidade"])) * volume
                     cotar[item["materia_prima_id"]] = pool.submit(
-                        lambda mp=item["materia_prima_id"], q=quantidade: _resolver_cotacao(cliente, mp, q, hoje)
+                        lambda mp=item["materia_prima_id"], q=quantidade: _resolver_cotacao(cli(), mp, q, hoje)
                     )
             cotacoes = {mp: futuro.result() for mp, futuro in cotar.items()}
             moedas = {c.moeda for c in cotacoes.values() if c is not None and c.moeda != "BRL"}
             cambios = {}
             if pode_ler("cambio.ler"):
-                futuros = {moeda: pool.submit(_cambio_vigente, cliente, moeda, hoje) for moeda in moedas}
+                futuros = {moeda: pool.submit(lambda m=moeda: _cambio_vigente(cli(), m, hoje)) for moeda in moedas}
                 cambios = {moeda: futuro.result() for moeda, futuro in futuros.items()}
 
             for item in itens:
@@ -289,8 +314,16 @@ def entrada_calculo(
 ) -> dict:
     try:
         cliente = supabase_do_usuario(usuario.access_token)
-        return montar_entrada(cliente, usuario, precificacao_id, volume, date.today())
+        return montar_entrada(
+            cliente,
+            usuario,
+            precificacao_id,
+            volume,
+            date.today(),
+            fabrica_cliente=lambda: supabase_do_usuario(usuario.access_token),
+        )
     except HTTPException:
         raise
     except Exception as erro:
+        logger.exception("falha ao montar a entrada do cálculo", extra={"precificacao_id": str(precificacao_id)})
         raise HTTPException(503, "Não foi possível reunir os dados do cálculo. Tente novamente.") from erro
