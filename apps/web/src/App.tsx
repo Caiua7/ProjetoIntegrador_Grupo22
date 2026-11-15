@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react'
 import './App.css'
 import { canOpen, navigationFor, SCREEN_HEADER, type Screen } from './app/navigation'
@@ -18,71 +19,192 @@ import PricingList from './features/pricing/PricingList'
 import type { ListPreset } from './features/pricing/listPreset'
 import { ExchangeParamsPage } from './features/parametros/ExchangeParamsPage'
 import { TaxRatesPage } from './features/taxes/TaxRatesPage'
+import { ExportBIPage } from './features/bi/ExportBIPage'
 
 function App() {
-  return <AuthProvider><AuthGate /></AuthProvider>
+  return (
+    <AuthProvider>
+      <AuthGate />
+    </AuthProvider>
+  )
 }
 
 /** Decide entre carregamento, login, recuperação, acesso negado e o app. */
 function AuthGate() {
-  const { session, usuario, accessError, loading, recoveryMode, isConfigured, signOut } = useAuth()
+  const {
+    session,
+    usuario,
+    accessError,
+    loading,
+    recoveryMode,
+    isConfigured,
+    signOut,
+  } = useAuth()
 
   if (loading) return <LoadingScreen />
   if (recoveryMode) return <PasswordRecoveryPage />
   if (!isConfigured || !session) return <LoginPage />
-  if (!usuario) return <AccessDenied message={accessError} onSignOut={() => { void signOut() }} />
+
+  if (!usuario) {
+    return (
+      <AccessDenied
+        message={accessError}
+        onSignOut={() => {
+          void signOut()
+        }}
+      />
+    )
+  }
+
   return <AppShell />
 }
 
 function AppShell() {
   const { usuario, hasPermission, signOut, statusMessage } = useAuth()
+
   const [screen, setScreen] = useState<Screen>('dashboard')
+
   // Filtro com que a lista abre; a chave remonta a lista a cada atalho do painel
-  const [listPreset, setListPreset] = useState<{ key: number, preset: ListPreset }>({ key: 0, preset: {} })
+  const [listPreset, setListPreset] = useState<{
+    key: number
+    preset: ListPreset
+  }>({ key: 0, preset: {} })
+
   const openList = (preset: ListPreset = {}) => {
-    setListPreset((atual) => ({ key: atual.key + 1, preset }))
+    setListPreset((atual) => ({
+      key: atual.key + 1,
+      preset,
+    }))
     setScreen('pricing-list')
   }
+
   const [theme, setTheme] = useState<Theme>(() =>
-    window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark',
+    window.matchMedia('(prefers-color-scheme: light)').matches
+      ? 'light'
+      : 'dark',
   )
 
   // O tema vale também para o <html>: rolagem e controles nativos acompanham.
-  useEffect(() => { document.documentElement.dataset.theme = theme }, [theme])
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme
+  }, [theme])
 
   // Guarda de rota: tela sem permissão cai no painel.
-  const current: Screen = canOpen(screen, hasPermission) ? screen : 'dashboard'
+  const current: Screen = canOpen(screen, hasPermission)
+    ? screen
+    : 'dashboard'
+
   const header = SCREEN_HEADER[current]
+
   // Cada tela abre do topo, e não na rolagem que a anterior deixou.
-  useEffect(() => { window.scrollTo(0, 0) }, [current])
-  const section = navigationFor(hasPermission).find((group) => group.items.some((item) => item.id === current))?.title
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [current])
 
-  return <div className="neoprice" data-theme={theme}>
-    <Sidebar groups={navigationFor(hasPermission)} current={current} usuario={usuario!} theme={theme}
-      onNavigate={(destino) => (destino === 'pricing-list' ? openList() : setScreen(destino))} onSignOut={() => { void signOut() }} />
+  const section = navigationFor(hasPermission).find((group) =>
+    group.items.some((item) => item.id === current),
+  )?.title
 
-    <main className="main">
-      <Topbar section={section} title={header.title} theme={theme} userName={usuario!.nome}
-        onToggleTheme={() => setTheme(theme === 'dark' ? 'light' : 'dark')} />
+  return (
+    <div className="neoprice" data-theme={theme}>
+      <Sidebar
+        groups={navigationFor(hasPermission)}
+        current={current}
+        usuario={usuario!}
+        theme={theme}
+        onNavigate={(destino) =>
+          destino === 'pricing-list'
+            ? openList()
+            : setScreen(destino)
+        }
+        onSignOut={() => {
+          void signOut()
+        }}
+      />
 
-      {statusMessage && <div className="auth-status-banner" role="status">{statusMessage}</div>}
-      {current === 'dashboard' && <Dashboard nome={usuario!.nome} canCreate={canOpen('new-pricing', hasPermission)}
-        onNewPricing={() => setScreen('new-pricing')} onOpenList={openList} />}
-      {current === 'pricing-list' && <PricingList key={listPreset.key} preset={listPreset.preset} onNewPricing={() => setScreen('new-pricing')}
-        canViewCost={hasPermission('custo.ler')} canEdit={hasPermission('precificacao.editar')} canApprove={hasPermission('precificacao.aprovar')}
-        canReadCatalog={hasPermission('cadastro.ler')} canReadCambio={hasPermission('cambio.ler')}
-        canReadParametros={hasPermission('parametro_global.ler')} canReadImpostos={hasPermission('parametro_fiscal.ler')} />}
-      {current === 'new-pricing' && <PricingCreate onCancel={() => setScreen('pricing-list')} onCreated={() => setScreen('pricing-list')} />}
-      {current === 'formulation' && <FormulationPage canEdit={hasPermission('precificacao.editar')} canViewCost={hasPermission('custo.ler')}
-        canReadCatalog={hasPermission('cadastro.ler')} canReadCambio={hasPermission('cambio.ler')}
-        canReadParametros={hasPermission('parametro_global.ler')} canReadImpostos={hasPermission('parametro_fiscal.ler')} />}
-      {current === 'records' && <InsumosPage canEdit={hasPermission('cadastro.editar')} />}
-      {current === 'taxes' && <TaxRatesPage canEdit={hasPermission('parametro_fiscal.editar')} />}
-      {current === 'quotes' && <QuotesPage />}
-      {current === 'exchange' && <ExchangeParamsPage canEditCambio={hasPermission('cambio.editar')}
-        canReadParametros={hasPermission('parametro_global.ler')} canEditParametros={hasPermission('parametro_global.editar')} />}
-    </main>
-  </div>
+      <main className="main">
+        <Topbar
+          section={section}
+          title={header.title}
+          theme={theme}
+          userName={usuario!.nome}
+          onToggleTheme={() =>
+            setTheme(theme === 'dark' ? 'light' : 'dark')
+          }
+        />
+
+        {statusMessage && (
+          <div className="auth-status-banner" role="status">
+            {statusMessage}
+          </div>
+        )}
+
+        {current === 'dashboard' && (
+          <Dashboard
+            nome={usuario!.nome}
+            canCreate={canOpen('new-pricing', hasPermission)}
+            onNewPricing={() => setScreen('new-pricing')}
+            onOpenList={openList}
+          />
+        )}
+
+        {current === 'pricing-list' && (
+          <PricingList
+            key={listPreset.key}
+            preset={listPreset.preset}
+            onNewPricing={() => setScreen('new-pricing')}
+            canViewCost={hasPermission('custo.ler')}
+            canEdit={hasPermission('precificacao.editar')}
+            canApprove={hasPermission('precificacao.aprovar')}
+            canReadCatalog={hasPermission('cadastro.ler')}
+            canReadCambio={hasPermission('cambio.ler')}
+            canReadParametros={hasPermission('parametro_global.ler')}
+            canReadImpostos={hasPermission('parametro_fiscal.ler')}
+          />
+        )}
+
+        {current === 'new-pricing' && (
+          <PricingCreate
+            onCancel={() => setScreen('pricing-list')}
+            onCreated={() => setScreen('pricing-list')}
+          />
+        )}
+
+        {current === 'formulation' && (
+          <FormulationPage
+            canEdit={hasPermission('precificacao.editar')}
+            canViewCost={hasPermission('custo.ler')}
+            canReadCatalog={hasPermission('cadastro.ler')}
+            canReadCambio={hasPermission('cambio.ler')}
+            canReadParametros={hasPermission('parametro_global.ler')}
+            canReadImpostos={hasPermission('parametro_fiscal.ler')}
+          />
+        )}
+
+        {current === 'records' && (
+          <InsumosPage canEdit={hasPermission('cadastro.editar')} />
+        )}
+
+        {current === 'taxes' && (
+          <TaxRatesPage
+            canEdit={hasPermission('parametro_fiscal.editar')}
+          />
+        )}
+
+        {current === 'quotes' && <QuotesPage />}
+
+        {current === 'exchange' && (
+          <ExchangeParamsPage
+            canEditCambio={hasPermission('cambio.editar')}
+            canReadParametros={hasPermission('parametro_global.ler')}
+            canEditParametros={hasPermission('parametro_global.editar')}
+          />
+        )}
+
+        {current === 'bi' && <ExportBIPage />}
+      </main>
+    </div>
+  )
 }
 
 export default App
