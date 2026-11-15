@@ -12,7 +12,6 @@ from app.infrastructure.database import get_db
 from app.main import app
 from app.routers import exportacoes
 
-
 USUARIO_ID = uuid4()
 PRECIFICACAO_ID = str(uuid4())
 TOKEN = {"Authorization": "Bearer token-exportacao"}
