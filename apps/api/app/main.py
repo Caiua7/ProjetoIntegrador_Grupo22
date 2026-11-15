@@ -2,7 +2,12 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
-from app.core.observabilidade import CABECALHO_CORRELACAO, configurar_logs, configurar_sentry, instalar_correlacao
+from app.core.observabilidade import (
+    CABECALHO_CORRELACAO,
+    configurar_logs,
+    configurar_sentry,
+    instalar_correlacao,
+)
 from app.routers.aprovacoes import router as aprovacoes_router
 from app.routers.auth import router as auth_router
 from app.routers.cadastros import router as cadastros_router
@@ -10,6 +15,7 @@ from app.routers.calculate import router as calculate_router
 from app.routers.cenarios import router as cenarios_router
 from app.routers.cotacoes import router as cotacoes_router
 from app.routers.entrada_calculo import router as entrada_calculo_router
+from app.routers.exportacoes import router as exportacoes_router
 from app.routers.formulacoes import router as formulacoes_router
 from app.routers.health import router as health_router
 from app.routers.parametros_globais import router_cambio, router_parametros
@@ -54,3 +60,4 @@ app.include_router(tax_rates_router)
 app.include_router(cotacoes_router)
 app.include_router(router_cambio)
 app.include_router(router_parametros)
+app.include_router(exportacoes_router)
