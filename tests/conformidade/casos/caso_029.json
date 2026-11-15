@@ -1,0 +1,91 @@
+{
+  "id": "caso_029",
+  "descricao": "Erro esperado: comissão de 100% zera o denominador — PA-0003 Creatina mono 300 g",
+  "entrada": {
+    "cliente_uf": "SP",
+    "modalidade_comercial": "full_service_nacional",
+    "regime_tributario": "lucro_real",
+    "materiais_primas": [
+      {
+        "codigo": "MP-0003",
+        "descricao": "Creatina monoidratada micronizada",
+        "quantidade": "0.3",
+        "origem_material": "fabricante",
+        "preco_negociado": "9.7",
+        "moeda": "EUR",
+        "cambio": "6.093",
+        "margem_seguranca_percentual": "0.02"
+      }
+    ],
+    "embalagens": [
+      {
+        "codigo": "EMB-0002",
+        "descricao": "Pote PEAD 500 ml + tampa",
+        "quantidade": "1",
+        "origem_material": "fabricante",
+        "preco_negociado": "0.85",
+        "moeda": "BRL",
+        "cambio": "1",
+        "percentual_descarte": "0.02"
+      },
+      {
+        "codigo": "EMB-0003",
+        "descricao": "Rótulo BOPP adesivo",
+        "quantidade": "1",
+        "origem_material": "fabricante",
+        "preco_negociado": "0.12",
+        "moeda": "BRL",
+        "cambio": "1",
+        "percentual_descarte": "0.02"
+      },
+      {
+        "codigo": "EMB-0004",
+        "descricao": "Selo de indução em alumínio",
+        "quantidade": "1",
+        "origem_material": "fabricante",
+        "preco_negociado": "0.18",
+        "moeda": "BRL",
+        "cambio": "1",
+        "percentual_descarte": "0.02"
+      },
+      {
+        "codigo": "EMB-0005",
+        "descricao": "Scoop dosador 30 ml",
+        "quantidade": "1",
+        "origem_material": "fabricante",
+        "preco_negociado": "0.65",
+        "moeda": "BRL",
+        "cambio": "1",
+        "percentual_descarte": "0.02"
+      }
+    ],
+    "perda_percentual": "0.02",
+    "material_fornecido_pelo_cliente": false,
+    "valor_material_cliente": "0",
+    "producao": {
+      "taxa_mod": "28",
+      "taxa_ggf": "15",
+      "produtividade": "180",
+      "numero_funcionarios": "3"
+    },
+    "impostos": {
+      "pis_percentual": "0.0165",
+      "cofins_percentual": "0.076",
+      "icms_percentual": "0.12",
+      "ipi_percentual": "0",
+      "icms_interno_percentual": "0",
+      "fcp_percentual": "0",
+      "mva_percentual": "0"
+    },
+    "comercial": {
+      "margem_desejada_percentual": "0",
+      "comissao_percentual": "1",
+      "frete_percentual": "0",
+      "prazo_medio_dias": "0",
+      "taxa_financeira_mensal_percentual": "0.012"
+    }
+  },
+  "erro_esperado": "DENOMINADOR_INVALIDO",
+  "saida_esperada": {},
+  "observacoes": ""
+}
