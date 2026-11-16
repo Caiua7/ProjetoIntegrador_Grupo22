@@ -133,9 +133,7 @@ mcp = ServidorPorPerfil(
     version="1.0.0",
     token_verifier=VerificadorSupabase(),
     auth=AuthSettings(
-        issuer_url=f"{settings.SUPABASE_URL.rstrip('/')}/auth/v1"
-        if settings.SUPABASE_URL
-        else "https://example.invalid",
+        issuer_url=f"{(settings.SUPABASE_URL or 'http://localhost:54321').rstrip('/')}/auth/v1",
         resource_server_url=f"{_url_publica()}/mcp",
         validate_token_resource=False,
     ),
