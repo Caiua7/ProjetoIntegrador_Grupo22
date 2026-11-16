@@ -15,6 +15,12 @@ class Settings(BaseSettings):
 
     CORS_ORIGINS: str = "http://localhost:5173"
 
+    # URL pública da API, usada pelo conector MCP (#130). O Render preenche
+    # RENDER_EXTERNAL_URL sozinho.
+    API_PUBLIC_URL: str = Field(
+        default="http://localhost:8000", validation_alias=AliasChoices("API_PUBLIC_URL", "RENDER_EXTERNAL_URL")
+    )
+
     # observabilidade (issue #65); vazios em local e nos testes
     AMBIENTE: str = "local"
     SENTRY_DSN: str = ""

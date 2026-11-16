@@ -8,6 +8,7 @@ from app.core.observabilidade import (
     configurar_sentry,
     instalar_correlacao,
 )
+from app.mcp_server import DespachoMCP, ciclo_de_vida_mcp
 from app.routers.aprovacoes import router as aprovacoes_router
 from app.routers.auth import router as auth_router
 from app.routers.cadastros import router as cadastros_router
@@ -27,6 +28,8 @@ configurar_logs(settings.LOG_LEVEL)
 configurar_sentry(settings.SENTRY_DSN, settings.AMBIENTE, settings.VERSAO)
 
 app = FastAPI(
+    # o conector MCP precisa do gerenciador de sessões rodando
+    lifespan=lambda _app: ciclo_de_vida_mcp(),
     title="NeoPrice API",
     version="0.1.0",
     description=(
@@ -63,3 +66,8 @@ app.include_router(cotacoes_router)
 app.include_router(router_cambio)
 app.include_router(router_parametros)
 app.include_router(exportacoes_router)
+
+# Conector MCP (#130): POST /mcp e /.well-known/oauth-protected-resource/mcp
+# vão para o app do MCP inteiro (com o middleware de autenticação dele); o
+# resto segue para a API. Um mount na raiz engoliria rotas registradas depois.
+app.add_middleware(DespachoMCP)
