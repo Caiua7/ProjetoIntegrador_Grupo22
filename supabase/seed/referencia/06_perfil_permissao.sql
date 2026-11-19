@@ -94,3 +94,11 @@ FROM (VALUES
 ) AS m (perfil_codigo, permissao_codigo)
 JOIN perfil p ON p.codigo = m.perfil_codigo
 ON CONFLICT (perfil_id, permissao_codigo) DO NOTHING;
+
+-- Administrador global: todas as permissões (migration 20261119000001).
+INSERT INTO perfil_permissao (perfil_id, permissao_codigo)
+SELECT p.id, perm.codigo
+FROM perfil p
+CROSS JOIN permissao perm
+WHERE p.codigo = 'administrador'
+ON CONFLICT (perfil_id, permissao_codigo) DO NOTHING;

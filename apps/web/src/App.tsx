@@ -5,6 +5,7 @@ import { canOpen, navigationFor, SCREEN_HEADER, type Screen } from './app/naviga
 import { Sidebar } from './components/layout/Sidebar'
 import { Topbar, type Theme } from './components/layout/Topbar'
 import { AccessDenied } from './features/auth/AccessDenied'
+import { OAuthConsentPage } from './features/auth/OAuthConsentPage'
 import { AuthProvider } from './features/auth/AuthProvider'
 import { LoadingScreen } from './features/auth/LoadingScreen'
 import LoginPage from './features/auth/LoginPage'
@@ -56,6 +57,8 @@ function AuthGate() {
       />
     )
   }
+
+  if (window.location.pathname === '/oauth/consent') return <OAuthConsentPage />
 
   return <AppShell />
 }
