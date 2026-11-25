@@ -1,6 +1,6 @@
 import { useId, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { GLOSSARIO, type SiglaConhecida } from '../app/glossario'
+import { GLOSSARIO, type SiglaConhecida, type Termo } from '../app/glossario'
 import './sigla.css'
 
 type Posicao = { x: number, y: number, abaixo: boolean, destino: Element }
@@ -16,7 +16,7 @@ export function Sigla({ termo, children }: { termo: SiglaConhecida, children?: R
   const id = useId()
   const ancora = useRef<HTMLSpanElement>(null)
   const [posicao, setPosicao] = useState<Posicao | null>(null)
-  const { nome, explicacao } = GLOSSARIO[termo]
+  const { nome, explicacao, calculo }: Termo = GLOSSARIO[termo]
 
   function abrir() {
     const r = ancora.current?.getBoundingClientRect()
@@ -37,6 +37,7 @@ export function Sigla({ termo, children }: { termo: SiglaConhecida, children?: R
         style={{ left: posicao.x, top: posicao.y }}>
         <strong>{nome}</strong>
         <span>{explicacao}</span>
+        {calculo && <code className="sigla-calculo">{calculo}</code>}
       </span>,
       posicao.destino,
     )}
