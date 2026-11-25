@@ -22,11 +22,13 @@ import { ExchangeParamsPage } from './features/parametros/ExchangeParamsPage'
 import { TaxRatesPage } from './features/taxes/TaxRatesPage'
 import { ExportBIPage } from './features/bi/ExportBIPage'
 import { ApprovalsQueuePage } from './features/approvals/ApprovalsQueuePage'
+import { SiglasNaTela } from './components/SiglasNaTela'
 
 function App() {
   return (
     <AuthProvider>
       <AuthGate />
+      <SiglasNaTela raiz={() => document.querySelector('.neoprice')} />
     </AuthProvider>
   )
 }
